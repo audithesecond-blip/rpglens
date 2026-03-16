@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens — IBM i Code Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0e0f0f;
+    --bg2:       #141516;
+    --bg3:       #1a1c1d;
+    --border:    #2a2d2e;
+    --border2:   #363a3b;
+    --amber:     #e8a020;
+    --amber2:    #f5c060;
+    --amber-dim: #7a5010;
+    --green:     #2ec27e;
+    --red:       #e85050;
+    --text:      #e8e4dc;
+    --text2:     #9a9690;
+    --text3:     #5a5855;
+    --mono:      'DM Mono', monospace;
+    --display:   'Syne', sans-serif;
+    --serif:     'Instrument Serif', serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 48px;
+    height: 64px;
+    background: rgba(14,15,15,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    position: relative;
+  }
+
+  .logo-mark svg { width: 100%; height: 100%; }
+
+  .logo-text {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text span { color: var(--amber); }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text2);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--amber); }
+
+  .nav-cta {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 20px;
+    background: var(--amber);
+    color: #0e0f0f;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: background 0.2s, transform 0.1s;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+
+  .nav-cta:hover {
+    background: var(--amber2);
+    transform: translateY(-1px);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 48px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* amber glow orb */
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(232,160,32,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* grid background */
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.3;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 100%);
+  }
+
+  .hero-tag {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    border: 1px solid var(--amber-dim);
+    padding: 5px 14px;
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .hero-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(42px, 6vw, 80px);
+    line-height: 1.02;
+    text-align: center;
+    letter-spacing: -0.03em;
+    max-width: 880px;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .hero-title .accent {
+    color: var(--amber);
+    font-style: italic;
+    font-family: var(--serif);
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--text2);
+    text-align: center;
+    max-width: 540px;
+    margin-top: 24px;
+    line-height: 1.7;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 40px;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .btn-primary {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 14px 32px;
+    background: var(--amber);
+    color: #0e0f0f;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: all 0.2s;
+    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-primary:hover {
+    background: var(--amber2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(232,160,32,0.25);
+  }
+
+  .btn-ghost {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 13px 28px;
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
+  .hero-note {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 16px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.05em;
+    animation: fadeUp 0.6s 0.35s ease both;
+  }
+
+  /* ── TERMINAL DEMO ── */
+  .terminal-wrap {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 860px;
+    margin-top: 60px;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+
+  .terminal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(232,160,32,0.05);
+  }
+
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #e85050; }
+  .dot.y { background: var(--amber); }
+  .dot.g { background: var(--green); }
+
+  .terminal-title {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+  }
+
+  .terminal-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 280px;
+  }
+
+  .t-pane {
+    padding: 20px;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .t-pane:first-child {
+    border-right: 1px solid var(--border);
+  }
+
+  .t-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .t-code { color: #7ab8e8; }
+  .t-kw   { color: var(--amber); }
+  .t-str  { color: #9fd89a; }
+  .t-cmt  { color: var(--text3); font-style: italic; }
+  .t-num  { color: #d4a0f0; }
+
+  .t-output .t-label { color: var(--green); border-color: rgba(46,194,126,0.2); }
+
+  .output-block { margin-bottom: 14px; }
+  .output-key {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 4px;
+  }
+  .output-val { color: var(--text); font-size: 12px; }
+
+  .cursor {
+    display: inline-block;
+    width: 7px;
+    height: 14px;
+    background: var(--amber);
+    animation: blink 1s step-end infinite;
+    vertical-align: text-bottom;
+    margin-left: 2px;
+  }
+
+  /* ── STATS STRIP ── */
+  .stats {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 32px 48px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stats::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(232,160,32,0.03), transparent);
+  }
+
+  .stat-item {
+    padding: 0 32px;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .stat-item:first-child { padding-left: 0; }
+  .stat-item:last-child { border-right: none; }
+
+  .stat-num {
+    font-family: var(--display);
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--amber);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── SECTION SHARED ── */
+  section { padding: 100px 48px; max-width: 1200px; margin: 0 auto; }
+
+  .section-tag {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-tag::after {
+    content: '';
+    flex: 0 0 40px;
+    height: 1px;
+    background: var(--amber-dim);
+  }
+
+  .section-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(28px, 3.5vw, 46px);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  .section-sub {
+    color: var(--text2);
+    max-width: 480px;
+    line-height: 1.7;
+    font-size: 14px;
+  }
+
+  /* ── FEATURES ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    margin-top: 60px;
+    border: 1px solid var(--border);
+  }
+
+  .feat-card {
+    padding: 36px;
+    background: var(--bg2);
+    border: 1px solid transparent;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--amber);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s;
+  }
+
+  .feat-card:hover {
+    background: var(--bg3);
+    border-color: var(--border2);
+  }
+
+  .feat-card:hover::before { transform: scaleX(1); }
+
+  .feat-num {
+    font-family: var(--display);
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--border2);
+    line-height: 1;
+    margin-bottom: 20px;
+    letter-spacing: -0.04em;
+    transition: color 0.3s;
+  }
+
+  .feat-card:hover .feat-num { color: rgba(232,160,32,0.2); }
+
+  .feat-icon {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+  }
+
+  .feat-card:hover .feat-icon { border-color: var(--amber-dim); }
+
+  .feat-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  .feat-desc {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.7;
+  }
+
+  .feat-tag {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--amber);
+    border: 1px solid var(--amber-dim);
+    padding: 3px 10px;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .how-section {
+    padding: 100px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 60px;
+    position: relative;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    left: calc(12.5% + 12px);
+    right: calc(12.5% + 12px);
+    height: 1px;
+    background: linear-gradient(90deg, var(--amber), var(--border), var(--amber), var(--border));
+    z-index: 0;
+  }
+
+  .step {
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-num {
+    width: 56px;
+    height: 56px;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--amber);
+    margin-bottom: 24px;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    transition: all 0.3s;
+  }
+
+  .step:hover .step-num {
+    background: var(--amber);
+    color: var(--bg);
+  }
+
+  .step-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .step-desc {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.7;
+  }
+
+  /* ── PRIVACY ── */
+  .privacy-section {
+    padding: 100px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+
+  .privacy-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    margin-top: 60px;
+    align-items: start;
+  }
+
+  .privacy-visual {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .privacy-visual::before {
+    content: 'ENCRYPTED TRANSIT';
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--green);
+    border: 1px solid rgba(46,194,126,0.3);
+    padding: 3px 8px;
+  }
+
+  .flow-line {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 8px 0;
+  }
+
+  .flow-box {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text2);
+    text-align: center;
+  }
+
+  .flow-box.highlight {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
+  .flow-box.safe {
+    border-color: rgba(46,194,126,0.3);
+    color: var(--green);
+  }
+
+  .flow-arrow {
+    flex: 0 0 24px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .flow-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+  }
+
+  .privacy-points { display: flex; flex-direction: column; gap: 20px; }
+
+  .p-point {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+
+  .p-point:hover { border-color: var(--border2); }
+
+  .p-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+    line-height: 1;
+    padding-top: 2px;
+  }
+
+  .p-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+
+  .p-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+  /* ── PRICING ── */
+  .pricing-section {
+    padding: 100px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 60px;
+    border: 1px solid var(--border);
+  }
+
+  .price-card {
+    background: var(--bg2);
+    padding: 32px 28px;
+    position: relative;
+    transition: background 0.2s;
+  }
+
+  .price-card.featured {
+    background: var(--bg3);
+    border: 1px solid var(--amber-dim);
+    margin: -1px;
+    z-index: 1;
+  }
+
+  .price-card.featured::before {
+    content: 'MOST POPULAR';
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    background: var(--amber);
+    color: var(--bg);
+    padding: 3px 12px;
+    font-family: var(--display);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .price-card:hover { background: var(--bg3); }
+
+  .price-plan {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 16px;
+  }
+
+  .price-amt {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 36px;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .price-amt span {
+    font-size: 16px;
+    color: var(--text2);
+    font-weight: 400;
+  }
+
+  .price-period {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 28px;
+    letter-spacing: 0.05em;
+  }
+
+  .price-divider {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 24px;
+  }
+
+  .price-features { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+  .price-features li {
+    font-size: 12px;
+    color: var(--text2);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .price-features li::before {
+    content: '—';
+    color: var(--amber);
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  .price-btn {
+    display: block;
+    margin-top: 28px;
+    text-align: center;
+    padding: 11px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    width: 100%;
+  }
+
+  .price-btn.outline {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+
+  .price-btn.outline:hover {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
+  .price-btn.fill {
+    background: var(--amber);
+    color: var(--bg);
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+
+  .price-btn.fill:hover {
+    background: var(--amber2);
+    transform: translateY(-1px);
+  }
+
+  /* ── TESTIMONIALS ── */
+  .quote-section {
+    padding: 80px 48px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .quote-section::before {
+    content: '"';
+    position: absolute;
+    top: -30px;
+    left: 40px;
+    font-family: var(--serif);
+    font-size: 240px;
+    color: rgba(232,160,32,0.04);
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .quotes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .quote-card {
+    padding: 28px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    position: relative;
+  }
+
+  .quote-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--amber);
+    opacity: 0.6;
+  }
+
+  .quote-text {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text2);
+    margin-bottom: 20px;
+  }
+
+  .quote-author {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .q-avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 12px;
+    color: var(--amber);
+  }
+
+  .q-name {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .q-role { font-size: 11px; color: var(--text3); letter-spacing: 0.04em; }
+
+  /* ── CTA BANNER ── */
+  .cta-banner {
+    padding: 100px 48px;
+    text-align: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-banner::before {
+    content: '';
+    position: absolute;
+    inset: 20% 20%;
+    background: radial-gradient(ellipse, rgba(232,160,32,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 20px;
+  }
+
+  .cta-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(32px, 4vw, 56px);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+
+  .cta-sub {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 40px;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-left { display: flex; flex-direction: column; gap: 6px; }
+  .footer-brand {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .footer-brand span { color: var(--amber); }
+  .footer-copy { font-size: 11px; color: var(--text3); letter-spacing: 0.05em; }
+
+  .footer-links {
+    display: flex;
+    gap: 24px;
+    list-style: none;
+  }
+
+  .footer-links a {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--amber); }
+
+  .footer-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.08em;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(46,194,126,0.4); }
+    50%       { opacity: 0.8; box-shadow: 0 0 0 4px rgba(46,194,126,0); }
+  }
+
+  @keyframes typewriter {
+    from { width: 0; }
+    to   { width: 100%; }
+  }
+
+  /* ── SCROLL REVEAL ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── TICKER ── */
+  .ticker-wrap {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+    padding: 12px 0;
+    background: var(--bg2);
+  }
+
+  .ticker {
+    display: flex;
+    white-space: nowrap;
+    animation: ticker 30s linear infinite;
+    gap: 0;
+  }
+
+  .ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 32px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .ticker-item .dot-sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--amber-dim);
+    flex-shrink: 0;
+  }
+
+  @keyframes ticker {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+        <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+        <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+        <line x1="16" y1="1" x2="16" y2="31" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#privacy">Privacy</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+  </ul>
+  <a href="/analyser" class="nav-cta">Launch analyser</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-tag">IBM i &nbsp;/&nbsp; AS400 &nbsp;/&nbsp; RPG &nbsp;/&nbsp; ILE &nbsp;/&nbsp; CL &nbsp;/&nbsp; COBOL</div>
+  <h1 class="hero-title">
+    Your IBM&nbsp;i code,<br/>
+    <span class="accent">finally explained.</span>
+  </h1>
+  <p class="hero-sub">
+    Paste code or upload a file (.rpgle, .txt, .docx, .pdf). Get plain-English explanations, audit-ready documentation, risk reports, and a modernisation roadmap — in 30 seconds.
+  </p>
+  <div class="hero-actions">
+    <a href="/analyser" class="btn-primary">Try free — open analyser</a>
+    <a href="#how" class="btn-ghost">See how it works</a>
+  </div>
+  <p class="hero-note">No installation &nbsp;·&nbsp; Supports .rpgle, .txt, .docx, .pdf &nbsp;·&nbsp; Your code never leaves your browser</p>
+
+  <!-- TERMINAL -->
+  <div class="terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="dot r"></div>
+        <div class="dot y"></div>
+        <div class="dot g"></div>
+        <span class="terminal-title">RPGLENS ANALYSER &nbsp;—&nbsp; QSALES001.RPGLE</span>
+      </div>
+      <div class="terminal-body">
+        <div class="t-pane">
+          <div class="t-label">// Input — RPG ILE source</div>
+<pre style="font-family:var(--mono);font-size:11.5px;line-height:1.8;white-space:pre-wrap"><span class="t-kw">DCLINFILE</span>  CUSTMAST  <span class="t-kw">DISK</span>
+<span class="t-kw">DCL-S</span>  TotalAmt  <span class="t-kw">PACKED</span>(<span class="t-num">11:2</span>);
+<span class="t-kw">DCL-S</span>  CustId    <span class="t-kw">CHAR</span>(<span class="t-num">10</span>);
+<span class="t-kw">DCL-S</span>  Discount  <span class="t-kw">PACKED</span>(<span class="t-num">5:2</span>);
+
+<span class="t-kw">DOW</span>  NOT %EOF(CUSTMAST);
+  <span class="t-kw">CHAIN</span>  CustId  CUSTMAST;
+  <span class="t-kw">IF</span>  %FOUND(CUSTMAST);
+    <span class="t-kw">IF</span>  CRTYPE = <span class="t-str">'G'</span>;
+      Discount = <span class="t-num">0.15</span>;
+    <span class="t-kw">ELSE</span>;
+      Discount = <span class="t-num">0.05</span>;
+    <span class="t-kw">ENDIF</span>;
+  <span class="t-kw">ENDIF</span>;
+  <span class="t-kw">EXSR</span>  CalcTotal;
+  <span class="t-kw">READ</span>  CUSTMAST;
+<span class="t-kw">ENDDO</span>; <span class="t-cmt">// end loop</span></pre>
+        </div>
+        <div class="t-pane t-output">
+          <div class="t-label">// RPGLens output — plain English</div>
+          <div class="output-block">
+            <div class="output-key">Purpose</div>
+            <div class="output-val">Reads all customer records, looks up each by ID, applies a tiered discount (15% for Gold, 5% for Standard), then runs the total calculation subroutine.</div>
+          </div>
+          <div class="output-block">
+            <div class="output-key">Risk flags</div>
+            <div class="output-val" style="color:#e85050">⚑ CRTYPE comparison uses hardcoded literal 'G' — no constant defined. Change risk: HIGH.</div>
+          </div>
+          <div class="output-block">
+            <div class="output-key">Modernisation</div>
+            <div class="output-val" style="color:var(--green)">CalcTotal subroutine is a candidate for extraction as a standalone ILE service program.<span class="cursor"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <!-- doubled for infinite loop -->
+    <span class="ticker-item"><span class="dot-sep"></span>RPG III &amp; IV</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Free-format ILE</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Fixed-format RPG</span>
+    <span class="ticker-item"><span class="dot-sep"></span>.rpgle files</span>
+    <span class="ticker-item"><span class="dot-sep"></span>CL Programs</span>
+    <span class="ticker-item"><span class="dot-sep"></span>SQLRPGLE</span>
+    <span class="ticker-item"><span class="dot-sep"></span>DSPF &amp; PRTF</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Service Programs</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Activation Groups</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Data Queues</span>
+    <span class="ticker-item"><span class="dot-sep"></span>OPNQRYF</span>
+    <span class="ticker-item"><span class="dot-sep"></span>*LIBL Resolution</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Job Scheduling</span>
+    <span class="ticker-item"><span class="dot-sep"></span>RPG III &amp; IV</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Free-format ILE</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Fixed-format RPG</span>
+    <span class="ticker-item"><span class="dot-sep"></span>.rpgle files</span>
+    <span class="ticker-item"><span class="dot-sep"></span>CL Programs</span>
+    <span class="ticker-item"><span class="dot-sep"></span>SQLRPGLE</span>
+    <span class="ticker-item"><span class="dot-sep"></span>DSPF &amp; PRTF</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Service Programs</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Activation Groups</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Data Queues</span>
+    <span class="ticker-item"><span class="dot-sep"></span>OPNQRYF</span>
+    <span class="ticker-item"><span class="dot-sep"></span>*LIBL Resolution</span>
+    <span class="ticker-item"><span class="dot-sep"></span>Job Scheduling</span>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats reveal">
+  <div class="stat-item">
+    <div class="stat-num">30s</div>
+    <div class="stat-label">avg. analysis time</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">4</div>
+    <div class="stat-label">output types per analysis</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">100k+</div>
+    <div class="stat-label">active IBM i shops globally</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">0</div>
+    <div class="stat-label">lines of code stored by us</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-tag reveal">Core capabilities</div>
+  <h2 class="section-title reveal">Everything your IBM&nbsp;i team needs.<br/>Nothing it doesn't.</h2>
+  <p class="section-sub reveal">Four tools built into one. Each one solves a problem that currently costs your organisation hours of manual work.</p>
+  <div class="features-grid reveal">
+    <div class="feat-card">
+      <div class="feat-num">01</div>
+      <div class="feat-icon">⟨/⟩</div>
+      <div class="feat-title">Code explainer</div>
+      <div class="feat-desc">Paste code or upload a file (.rpgle, .txt, .docx, .pdf) — fixed format, free format, ILE, OPM. Get a plain-English walkthrough of what it does: inputs, outputs, business logic, and data flow. No prompting required.</div>
+      <span class="feat-tag">All users</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">02</div>
+      <div class="feat-icon">&#9783;</div>
+      <div class="feat-title">Documentation generator</div>
+      <div class="feat-desc">One click to export a structured Word (.docx) or PDF document: program overview, field descriptions, logic walkthrough, assumptions, and metadata. Audit-ready out of the box.</div>
+      <span class="feat-tag">Managers &amp; auditors</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">03</div>
+      <div class="feat-icon">&#9651;</div>
+      <div class="feat-title">Risk analyser</div>
+      <div class="feat-desc">Identifies dead code, hardcoded literals, deprecated op-codes, undocumented subroutines, and data integrity risks — each flagged by severity with a clear explanation of why it matters.</div>
+      <span class="feat-tag">Developers &amp; auditors</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">04</div>
+      <div class="feat-icon">&#8594;</div>
+      <div class="feat-title">Modernisation advisor</div>
+      <div class="feat-desc">Get a phased roadmap: what can be converted to free-format RPG, what could become a REST API, what can be retired. Includes complexity scores and estimated effort — ready to present to leadership.</div>
+      <span class="feat-tag">Managers &amp; developers</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<div class="how-section" id="how">
+  <div class="section-tag reveal">Process</div>
+  <h2 class="section-title reveal">From source code to insight<br/>in four steps.</h2>
+  <div class="steps reveal">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-title">Paste or upload</div>
+      <div class="step-desc">Paste code directly, or upload a .rpgle, .txt, .docx, or .pdf file. Works with RDi exports, VS Code files, or anything copied from the IFS.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-title">Choose analysis type</div>
+      <div class="step-desc">Select one or all four: Explain, Document, Risk Analysis, or Modernisation Plan.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-title">Review results</div>
+      <div class="step-desc">Results appear in 15–30 seconds, structured across tabbed output panels. No noise, no filler.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-title">Export &amp; share</div>
+      <div class="step-desc">Download a clean Word or PDF document. Share with your manager, auditor, or client instantly.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PRIVACY -->
+<div class="privacy-section" id="privacy">
+  <div class="section-tag reveal">Security &amp; privacy</div>
+  <h2 class="section-title reveal">Your source code never<br/>leaves your browser.</h2>
+  <p class="section-sub reveal">This isn't a marketing claim — it's how the architecture works. There is no RPGLens server that receives your code.</p>
+  <div class="privacy-grid reveal">
+    <div class="privacy-visual">
+      <div class="t-label" style="color:var(--green);border-color:rgba(46,194,126,0.2)">Data flow</div>
+      <div style="margin-top:20px">
+        <div class="flow-line">
+          <div class="flow-box highlight">Your browser</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box safe">Anthropic API (TLS)</div>
+        </div>
+        <div class="flow-label">Code travels here — encrypted, never logged by us</div>
+        <div style="height:16px"></div>
+        <div class="flow-line">
+          <div class="flow-box" style="opacity:0.4">RPGLens servers</div>
+          <div class="flow-arrow" style="color:var(--red)">✕</div>
+          <div class="flow-box" style="opacity:0.4">Your code</div>
+        </div>
+        <div class="flow-label" style="color:var(--red)">This path does not exist</div>
+        <div style="height:16px"></div>
+        <div class="flow-line">
+          <div class="flow-box safe">Analysis result</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box highlight">Your screen + local export</div>
+        </div>
+        <div class="flow-label">Output returned directly to you</div>
+      </div>
+    </div>
+    <div class="privacy-points">
+      <div class="p-point">
+        <div class="p-icon" style="color:var(--green)">⊘</div>
+        <div>
+          <div class="p-title">Zero server storage</div>
+          <div class="p-desc">RPGLens has no backend server in V1. The AI call goes directly from your browser to Anthropic's API. We physically cannot store your code because we never receive it.</div>
+        </div>
+      </div>
+      <div class="p-point">
+        <div class="p-icon" style="color:var(--amber)">⊡</div>
+        <div>
+          <div class="p-title">No AI training on your code</div>
+          <div class="p-desc">Anthropic's API does not use inputs for model training by default — this is documented in their published API usage policy. Your proprietary logic stays proprietary.</div>
+        </div>
+      </div>
+      <div class="p-point">
+        <div class="p-icon" style="color:#7ab8e8">⊞</div>
+        <div>
+          <div class="p-title">Enterprise on-premise (roadmap)</div>
+          <div class="p-desc">For banks and regulated industries: V2 will offer a fully on-premise edition that runs inside your own network, calling a local LLM. Your code never leaves your firewall.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIALS -->
+<div class="quote-section">
+  <div class="quotes-grid">
+    <div class="quote-card reveal">
+      <div class="quote-text">"I spent three hours documenting a single QSALES program last month. RPGLens did it in 28 seconds. The output was better than what I wrote."</div>
+      <div class="quote-author">
+        <div class="q-avatar">AR</div>
+        <div>
+          <div class="q-name">Arjun R.</div>
+          <div class="q-role">Senior RPG Developer, Manufacturing</div>
+        </div>
+      </div>
+    </div>
+    <div class="quote-card reveal">
+      <div class="quote-text">"Our external auditor asked for documentation on 14 programs. My team produced all 14 in an afternoon. Before this, that would have taken two weeks."</div>
+      <div class="quote-author">
+        <div class="q-avatar">SM</div>
+        <div>
+          <div class="q-name">Sunita M.</div>
+          <div class="q-role">IT Manager, Financial Services</div>
+        </div>
+      </div>
+    </div>
+    <div class="quote-card reveal">
+      <div class="quote-text">"The risk report flagged a hardcoded account number that had been sitting in a billing program for 11 years. No one knew it was there."</div>
+      <div class="quote-author">
+        <div class="q-avatar">RK</div>
+        <div>
+          <div class="q-name">Ravi K.</div>
+          <div class="q-role">Internal Auditor, Retail Group</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<div class="pricing-section" id="pricing">
+  <div class="section-tag reveal">Pricing</div>
+  <h2 class="section-title reveal">Pay less than one hour<br/>of developer time.</h2>
+  <p class="section-sub reveal">Every plan includes a 14-day free trial. No credit card required to start.</p>
+  <div class="pricing-grid reveal">
+    <div class="price-card">
+      <div class="price-plan">Free</div>
+      <div class="price-amt">₹0</div>
+      <div class="price-period">forever</div>
+      <div class="price-divider"></div>
+      <ul class="price-features">
+        <li>3 analyses per month</li>
+        <li>Plain English explanation</li>
+        <li>Watermarked PDF export</li>
+        <li>No sign-up required</li>
+      </ul>
+      <button class="price-btn outline" onclick="location.href='/analyser'">Start for free</button>
+    </div>
+    <div class="price-card featured">
+      <div class="price-plan">Starter</div>
+      <div class="price-amt">₹1,999<span>/mo</span></div>
+      <div class="price-period">billed monthly &nbsp;·&nbsp; 14-day trial</div>
+      <div class="price-divider"></div>
+      <ul class="price-features">
+        <li>25 analyses per month</li>
+        <li>All 4 analysis types</li>
+        <li>Word &amp; PDF export</li>
+        <li>Project history</li>
+        <li>Email support</li>
+      </ul>
+      <button class="price-btn fill" onclick="location.href='/analyser'">Start free trial</button>
+    </div>
+    <div class="price-card">
+      <div class="price-plan">Team</div>
+      <div class="price-amt">₹6,999<span>/mo</span></div>
+      <div class="price-period">5 seats &nbsp;·&nbsp; 14-day trial</div>
+      <div class="price-divider"></div>
+      <ul class="price-features">
+        <li>Unlimited analyses</li>
+        <li>5 user seats</li>
+        <li>Custom branding on docs</li>
+        <li>Shared project library</li>
+        <li>Priority support</li>
+      </ul>
+      <button class="price-btn outline">Start free trial</button>
+    </div>
+    <div class="price-card">
+      <div class="price-plan">Enterprise</div>
+      <div class="price-amt" style="font-size:28px">Custom</div>
+      <div class="price-period">on-premise available</div>
+      <div class="price-divider"></div>
+      <ul class="price-features">
+        <li>Unlimited seats</li>
+        <li>On-premise / air-gapped</li>
+        <li>SSO &amp; SLA</li>
+        <li>Dedicated onboarding</li>
+        <li>DPA &amp; compliance docs</li>
+      </ul>
+      <button class="price-btn outline">Contact us</button>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-banner reveal">
+  <div class="cta-label">Get started today</div>
+  <h2 class="cta-title">Stop explaining your code.<br/>Let RPGLens do it.</h2>
+  <p class="cta-sub">Join the IBM i teams already saving hours every week. No installation. No prompting. No expertise required.</p>
+  <a href="/analyser" class="btn-primary" style="font-size:15px;padding:16px 40px">Open analyser — free to try</a>
+  <p class="hero-note" style="margin-top:16px">Supports .rpgle · .txt · .docx · .pdf &nbsp;·&nbsp; Your code never leaves your browser</p>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    <div class="footer-brand">RPG<span>Lens</span></div>
+    <div class="footer-copy">© 2026 RPGLens &nbsp;·&nbsp; IBM i Code Intelligence &nbsp;·&nbsp; All rights reserved</div>
+  </div>
+  <ul class="footer-links">
+    <li><a href="#">Privacy policy</a></li>
+    <li><a href="#">Terms of use</a></li>
+    <li><a href="#">Documentation</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+  <div class="footer-status">
+    <div class="status-dot"></div>
+    All systems operational
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 60);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Nav scroll style
+  window.addEventListener('scroll', () => {
+    document.querySelector('nav').style.boxShadow =
+      window.scrollY > 20 ? '0 4px 32px rgba(0,0,0,0.4)' : 'none';
+  });
+
+  // Counter animation for stats
+  function animateCounter(el, target, suffix = '') {
+    const duration = 1200;
+    const start = performance.now();
+    const update = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.floor(eased * target);
+      el.textContent = (suffix === 'k+' && current >= 1000)
+        ? Math.floor(current/1000) + 'k+'
+        : current + suffix;
+      if (progress < 1) requestAnimationFrame(update);
+      else el.textContent = target + suffix;
+    };
+    requestAnimationFrame(update);
+  }
+
+  const statsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const nums = entry.target.querySelectorAll('.stat-num');
+        const data = [null, 4, null, 0];
+        nums.forEach((n, i) => {
+          if (data[i] !== null) animateCounter(n, data[i]);
+        });
+        statsObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  const statsEl = document.querySelector('.stats');
+  if (statsEl) statsObserver.observe(statsEl);
+</script>
+</body>
+</html>

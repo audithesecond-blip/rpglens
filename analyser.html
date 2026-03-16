@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens — Analyser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:        #0e0f0f;
+  --bg2:       #141516;
+  --bg3:       #1a1c1d;
+  --bg4:       #1f2122;
+  --border:    #2a2d2e;
+  --border2:   #363a3b;
+  --amber:     #e8a020;
+  --amber2:    #f5c060;
+  --amber-dim: #7a5010;
+  --green:     #2ec27e;
+  --green-dim: #0f4a2e;
+  --red:       #e85050;
+  --red-dim:   #4a1515;
+  --blue:      #5b9bd5;
+  --text:      #e8e4dc;
+  --text2:     #9a9690;
+  --text3:     #5a5855;
+  --mono:      'DM Mono', monospace;
+  --display:   'Syne', sans-serif;
+  --serif:     'Instrument Serif', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+}
+
+/* scanline */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 52px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  padding: 0 20px;
+  position: relative;
+}
+
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  padding-right: 20px;
+  border-right: 1px solid var(--border);
+  margin-right: 20px;
+}
+
+.logo-mark svg { width: 24px; height: 24px; }
+
+.logo-text {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.logo-text span { color: var(--amber); }
+
+.topbar-breadcrumb {
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topbar-breadcrumb .sep { color: var(--border2); }
+.topbar-breadcrumb .current { color: var(--text2); }
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+}
+
+.api-status .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.btn-sm {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 16px;
+  background: var(--amber);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  transition: background 0.2s;
+  text-decoration: none;
+}
+.btn-sm:hover { background: var(--amber2); }
+
+/* ── MAIN LAYOUT ── */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── LEFT PANEL — INPUT ── */
+.input-panel {
+  width: 420px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  background: var(--amber);
+}
+
+.panel-actions { display: flex; align-items: center; gap: 8px; }
+
+.icon-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  transition: all 0.2s;
+}
+.icon-btn:hover { border-color: var(--border2); color: var(--text2); }
+
+.code-input {
+  flex: 1;
+  background: var(--bg2);
+  border: none;
+  outline: none;
+  color: #7ab8e8;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.85;
+  padding: 16px;
+  resize: none;
+  overflow-y: auto;
+  tab-size: 4;
+}
+
+.code-input::placeholder { color: var(--text3); font-style: italic; }
+
+/* ── ANALYSIS OPTIONS ── */
+.options-panel {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg3);
+  padding: 14px 16px;
+}
+
+.options-label {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 10px;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.opt-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.2s;
+  user-select: none;
+}
+
+.opt-check:hover { border-color: var(--border2); }
+.opt-check.active { border-color: var(--amber-dim); background: rgba(232,160,32,0.04); }
+
+.opt-check input { display: none; }
+
+.opt-box {
+  width: 14px; height: 14px;
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.opt-check.active .opt-box {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.opt-check.active .opt-box::after {
+  content: '';
+  width: 7px; height: 5px;
+  border-left: 1.5px solid var(--bg);
+  border-bottom: 1.5px solid var(--bg);
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+
+.opt-label {
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: 0.04em;
+}
+
+.opt-check.active .opt-label { color: var(--amber); }
+
+.analyse-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--amber);
+  color: var(--bg);
+  border: none;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-transform: uppercase;
+}
+
+.analyse-btn:hover:not(:disabled) {
+  background: var(--amber2);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(232,160,32,0.2);
+}
+
+.analyse-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.analyse-btn .spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(14,15,15,0.3);
+  border-top-color: var(--bg);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+
+.analyse-btn.loading .spinner { display: block; }
+.analyse-btn.loading .btn-label { opacity: 0.7; }
+
+.char-count {
+  text-align: right;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 8px;
+  letter-spacing: 0.05em;
+}
+
+/* ── RIGHT PANEL — OUTPUT ── */
+.output-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  height: 46px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+  user-select: none;
+  position: relative;
+  background: none;
+  border-top: none;
+  border-left: none;
+  font-family: var(--mono);
+}
+
+.tab:hover { color: var(--text2); background: rgba(255,255,255,0.02); }
+
+.tab.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+  background: var(--bg2);
+}
+
+.tab .tab-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border2);
+  flex-shrink: 0;
+}
+
+.tab.done .tab-dot { background: var(--green); }
+.tab.loading .tab-dot {
+  background: var(--amber);
+  animation: pulse 1s ease-in-out infinite;
+}
+.tab.error .tab-dot { background: var(--red); }
+
+/* ── OUTPUT CONTENT ── */
+.tab-content {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+.tab-content.active { display: flex; flex-direction: column; gap: 20px; }
+
+/* empty state */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text3);
+  padding: 60px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 64px; height: 64px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  clip-path: polygon(16px 0%, 100% 0%, calc(100% - 16px) 100%, 0% 100%);
+  color: var(--border2);
+  margin-bottom: 8px;
+}
+
+.empty-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text3);
+  letter-spacing: -0.01em;
+}
+
+.empty-sub { font-size: 12px; color: var(--text3); max-width: 300px; line-height: 1.6; }
+
+/* ── RESULT BLOCKS ── */
+.result-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+}
+
+.result-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+
+.result-section-title {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.result-section-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 10px;
+  background: var(--amber);
+}
+
+.result-body { padding: 16px; font-size: 13px; color: var(--text2); line-height: 1.8; }
+
+/* Risk items */
+.risk-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  background: var(--bg);
+  transition: border-color 0.2s;
+}
+
+.risk-item:hover { border-color: var(--border2); }
+
+.risk-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  font-family: var(--display);
+  font-weight: 700;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.risk-badge.high { background: var(--red-dim); color: var(--red); border: 1px solid rgba(232,80,80,0.3); }
+.risk-badge.medium { background: rgba(232,160,32,0.1); color: var(--amber); border: 1px solid var(--amber-dim); }
+.risk-badge.low { background: rgba(46,194,126,0.08); color: var(--green); border: 1px solid var(--green-dim); }
+.risk-badge.info { background: rgba(91,155,213,0.1); color: var(--blue); border: 1px solid rgba(91,155,213,0.3); }
+
+.risk-content { flex: 1; }
+.risk-title { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+.risk-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+/* Modernisation steps */
+.mod-step {
+  display: flex;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  background: var(--bg);
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.mod-step:hover { border-color: var(--border2); }
+
+.mod-step-num {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--amber);
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+
+.mod-step-content { flex: 1; }
+.mod-step-title { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+.mod-step-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+.mod-effort {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.effort-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); }
+.effort-val { font-family: var(--display); font-weight: 700; font-size: 12px; color: var(--text2); }
+
+/* field table */
+.field-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.field-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--bg3);
+  color: var(--text3);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+}
+
+.field-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: top;
+}
+
+.field-table tr:last-child td { border-bottom: none; }
+.field-table tr:hover td { background: rgba(255,255,255,0.02); }
+.field-name { color: var(--amber); font-weight: 500; }
+.field-type { color: var(--blue); }
+
+/* export bar */
+.export-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg3);
+}
+
+.export-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; margin-right: 4px; }
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+.export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.export-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; }
+
+.export-sep { flex: 1; }
+
+.privacy-note {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.privacy-note::before {
+  content: '⊘';
+  color: var(--green);
+  font-size: 11px;
+}
+
+/* streaming text */
+.streaming-text { white-space: pre-wrap; }
+
+/* loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+  height: 14px;
+  margin-bottom: 8px;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ── SAMPLE CODE PANEL ── */
+.sample-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg3);
+}
+
+.sample-label { font-size: 10px; color: var(--text3); letter-spacing: 0.1em; }
+
+.sample-btn {
+  font-size: 10px;
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  cursor: pointer;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.sample-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+
+/* ── INPUT MODE TOGGLE ── */
+.input-mode-toggle {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg3);
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 9px 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.mode-btn:hover { color: var(--text2); }
+.mode-btn.active { color: var(--amber); border-bottom-color: var(--amber); background: rgba(232,160,32,0.03); }
+.mode-btn .mode-icon { font-size: 13px; line-height: 1; }
+
+/* ── DROP ZONE ── */
+.upload-zone {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 24px 20px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-zone.visible { display: flex; }
+
+.upload-zone.drag-over .drop-border { border-color: var(--amber); }
+.upload-zone.drag-over .drop-inner  { background: rgba(232,160,32,0.04); }
+
+.drop-border {
+  width: 100%;
+  flex: 1;
+  border: 1px dashed var(--border2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.drop-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  transition: background 0.2s;
+}
+
+.drop-icon {
+  width: 52px; height: 52px;
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+  color: var(--text3);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.upload-zone.drag-over .drop-icon { border-color: var(--amber-dim); color: var(--amber); }
+
+.drop-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text2);
+  text-align: center;
+}
+
+.drop-sub {
+  font-size: 11px;
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+}
+
+.file-type-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.file-badge {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.file-badge.txt  { border-color: rgba(91,155,213,0.4);  color: var(--blue); }
+.file-badge.docx { border-color: rgba(46,194,126,0.4);  color: var(--green); }
+.file-badge.pdf  { border-color: rgba(232,80,80,0.4);   color: var(--red); }
+
+.upload-or {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.upload-file-btn {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 8px 22px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: all 0.2s;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+
+.upload-file-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+
+/* ── FILE LOADED STATE ── */
+.file-loaded {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.file-loaded.visible { display: flex; }
+
+.file-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.file-type-icon {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
+  flex-shrink: 0;
+}
+
+.file-type-icon.txt  { background: rgba(91,155,213,0.15);  color: var(--blue); }
+.file-type-icon.docx { background: rgba(46,194,126,0.15);  color: var(--green); }
+.file-type-icon.pdf  { background: rgba(232,80,80,0.15);   color: var(--red); }
+
+.file-meta { flex: 1; overflow: hidden; }
+.file-name { font-size: 12px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-size { font-size: 10px; color: var(--text3); letter-spacing: 0.06em; margin-top: 1px; }
+
+.file-clear-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.file-clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+.file-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  font-size: 11.5px;
+  color: #7ab8e8;
+  font-family: var(--mono);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  background: var(--bg2);
+}
+
+/* ── PROCESSING OVERLAY ── */
+.processing-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(14,15,15,0.88);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 10;
+}
+
+.processing-overlay.visible { display: flex; }
+
+.proc-spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.proc-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.proc-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; }
+
+/* ── ANIMATIONS ── */
+@keyframes spin   { to { transform: rotate(360deg); } }
+@keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+.fade-in { animation: fadeIn 0.3s ease both; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+        <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+        <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+        <line x1="16" y1="1" x2="16" y2="31" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <div class="topbar-breadcrumb">
+    <span>Analyser</span>
+    <span class="sep">/</span>
+    <span class="current" id="program-name">New analysis</span>
+  </div>
+  <div class="topbar-right">
+    <div class="api-key-wrap" id="api-key-wrap">
+      <input
+        type="password"
+        id="api-key-input"
+        placeholder="sk-ant-... API key"
+        autocomplete="off"
+        spellcheck="false"
+        oninput="onApiKeyInput()"
+        style="
+          background: var(--bg3);
+          border: 1px solid var(--border2);
+          color: var(--text);
+          font-family: var(--mono);
+          font-size: 11px;
+          padding: 6px 12px;
+          width: 220px;
+          outline: none;
+          letter-spacing: 0.04em;
+          transition: border-color 0.2s;
+        "
+        onfocus="this.style.borderColor='var(--amber-dim)'"
+        onblur="this.style.borderColor='var(--border2)'"
+      />
+      <div id="api-key-error" style="display:none;position:absolute;top:52px;right:160px;background:var(--red-dim);border:1px solid rgba(232,80,80,0.4);color:var(--red);font-size:11px;padding:7px 14px;letter-spacing:0.04em;z-index:200;max-width:280px;line-height:1.5"></div>
+    </div>
+    <div class="api-status" id="api-status-badge">
+      <div class="dot" id="api-dot"></div>
+      <span id="api-status-text">ENTER API KEY</span>
+    </div>
+    <a href="/" class="btn-sm">← Home</a>
+  </div>
+</div>
+
+<!-- APP BODY -->
+<div class="app-body">
+
+  <!-- INPUT PANEL -->
+  <div class="input-panel">
+    <div class="panel-header">
+      <div class="panel-title">RPG Source Input</div>
+      <div class="panel-actions">
+        <button class="icon-btn" id="btn-clear" onclick="clearCode()">Clear</button>
+        <button class="icon-btn" onclick="copyCode()">Copy</button>
+      </div>
+    </div>
+
+    <!-- MODE TOGGLE -->
+    <div class="input-mode-toggle">
+      <button class="mode-btn active" id="mode-paste" onclick="switchMode('paste')">
+        <span class="mode-icon">&#9113;</span> Paste code
+      </button>
+      <button class="mode-btn" id="mode-upload" onclick="switchMode('upload')">
+        <span class="mode-icon">&#8679;</span> Upload file
+      </button>
+    </div>
+
+    <!-- PASTE MODE -->
+    <textarea
+      class="code-input"
+      id="code-input"
+      placeholder="// Paste your RPG source code here&#10;// Supports: RPG III, RPG IV (fixed + free format), ILE RPG, SQLRPGLE, CL&#10;&#10;// Example:&#10;// DCL-S TotalAmt PACKED(11:2);&#10;// DOW NOT %EOF(CUSTMAST);&#10;//   CHAIN CustId CUSTMAST;&#10;// ENDDO;"
+      spellcheck="false"
+      autocomplete="off"
+      oninput="onCodeInput()"
+    ></textarea>
+
+    <!-- UPLOAD MODE -->
+    <div class="upload-zone" id="upload-zone"
+      ondragover="handleDragOver(event)"
+      ondragleave="handleDragLeave(event)"
+      ondrop="handleDrop(event)"
+      onclick="triggerFileInput()">
+      <div class="drop-border">
+        <div class="drop-inner">
+          <div class="drop-icon">&#8679;</div>
+          <div class="drop-title">Drop your file here</div>
+          <div class="drop-sub">or click to browse</div>
+          <div class="file-type-badges">
+            <span class="file-badge txt">.TXT</span>
+            <span class="file-badge docx">.DOCX</span>
+            <span class="file-badge pdf">.PDF</span>
+          </div>
+          <div class="upload-or">&#8212; or &#8212;</div>
+          <button class="upload-file-btn" onclick="event.stopPropagation();triggerFileInput()">Browse files</button>
+          <div class="drop-sub" style="margin-top:4px">Notepad &middot; Word documents &middot; PDF</div>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept=".txt,.text,.rpgle,.rpg,.clle,.cl,.sqlrpgle,.docx,.pdf" style="display:none" onchange="handleFileSelect(event)"/>
+      <div class="processing-overlay" id="processing-overlay">
+        <div class="proc-spinner"></div>
+        <div class="proc-label">Extracting text</div>
+        <div class="proc-sub" id="proc-sub-label">Reading file...</div>
+      </div>
+    </div>
+
+    <!-- FILE LOADED STATE -->
+    <div class="file-loaded" id="file-loaded">
+      <div class="file-info-bar">
+        <div class="file-type-icon txt" id="file-type-icon">TXT</div>
+        <div class="file-meta">
+          <div class="file-name" id="file-name-display">filename.txt</div>
+          <div class="file-size" id="file-size-display">0 KB</div>
+        </div>
+        <button class="file-clear-btn" onclick="clearUpload()">&#10005; Remove</button>
+      </div>
+      <div class="file-preview" id="file-preview"></div>
+    </div>
+
+    <div class="sample-bar" id="sample-bar">
+      <span class="sample-label">Try a sample:</span>
+      <button class="sample-btn" onclick="loadSample('sales')">Sales calc</button>
+      <button class="sample-btn" onclick="loadSample('inventory')">Inventory update</button>
+      <button class="sample-btn" onclick="loadSample('payroll')">Payroll proc</button>
+    </div>
+
+    <div class="options-panel">
+      <div class="options-label">Analysis types</div>
+      <div class="options-grid">
+        <label class="opt-check active" id="opt-explain">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-explain')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Explain</span>
+        </label>
+        <label class="opt-check active" id="opt-docs">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-docs')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Documentation</span>
+        </label>
+        <label class="opt-check active" id="opt-risk">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-risk')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Risk analysis</span>
+        </label>
+        <label class="opt-check active" id="opt-modern">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-modern')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Modernisation</span>
+        </label>
+      </div>
+      <button class="analyse-btn" id="analyse-btn" onclick="runAnalysis()" disabled>
+        <div class="spinner"></div>
+        <span class="btn-label">Analyse Code</span>
+      </button>
+      <div class="char-count" id="char-count">Paste code above to begin</div>
+    </div>
+  </div>
+
+  <!-- OUTPUT PANEL -->
+  <div class="output-panel">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" id="tab-explain" onclick="switchTab('explain')">
+        <div class="tab-dot"></div>
+        <span>Explanation</span>
+      </button>
+      <button class="tab" id="tab-docs" onclick="switchTab('docs')">
+        <div class="tab-dot"></div>
+        <span>Documentation</span>
+      </button>
+      <button class="tab" id="tab-risk" onclick="switchTab('risk')">
+        <div class="tab-dot"></div>
+        <span>Risk analysis</span>
+      </button>
+      <button class="tab" id="tab-modern" onclick="switchTab('modern')">
+        <div class="tab-dot"></div>
+        <span>Modernisation</span>
+      </button>
+    </div>
+
+    <!-- TAB CONTENTS -->
+    <div class="tab-content active" id="content-explain">
+      <div class="empty-state" id="empty-explain">
+        <div class="empty-icon">⟨/⟩</div>
+        <div class="empty-title">No analysis yet</div>
+        <div class="empty-sub">Paste your RPG source code on the left and click Analyse Code to see a plain-English explanation here.</div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="content-docs">
+      <div class="empty-state" id="empty-docs">
+        <div class="empty-icon">&#9783;</div>
+        <div class="empty-title">No documentation yet</div>
+        <div class="empty-sub">Run an analysis to generate structured documentation ready for Word or PDF export.</div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="content-risk">
+      <div class="empty-state" id="empty-risk">
+        <div class="empty-icon">&#9651;</div>
+        <div class="empty-title">No risk report yet</div>
+        <div class="empty-sub">Run an analysis to identify dead code, hardcoded values, deprecated op-codes, and data integrity risks.</div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="content-modern">
+      <div class="empty-state" id="empty-modern">
+        <div class="empty-icon">&#8594;</div>
+        <div class="empty-title">No modernisation plan yet</div>
+        <div class="empty-sub">Run an analysis to get a phased modernisation roadmap with complexity scores and effort estimates.</div>
+      </div>
+    </div>
+
+    <!-- EXPORT BAR -->
+    <div class="export-bar">
+      <span class="export-label">Export:</span>
+      <button class="export-btn" id="export-word" onclick="exportWord()" disabled>
+        <svg viewBox="0 0 16 16"><path d="M2 2h9l3 3v9H2V2z"/><path d="M11 2v3h3"/><path d="M5 8l1.5 4L8 8l1.5 4L11 8"/></svg>
+        Word (.docx)
+      </button>
+      <button class="export-btn" id="export-pdf" onclick="exportPDF()" disabled>
+        <svg viewBox="0 0 16 16"><path d="M2 2h9l3 3v9H2V2z"/><path d="M11 2v3h3"/><rect x="4" y="9" width="8" height="1"/><rect x="4" y="11" width="6" height="1"/></svg>
+        PDF
+      </button>
+      <button class="export-btn" id="export-copy" onclick="copyResults()" disabled>
+        <svg viewBox="0 0 16 16"><rect x="5" y="5" width="9" height="10"/><path d="M3 3H11V5H3z"/></svg>
+        Copy text
+      </button>
+      <div class="export-sep"></div>
+      <div class="privacy-note">Code never stored on our servers</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────
+const state = {
+  results: { explain: null, docs: null, risk: null, modern: null },
+  activeTab: 'explain',
+  loading: false
+};
+
+// ── SAMPLE CODE ────────────────────────────────────────────────────────
+const SAMPLES = {
+  sales: `**FREE
+// Program: QSALES001
+// Purpose: Process customer sales orders and apply tiered discounts
+// Author:  S.Rajan    Date: 15/03/2024
+
+DCL-F CUSTMAST DISK(*EXT) USAGE(*INPUT) KEYED;
+DCL-F ORDFILE  DISK(*EXT) USAGE(*UPDATE) KEYED;
+
+DCL-S TotalAmt   PACKED(11:2) INZ(0);
+DCL-S NetAmt     PACKED(11:2) INZ(0);
+DCL-S Discount   PACKED(5:2)  INZ(0);
+DCL-S CustId     CHAR(10);
+DCL-S OrderNo    PACKED(7:0);
+DCL-S ErrMsg     CHAR(100)    INZ('');
+
+DOW NOT %EOF(ORDFILE);
+  READ ORDFILE;
+  IF NOT %EOF(ORDFILE);
+    CustId = ORD_CUSTID;
+    CHAIN CustId CUSTMAST;
+    IF %FOUND(CUSTMAST);
+      SELECT;
+        WHEN CUST_TYPE = 'G';
+          Discount = 0.15;
+        WHEN CUST_TYPE = 'S';
+          Discount = 0.08;
+        OTHER;
+          Discount = 0.05;
+      ENDSL;
+      TotalAmt = ORD_QTY * ORD_PRICE;
+      NetAmt   = TotalAmt * (1 - Discount);
+      ORD_NETAMT = NetAmt;
+      ORD_DISC   = Discount;
+      UPDATE ORDFILE;
+    ELSE;
+      ErrMsg = 'Customer not found: ' + %TRIM(CustId);
+      DSPLY ErrMsg;
+    ENDIF;
+  ENDIF;
+ENDDO;
+*INLR = *ON;`,
+
+  inventory: `H DFTACTGRP(*NO) ACTGRP(*CALLER)
+FINVMAST   UF A E             DISK
+FWAREHSE   IF   E             DISK
+FERRORS    O    E             DISK
+
+D ItemNo          S              8A
+D QtyOnHand       S              7P 0
+D QtyReceived     S              7P 0
+D ReorderPt       S              7P 0
+D Threshold       C                   CONST(50)
+
+C     *ENTRY        PLIST
+C                   PARM                    ItemNo
+
+C     ItemNo        CHAIN     INVMAST
+C                   IF        %FOUND(INVMAST)
+C                   EVAL      QtyOnHand = INV_QTY + QtyReceived
+C                   IF        QtyOnHand < Threshold
+C                   EVAL      ReorderPt = *ON
+C                   EXCEPT    ERRREC
+C                   ENDIF
+C                   EVAL      INV_QTY = QtyOnHand
+C                   UPDATE    INVMAST
+C                   ELSE
+C                   EVAL      *INU2 = *ON
+C                   ENDIF
+C                   EVAL      *INLR = *ON`,
+
+  payroll: `**FREE
+// QPAYR001 - Monthly payroll processor
+// Legacy: converted from fixed RPG III - partial free format
+
+DCL-F EMPFILE  DISK(*EXT) USAGE(*INPUT)  KEYED;
+DCL-F PAYTRANS DISK(*EXT) USAGE(*OUTPUT) KEYED;
+DCL-F TAXREF   DISK(*EXT) USAGE(*INPUT)  KEYED;
+
+DCL-S BaseSalary  PACKED(9:2);
+DCL-S TaxAmt      PACKED(9:2);
+DCL-S NetPay      PACKED(9:2);
+DCL-S TaxBracket  CHAR(2);
+DCL-S EmpGrade    CHAR(3);
+DCL-S Allowance   PACKED(7:2) INZ(2500);
+
+READ EMPFILE;
+DOW NOT %EOF(EMPFILE);
+  BaseSalary = EMP_BASICPAY + EMP_HRA + Allowance;
+  EmpGrade   = EMP_GRADE;
+  SELECT;
+    WHEN EmpGrade = 'E01';
+      TaxBracket = 'L1';
+      TaxAmt = BaseSalary * 0.05;
+    WHEN EmpGrade = 'E02' OR EmpGrade = 'E03';
+      TaxBracket = 'L2';
+      TaxAmt = BaseSalary * 0.20;
+    OTHER;
+      TaxBracket = 'L3';
+      TaxAmt = BaseSalary * 0.30;
+  ENDSL;
+  NetPay = BaseSalary - TaxAmt;
+  PAY_EMPNO  = EMP_EMPNO;
+  PAY_GROSS  = BaseSalary;
+  PAY_TAX    = TaxAmt;
+  PAY_NET    = NetPay;
+  PAY_DATE   = %DATE();
+  WRITE PAYREC;
+  READ EMPFILE;
+ENDDO;
+*INLR = *ON;`
+};
+
+// ── MODE SWITCHING ────────────────────────────────────────────────────
+let currentMode = 'paste';
+let uploadedCode = null;
+
+function switchMode(mode) {
+  currentMode = mode;
+  const pasteArea  = document.getElementById('code-input');
+  const uploadZone = document.getElementById('upload-zone');
+  const fileLoaded = document.getElementById('file-loaded');
+  const sampleBar  = document.getElementById('sample-bar');
+
+  document.getElementById('mode-paste').classList.toggle('active', mode === 'paste');
+  document.getElementById('mode-upload').classList.toggle('active', mode === 'upload');
+
+  if (mode === 'paste') {
+    pasteArea.style.display  = '';
+    uploadZone.style.display = 'none';
+    uploadZone.classList.remove('visible');
+    fileLoaded.classList.remove('visible');
+    sampleBar.style.display  = '';
+    onCodeInput();
+  } else {
+    pasteArea.style.display  = 'none';
+    sampleBar.style.display  = 'none';
+    if (uploadedCode) {
+      uploadZone.classList.remove('visible');
+      fileLoaded.classList.add('visible');
+    } else {
+      uploadZone.classList.add('visible');
+      fileLoaded.classList.remove('visible');
+    }
+    onCodeInput();
+  }
+}
+
+// ── FILE UPLOAD HANDLERS ──────────────────────────────────────────────
+function triggerFileInput() {
+  document.getElementById('file-input').click();
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('upload-zone').classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+  e.target.value = '';
+}
+
+async function processFile(file) {
+  const overlay   = document.getElementById('processing-overlay');
+  const subLabel  = document.getElementById('proc-sub-label');
+  const ext       = file.name.split('.').pop().toLowerCase();
+  const allowed   = ['txt','text','rpgle','rpg','clle','cl','sqlrpgle','docx','pdf'];
+
+  if (!allowed.includes(ext)) {
+    showFileError('Unsupported file type. Please use .txt, .docx, or .pdf');
+    return;
+  }
+
+  overlay.classList.add('visible');
+  subLabel.textContent = 'Reading ' + file.name + '...';
+
+  try {
+    let text = '';
+
+    if (['txt','text','rpgle','rpg','clle','cl','sqlrpgle'].includes(ext)) {
+      subLabel.textContent = 'Reading plain text file...';
+      text = await readAsText(file);
+
+    } else if (ext === 'docx') {
+      subLabel.textContent = 'Extracting text from Word document...';
+      text = await extractDocx(file);
+
+    } else if (ext === 'pdf') {
+      subLabel.textContent = 'Extracting text from PDF...';
+      text = await extractPdf(file);
+    }
+
+    text = text.trim();
+    if (!text || text.length < 5) throw new Error('No readable text found in file');
+
+    uploadedCode = text;
+    showFileLoaded(file, text, ext);
+
+  } catch (err) {
+    overlay.classList.remove('visible');
+    showFileError(err.message || 'Failed to read file');
+  } finally {
+    overlay.classList.remove('visible');
+  }
+}
+
+function readAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsText(file);
+  });
+}
+
+async function extractDocx(file) {
+  // Load mammoth.js for DOCX extraction
+  if (!window.mammoth) {
+    await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js');
+  }
+  document.getElementById('proc-sub-label').textContent = 'Parsing Word document XML...';
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await window.mammoth.extractRawValue({ arrayBuffer });
+  if (!result.value) throw new Error('Could not extract text from Word document');
+  return result.value;
+}
+
+async function extractPdf(file) {
+  // Load PDF.js for PDF extraction
+  if (!window.pdfjsLib) {
+    await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+  document.getElementById('proc-sub-label').textContent = 'Parsing PDF pages...';
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf         = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pages       = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    document.getElementById('proc-sub-label').textContent =
+      `Extracting page ${i} of ${pdf.numPages}...`;
+    const page    = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const str     = content.items.map(item => item.str).join(' ');
+    pages.push(str);
+  }
+  return pages.join('\n');
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src     = src;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Could not load: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+function showFileLoaded(file, text, ext) {
+  const uploadZone = document.getElementById('upload-zone');
+  const fileLoaded = document.getElementById('file-loaded');
+  const iconEl     = document.getElementById('file-type-icon');
+  const nameEl     = document.getElementById('file-name-display');
+  const sizeEl     = document.getElementById('file-size-display');
+  const previewEl  = document.getElementById('file-preview');
+
+  const typeMap = {
+    txt: 'TXT', text: 'TXT', rpgle: 'RPG', rpg: 'RPG',
+    clle: 'CL', cl: 'CL', sqlrpgle: 'SQL', docx: 'DOC', pdf: 'PDF'
+  };
+  const typeClass = ['docx'].includes(ext) ? 'docx' : ext === 'pdf' ? 'pdf' : 'txt';
+
+  iconEl.textContent = typeMap[ext] || ext.toUpperCase();
+  iconEl.className   = `file-type-icon ${typeClass}`;
+  nameEl.textContent = file.name;
+
+  const kb    = (file.size / 1024).toFixed(1);
+  const lines = text.split('\n').length;
+  sizeEl.textContent = `${kb} KB · ${lines.toLocaleString()} lines extracted`;
+
+  previewEl.textContent = text;
+
+  uploadZone.classList.remove('visible');
+  fileLoaded.classList.add('visible');
+
+  onCodeInput();
+}
+
+function showFileError(msg) {
+  const zone = document.getElementById('upload-zone');
+  zone.classList.add('visible');
+
+  const existing = document.getElementById('file-error-msg');
+  if (existing) existing.remove();
+
+  const errDiv = document.createElement('div');
+  errDiv.id    = 'file-error-msg';
+  errDiv.style.cssText = 'margin-top:12px;font-size:11px;color:var(--red);text-align:center;letter-spacing:0.04em;padding:8px 16px;border:1px solid rgba(232,80,80,0.3);background:rgba(232,80,80,0.06)';
+  errDiv.textContent = '⚑ ' + msg;
+  zone.querySelector('.drop-inner').appendChild(errDiv);
+  setTimeout(() => errDiv.remove(), 4000);
+}
+
+function clearUpload() {
+  uploadedCode = null;
+  document.getElementById('file-preview').textContent = '';
+  document.getElementById('file-loaded').classList.remove('visible');
+  document.getElementById('upload-zone').classList.add('visible');
+  const errMsg = document.getElementById('file-error-msg');
+  if (errMsg) errMsg.remove();
+  onCodeInput();
+}
+
+// ── UTILS ──────────────────────────────────────────────────────────────
+function loadSample(key) {
+  const el = document.getElementById('code-input');
+  el.value = SAMPLES[key];
+  onCodeInput();
+}
+
+function clearCode() {
+  document.getElementById('code-input').value = '';
+  uploadedCode = null;
+  onCodeInput();
+}
+
+function copyCode() {
+  const code = getActiveCode();
+  if (code) navigator.clipboard.writeText(code);
+}
+
+function getActiveCode() {
+  if (currentMode === 'upload') return uploadedCode || '';
+  return document.getElementById('code-input').value.trim();
+}
+
+function onCodeInput() {
+  const code = getActiveCode();
+  const len  = code ? code.length : 0;
+  const btn  = document.getElementById('analyse-btn');
+  const cc   = document.getElementById('char-count');
+
+  btn.disabled = len < 10 || state.loading;
+  cc.textContent = len > 0 ? `${len.toLocaleString()} characters` : 'Paste code above to begin';
+
+  // detect program name from comment or first meaningful line
+  const nameMatch = code.match(/(?:\/\/\s*Program[:\s]+|H\s+)([A-Z0-9]+)/i);
+  if (nameMatch) document.getElementById('program-name').textContent = nameMatch[1];
+  else if (len > 0) document.getElementById('program-name').textContent = 'Unnamed program';
+  else document.getElementById('program-name').textContent = 'New analysis';
+}
+
+function toggleOpt(cb, id) {
+  document.getElementById(id).classList.toggle('active', cb.checked);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.getElementById(`content-${tab}`).classList.add('active');
+  state.activeTab = tab;
+}
+
+// ── API CALL ───────────────────────────────────────────────────────────
+const PROMPTS = {
+  explain: (code) => `You are an expert IBM i / AS400 RPG developer and analyst with 20+ years of experience.
+
+Analyse the following RPG source code and provide a detailed plain-English explanation.
+
+Structure your response in these exact sections using these exact headings:
+## PROGRAM OVERVIEW
+[2-3 sentence summary of what this program does in business terms]
+
+## PURPOSE & BUSINESS LOGIC  
+[Explain what business problem this solves, who would use it, when it runs]
+
+## INPUT & OUTPUT
+[List files read, files written, parameters accepted, data produced]
+
+## KEY LOGIC WALKTHROUGH
+[Walk through the main logic step by step in plain English — not code, prose]
+
+## NOTABLE PATTERNS
+[Highlight any interesting techniques, patterns, or important details a reviewer should know]
+
+RPG Source Code:
+\`\`\`
+${code}
+\`\`\`
+
+Write for a mixed audience: technical developers AND non-technical IT managers. Be clear, specific, and concise.`,
+
+  docs: (code) => `You are a technical documentation specialist for IBM i systems.
+
+Generate structured technical documentation for the following RPG program.
+
+Use these exact sections:
+## PROGRAM METADATA
+Program name, language, format (fixed/free), estimated lines of code, primary function
+
+## EXECUTIVE SUMMARY
+[Non-technical 3-4 sentence summary suitable for a manager or auditor]
+
+## FILE & DATA STRUCTURES
+Create a table with columns: Field Name | Type | Length | Description | Used For
+
+## SUBROUTINES & PROCEDURES  
+List each subroutine/procedure with: Name | Purpose | Called From | Returns
+
+## ERROR HANDLING
+Describe how errors are handled, what error codes or messages are used
+
+## DEPENDENCIES
+List all files, programs, data areas, and external resources this program depends on
+
+## CHANGE HISTORY NOTES
+Based on the code, note any version indicators, author comments, or modification markers found
+
+RPG Source Code:
+\`\`\`
+${code}
+\`\`\``,
+
+  risk: (code) => `You are a senior IBM i code auditor and risk analyst.
+
+Analyse this RPG source code for risks, issues, and code quality problems.
+
+For each issue found, classify it as: HIGH / MEDIUM / LOW / INFO
+
+Structure your response as:
+
+## RISK SUMMARY
+[Overall risk assessment in 2 sentences — overall severity level and main concerns]
+
+## RISK FINDINGS
+
+For each finding use this exact format:
+### [SEVERITY] — [SHORT TITLE]
+**Location:** [line or subroutine if identifiable]
+**Description:** [What the issue is]
+**Impact:** [What could go wrong]
+**Recommendation:** [What to do about it]
+
+Look for these specific IBM i / RPG issues:
+- Hardcoded literals (account numbers, amounts, dates, codes)
+- Dead code or unreachable branches
+- Deprecated op-codes (GOTO, ITER misuse, old-style CALL)
+- Missing error handling (CHAIN without %FOUND check, etc.)
+- Data integrity risks (numeric overflow, truncation)
+- Security issues (hardcoded credentials, unvalidated input)
+- Performance issues (full file reads, missing KEYED access)
+- Undocumented subroutines or magic numbers
+- *INLR not set on error paths
+
+## OVERALL ASSESSMENT
+[Rate overall code quality: POOR / FAIR / GOOD / EXCELLENT and explain why]
+
+RPG Source Code:
+\`\`\`
+${code}
+\`\`\``,
+
+  modern: (code) => `You are an IBM i modernisation architect with deep expertise in migrating legacy RPG to modern architectures.
+
+Analyse this RPG code and produce a practical modernisation roadmap.
+
+## MODERNISATION OVERVIEW
+[Current state assessment and overall modernisation potential in 3 sentences]
+
+## QUICK WINS (Phase 1 — Low effort, high value)
+For each item:
+### [Item name]
+**What:** [What to change]  
+**How:** [Specific steps]  
+**Effort:** [Hours estimate]  
+**Benefit:** [Why this matters]
+
+Include: fixed-format to free-format conversion, removing deprecated op-codes, adding proper error handling
+
+## STRUCTURAL IMPROVEMENTS (Phase 2 — Medium effort)
+Same format. Include: extracting reusable procedures, separating business logic from I/O, adding service program candidates
+
+## MODERNISATION (Phase 3 — Higher effort)
+Same format. Include: REST API exposure candidates, SQL replacement for file I/O, Node.js / Python equivalents if applicable
+
+## WHAT TO KEEP
+[Logic or patterns that are actually well-written and should be preserved as-is]
+
+## ESTIMATED TOTAL EFFORT
+[Realistic estimate in developer-days for each phase]
+
+RPG Source Code:
+\`\`\`
+${code}
+\`\`\``
+};
+
+async function callClaude(prompt) {
+  const apiKey = document.getElementById('api-key-input').value.trim();
+  if (!apiKey) throw new Error('NO_API_KEY');
+
+  const fetchPromise = fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-allow-browser': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('TIMEOUT')), 60000)
+  );
+
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+  if (response.status === 401) throw new Error('INVALID_API_KEY');
+  if (response.status === 429) throw new Error('RATE_LIMITED');
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody?.error?.message || `API error ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.content.map(b => b.text || '').join('');
+}
+
+// ── RENDER HELPERS ────────────────────────────────────────────────────
+function renderExplain(text) {
+  const container = document.getElementById('content-explain');
+  document.getElementById('empty-explain').style.display = 'none';
+  container.innerHTML = ''; // clear skeletons
+
+  const sections = parseMarkdownSections(text);
+  sections.forEach(({ heading, body }) => {
+    const block = document.createElement('div');
+    block.className = 'result-section fade-in';
+    block.innerHTML = `
+      <div class="result-section-header">
+        <div class="result-section-title">${heading}</div>
+      </div>
+      <div class="result-body">${formatBody(body)}</div>`;
+    container.appendChild(block);
+  });
+}
+
+function renderDocs(text) {
+  const container = document.getElementById('content-docs');
+  document.getElementById('empty-docs').style.display = 'none';
+  container.innerHTML = '';
+
+  const sections = parseMarkdownSections(text);
+  sections.forEach(({ heading, body }) => {
+    const block = document.createElement('div');
+    block.className = 'result-section fade-in';
+    // check if body looks like a table
+    const isTable = body.includes('|');
+    block.innerHTML = `
+      <div class="result-section-header">
+        <div class="result-section-title">${heading}</div>
+      </div>
+      <div class="result-body">${isTable ? renderTable(body) : formatBody(body)}</div>`;
+    container.appendChild(block);
+  });
+}
+
+function renderRisk(text) {
+  const container = document.getElementById('content-risk');
+  document.getElementById('empty-risk').style.display = 'none';
+  container.innerHTML = '';
+
+  // Extract summary block
+  const summaryMatch = text.match(/## RISK SUMMARY\n([\s\S]*?)(?=##|$)/);
+  if (summaryMatch) {
+    const sumBlock = document.createElement('div');
+    sumBlock.className = 'result-section fade-in';
+    sumBlock.innerHTML = `
+      <div class="result-section-header">
+        <div class="result-section-title">Risk summary</div>
+      </div>
+      <div class="result-body">${formatBody(summaryMatch[1].trim())}</div>`;
+    container.appendChild(sumBlock);
+  }
+
+  // Extract individual risk items (### blocks)
+  const riskPattern = /###\s+(HIGH|MEDIUM|LOW|INFO)\s*[—–-]\s*(.+?)\n([\s\S]*?)(?=###|##\s+OVERALL|$)/gi;
+  let match;
+  const findingsContainer = document.createElement('div');
+  findingsContainer.className = 'fade-in';
+  let foundAny = false;
+
+  while ((match = riskPattern.exec(text)) !== null) {
+    foundAny = true;
+    const sev = match[1].toLowerCase();
+    const title = match[2].trim();
+    const body  = match[3].trim();
+
+    const item = document.createElement('div');
+    item.className = 'risk-item';
+    item.innerHTML = `
+      <div class="risk-badge ${sev}">${match[1]}</div>
+      <div class="risk-content">
+        <div class="risk-title">${title}</div>
+        <div class="risk-desc">${formatBody(body)}</div>
+      </div>`;
+    findingsContainer.appendChild(item);
+  }
+
+  if (foundAny) container.appendChild(findingsContainer);
+
+  // Overall assessment
+  const overallMatch = text.match(/## OVERALL ASSESSMENT\n([\s\S]*?)$/i);
+  if (overallMatch) {
+    const overallBlock = document.createElement('div');
+    overallBlock.className = 'result-section fade-in';
+    overallBlock.innerHTML = `
+      <div class="result-section-header">
+        <div class="result-section-title">Overall assessment</div>
+      </div>
+      <div class="result-body">${formatBody(overallMatch[1].trim())}</div>`;
+    container.appendChild(overallBlock);
+  }
+
+  // Fallback: if no structured content found, render raw
+  if (!foundAny && !summaryMatch) {
+    const raw = document.createElement('div');
+    raw.className = 'result-section fade-in';
+    raw.innerHTML = `<div class="result-body">${formatBody(text)}</div>`;
+    container.appendChild(raw);
+  }
+}
+
+function renderModern(text) {
+  const container = document.getElementById('content-modern');
+  document.getElementById('empty-modern').style.display = 'none';
+  container.innerHTML = '';
+
+  const sections = parseMarkdownSections(text);
+  let stepCounter = 1;
+
+  sections.forEach(({ heading, body }) => {
+    const isPhase = heading.toLowerCase().includes('phase') ||
+                    heading.toLowerCase().includes('quick win') ||
+                    heading.toLowerCase().includes('structural') ||
+                    heading.toLowerCase().includes('modernisation') && !heading.toLowerCase().includes('overview');
+
+    if (isPhase) {
+      const phaseBlock = document.createElement('div');
+      phaseBlock.className = 'fade-in';
+
+      // header
+      const header = document.createElement('div');
+      header.className = 'result-section-header';
+      header.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-bottom:none;padding:10px 16px;margin-top:16px';
+      header.innerHTML = `<div class="result-section-title">${heading}</div>`;
+      phaseBlock.appendChild(header);
+
+      // parse sub-items (### headings within)
+      const items = body.split(/###\s+/).filter(s => s.trim());
+      items.forEach(item => {
+        const lines = item.trim().split('\n');
+        const itemTitle = lines[0].trim();
+        const itemBody  = lines.slice(1).join('\n').trim();
+
+        const effortMatch = itemBody.match(/\*\*Effort[:\*]*\*?\*?\s*([^\n*]+)/i);
+        const effort = effortMatch ? effortMatch[1].trim() : null;
+
+        const step = document.createElement('div');
+        step.className = 'mod-step';
+        step.innerHTML = `
+          <div class="mod-step-num">${String(stepCounter++).padStart(2,'0')}</div>
+          <div class="mod-step-content">
+            <div class="mod-step-title">${itemTitle}</div>
+            <div class="mod-step-desc">${formatBody(itemBody)}</div>
+          </div>
+          ${effort ? `<div class="mod-effort"><span class="effort-label">Effort</span><span class="effort-val">${effort}</span></div>` : ''}`;
+        phaseBlock.appendChild(step);
+      });
+
+      if (items.length === 0) {
+        const plain = document.createElement('div');
+        plain.className = 'result-section';
+        plain.innerHTML = `<div class="result-body">${formatBody(body)}</div>`;
+        phaseBlock.appendChild(plain);
+      }
+      container.appendChild(phaseBlock);
+    } else {
+      const block = document.createElement('div');
+      block.className = 'result-section fade-in';
+      block.innerHTML = `
+        <div class="result-section-header">
+          <div class="result-section-title">${heading}</div>
+        </div>
+        <div class="result-body">${formatBody(body)}</div>`;
+      container.appendChild(block);
+    }
+  });
+}
+
+// ── MARKDOWN HELPERS ──────────────────────────────────────────────────
+function parseMarkdownSections(text) {
+  const sections = [];
+  const parts = text.split(/^##\s+/m).filter(s => s.trim());
+  parts.forEach(part => {
+    const newline = part.indexOf('\n');
+    if (newline === -1) return;
+    const heading = part.slice(0, newline).trim();
+    const body    = part.slice(newline + 1).trim();
+    if (heading && body) sections.push({ heading, body });
+  });
+  if (sections.length === 0) return [{ heading: 'Analysis', body: text }];
+  return sections;
+}
+
+function formatBody(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code style="color:#7ab8e8;background:var(--bg3);padding:1px 5px;font-size:11px">$1</code>')
+    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0"><span style="color:var(--amber);flex-shrink:0">—</span><span>$1</span></div>')
+    .replace(/\n{2,}/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>');
+}
+
+function renderTable(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim() && !l.match(/^[\s|:-]+$/));
+  if (lines.length < 2) return formatBody(text);
+
+  let html = '<table class="field-table">';
+  lines.forEach((line, i) => {
+    const cells = line.split('|').filter(c => c.trim());
+    if (i === 0) {
+      html += '<tr>' + cells.map(c => `<th>${c.trim()}</th>`).join('') + '</tr>';
+    } else {
+      html += '<tr>' + cells.map((c, j) => {
+        const cls = j === 0 ? 'field-name' : j === 1 ? 'field-type' : '';
+        return `<td class="${cls}">${c.trim()}</td>`;
+      }).join('') + '</tr>';
+    }
+  });
+  return html + '</table>';
+}
+
+function showSkeletons(containerId) {
+  const container = document.getElementById(containerId);
+  const skels = document.createElement('div');
+  skels.id = `skel-${containerId}`;
+  skels.innerHTML = [80, 60, 90, 50, 70].map(w =>
+    `<div class="skeleton" style="width:${w}%;margin-bottom:10px"></div>`
+  ).join('');
+  container.appendChild(skels);
+}
+
+function clearSkeletons(containerId) {
+  const s = document.getElementById(`skel-${containerId}`);
+  if (s) s.remove();
+}
+
+// ── MAIN ANALYSIS ────────────────────────────────────────────────────
+async function runAnalysis() {
+  const code = getActiveCode();
+  if (!code || state.loading) return;
+
+  // Check API key before doing anything
+  const apiKey = document.getElementById('api-key-input').value.trim();
+  if (!apiKey) {
+    showApiKeyError('Enter your Anthropic API key above before running analysis.');
+    return;
+  }
+
+  state.loading = true;
+  const btn = document.getElementById('analyse-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-label').textContent = 'Analysing...';
+
+  // reset all tabs
+  ['explain','docs','risk','modern'].forEach(tab => {
+    const t = document.getElementById(`tab-${tab}`);
+    t.classList.remove('done','error');
+    t.classList.add('loading');
+    document.getElementById(`empty-${tab}`).style.display = 'flex';
+    showSkeletons(`content-${tab}`);
+  });
+
+  // disable exports
+  ['export-word','export-pdf','export-copy'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+
+  const checks = {
+    explain: document.getElementById('opt-explain').querySelector('input').checked,
+    docs:    document.getElementById('opt-docs').querySelector('input').checked,
+    risk:    document.getElementById('opt-risk').querySelector('input').checked,
+    modern:  document.getElementById('opt-modern').querySelector('input').checked
+  };
+
+  const tasks = [];
+
+  if (checks.explain) tasks.push(
+    callClaude(PROMPTS.explain(code))
+      .then(r => { state.results.explain = r; renderExplain(r); setTabDone('explain'); })
+      .catch(err => setTabError('explain', err))
+  );
+  if (checks.docs) tasks.push(
+    callClaude(PROMPTS.docs(code))
+      .then(r => { state.results.docs = r; renderDocs(r); setTabDone('docs'); })
+      .catch(err => setTabError('docs', err))
+  );
+  if (checks.risk) tasks.push(
+    callClaude(PROMPTS.risk(code))
+      .then(r => { state.results.risk = r; renderRisk(r); setTabDone('risk'); })
+      .catch(err => setTabError('risk', err))
+  );
+  if (checks.modern) tasks.push(
+    callClaude(PROMPTS.modern(code))
+      .then(r => { state.results.modern = r; renderModern(r); setTabDone('modern'); })
+      .catch(err => setTabError('modern', err))
+  );
+
+  await Promise.allSettled(tasks);
+
+  state.loading = false;
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.querySelector('.btn-label').textContent = 'Re-analyse';
+
+  // enable exports if we have results
+  const hasResults = Object.values(state.results).some(r => r !== null);
+  if (hasResults) {
+    ['export-word','export-pdf','export-copy'].forEach(id => {
+      document.getElementById(id).disabled = false;
+    });
+  }
+}
+
+function setTabDone(tab) {
+  const t = document.getElementById(`tab-${tab}`);
+  t.classList.remove('loading');
+  t.classList.add('done');
+  clearSkeletons(`content-${tab}`);
+}
+
+function setTabError(tab, err) {
+  const t = document.getElementById(`tab-${tab}`);
+  t.classList.remove('loading');
+  t.classList.add('error');
+  clearSkeletons(`content-${tab}`);
+
+  const msgs = {
+    'NO_API_KEY':     'No API key entered. Add your Anthropic API key in the key field above.',
+    'INVALID_API_KEY':'Invalid API key. Check your key at console.anthropic.com.',
+    'RATE_LIMITED':   'Rate limit hit. Wait 30 seconds and try again.',
+    'TIMEOUT':        'Request timed out after 60s. Check your connection and retry.',
+  };
+
+  const raw = err?.message || String(err);
+  const msg = msgs[raw] || ('API error: ' + raw);
+
+  const container = document.getElementById(`content-${tab}`);
+  document.getElementById(`empty-${tab}`).style.display = 'none';
+  const errEl = document.createElement('div');
+  errEl.className = 'result-section fade-in';
+  errEl.innerHTML = `
+    <div class="result-section-header">
+      <div class="result-section-title" style="color:var(--red)">Analysis failed</div>
+    </div>
+    <div class="result-body" style="color:var(--red)">${msg}</div>`;
+  container.appendChild(errEl);
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────
+function getAllResultsText() {
+  const parts = [];
+  const labels = { explain: 'EXPLANATION', docs: 'DOCUMENTATION', risk: 'RISK ANALYSIS', modern: 'MODERNISATION PLAN' };
+  Object.entries(state.results).forEach(([key, val]) => {
+    if (val) parts.push(`\n${'='.repeat(60)}\n${labels[key]}\n${'='.repeat(60)}\n\n${val}`);
+  });
+  return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${document.getElementById('program-name').textContent}\n${parts.join('\n\n')}`;
+}
+
+function copyResults() {
+  navigator.clipboard.writeText(getAllResultsText());
+}
+
+function exportPDF() {
+  const text = getAllResultsText();
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `RPGLens_${document.getElementById('program-name').textContent}_${Date.now()}.txt`;
+  a.click();
+}
+
+function exportWord() {
+  const text = getAllResultsText();
+  // Basic RTF export that Word can open
+  const rtf = `{\\rtf1\\ansi\\deff0
+{\\fonttbl{\\f0 Courier New;}{\\f1 Arial;}}
+{\\colortbl;\\red14\\green15\\blue15;\\red232\\green160\\blue32;}
+\\f1\\fs24\\b RPGLens Analysis Report\\b0\\par
+\\f0\\fs20 Generated: ${new Date().toLocaleString()}\\par
+Program: ${document.getElementById('program-name').textContent}\\par\\par
+${text.replace(/\n/g, '\\par\n').replace(/[{}\\]/g, m => '\\' + m)}
+}`;
+  const blob = new Blob([rtf], { type: 'application/rtf' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `RPGLens_${document.getElementById('program-name').textContent}_${Date.now()}.rtf`;
+  a.click();
+}
+
+function onApiKeyInput() {
+  const key  = document.getElementById('api-key-input').value.trim();
+  const dot  = document.getElementById('api-dot');
+  const txt  = document.getElementById('api-status-text');
+  if (key.startsWith('sk-ant-') && key.length > 20) {
+    dot.style.background = 'var(--green)';
+    txt.textContent = 'API KEY SET';
+    document.getElementById('api-key-error').style.display = 'none';
+  } else if (key.length > 0) {
+    dot.style.background = 'var(--amber)';
+    txt.textContent = 'KEY LOOKS WRONG';
+  } else {
+    dot.style.background = 'var(--border2)';
+    txt.textContent = 'ENTER API KEY';
+  }
+}
+
+function showApiKeyError(msg) {
+  const errEl = document.getElementById('api-key-error');
+  errEl.textContent = '⚑ ' + msg;
+  errEl.style.display = 'block';
+  document.getElementById('api-key-input').style.borderColor = 'var(--red)';
+  setTimeout(() => {
+    errEl.style.display = 'none';
+    document.getElementById('api-key-input').style.borderColor = 'var(--border2)';
+  }, 5000);
+}
+
+// init
+onCodeInput();
+</script>
+</body>
+</html>
