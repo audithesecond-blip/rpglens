@@ -1089,7 +1089,15 @@ body::before {
         <div class="spinner"></div>
         <span class="btn-label">Analyse Code</span>
       </button>
-      <div class="char-count" id="char-count">Paste code above to begin</div>
+      <div id="char-count-wrap" style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--text3);letter-spacing:0.06em" id="char-count">Paste code above to begin</span>
+          <span style="font-size:10px;color:var(--text3);letter-spacing:0.06em" id="plan-limit-label"></span>
+        </div>
+        <div style="height:2px;background:var(--border);display:none" id="limit-bar-wrap">
+          <div id="limit-bar-fill" style="height:100%;width:0%;transition:width 0.3s,background 0.3s;background:var(--green)"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1537,10 +1545,44 @@ function onCodeInput() {
   const btn  = document.getElementById('analyse-btn');
   const cc   = document.getElementById('char-count');
 
-  btn.disabled = len < 10 || state.loading;
-  cc.textContent = len > 0 ? `${len.toLocaleString()} characters` : 'Paste code above to begin';
+  // Plan char limits (mirrors api/analyse.js)
+  const PLAN_CHAR_LIMITS = { free: 5000, starter: 30000, team: 150000 };
+  const PLAN_LABELS      = { free: 'Free (5KB limit)', starter: 'Starter (30KB limit)', team: 'Team (150KB limit)' };
 
-  // detect program name from comment or first meaningful line
+  // Get plan from session if available
+  const plan      = supabaseSession?.user?.user_metadata?.plan || 'free';
+  const charLimit = PLAN_CHAR_LIMITS[plan] || 5000;
+
+  btn.disabled = len < 10 || state.loading;
+
+  if (len === 0) {
+    cc.textContent = 'Paste code above to begin';
+    document.getElementById('limit-bar-wrap').style.display = 'none';
+    document.getElementById('plan-limit-label').textContent = '';
+  } else {
+    const kb  = (len / 1000).toFixed(1);
+    const pct = Math.min(100, Math.round((len / charLimit) * 100));
+
+    cc.textContent = `${len.toLocaleString()} chars (${kb} KB)`;
+    document.getElementById('plan-limit-label').textContent = `${pct}% of ${PLAN_LABELS[plan]}`;
+    document.getElementById('limit-bar-wrap').style.display = 'block';
+
+    const fill = document.getElementById('limit-bar-fill');
+    fill.style.width = pct + '%';
+    fill.style.background = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--green)';
+
+    // Warn and disable if over limit
+    if (len > charLimit) {
+      btn.disabled = true;
+      cc.style.color = 'var(--red)';
+      document.getElementById('plan-limit-label').style.color = 'var(--red)';
+    } else {
+      cc.style.color = '';
+      document.getElementById('plan-limit-label').style.color = 'var(--text3)';
+    }
+  }
+
+  // Detect program name
   const nameMatch = code.match(/(?:\/\/\s*Program[:\s]+|H\s+)([A-Z0-9]+)/i);
   if (nameMatch) document.getElementById('program-name').textContent = nameMatch[1];
   else if (len > 0) document.getElementById('program-name').textContent = 'Unnamed program';
@@ -1733,20 +1775,25 @@ async function initSession() {
 }
 
 async function callClaude(prompt, analysisType) {
-  // If user is logged in, use the proxy (no API key needed)
   if (supabaseSession) {
+    const code = getActiveCode();
     const resp = await fetch('/api/analyse', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseSession.access_token}`
       },
-      body: JSON.stringify({ prompt, analysisType })
+      body: JSON.stringify({ prompt, analysisType, codeLength: code ? code.length : prompt.length })
     });
 
     const data = await resp.json();
 
     if (!resp.ok) {
+      if (resp.status === 413) {
+        // Character limit exceeded — build a clear message
+        const hint = data.hint ? `\n\n${data.hint}` : '';
+        throw new Error(data.error + hint);
+      }
       if (resp.status === 429) throw new Error(data.error || 'RATE_LIMITED');
       if (resp.status === 401) throw new Error('Please sign in to use RPGLens.');
       throw new Error(data.error || `Server error ${resp.status}`);
@@ -1755,7 +1802,6 @@ async function callClaude(prompt, analysisType) {
     return data.result;
   }
 
-  // Fallback: not logged in — redirect to login
   throw new Error('NOT_SIGNED_IN');
 }
 
@@ -2080,25 +2126,49 @@ function setTabError(tab, err) {
   t.classList.add('error');
   clearSkeletons(`content-${tab}`);
 
+  const raw = err?.message || String(err);
+
   const msgs = {
-    'NO_API_KEY':     'No API key entered. Add your Anthropic API key in the key field above.',
-    'INVALID_API_KEY':'Invalid API key. Check your key at console.anthropic.com.',
+    'NOT_SIGNED_IN':  'Please sign in to use RPGLens.',
     'RATE_LIMITED':   'Rate limit hit. Wait 30 seconds and try again.',
     'TIMEOUT':        'Request timed out after 60s. Check your connection and retry.',
   };
 
-  const raw = err?.message || String(err);
-  const msg = msgs[raw] || ('API error: ' + raw);
-
   const container = document.getElementById(`content-${tab}`);
   document.getElementById(`empty-${tab}`).style.display = 'none';
+
+  // Check if it's a character limit error (413 response)
+  const isLimitError = raw.toLowerCase().includes('too large') || raw.toLowerCase().includes('program too large');
+
   const errEl = document.createElement('div');
   errEl.className = 'result-section fade-in';
-  errEl.innerHTML = `
-    <div class="result-section-header">
-      <div class="result-section-title" style="color:var(--red)">Analysis failed</div>
-    </div>
-    <div class="result-body" style="color:var(--red)">${msg}</div>`;
+
+  if (isLimitError) {
+    // Split error message from hint (separated by \n\n)
+    const parts = raw.split('\n\n');
+    const mainMsg = parts[0] || raw;
+    const hint    = parts[1] || '';
+    errEl.innerHTML = `
+      <div class="result-section-header">
+        <div class="result-section-title" style="color:var(--amber)">Program size limit reached</div>
+      </div>
+      <div class="result-body">
+        <div style="color:var(--amber);margin-bottom:12px">${mainMsg}</div>
+        ${hint ? `<div style="background:rgba(232,160,32,0.08);border:1px solid var(--amber-dim);padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.7">${hint}</div>` : ''}
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <a href="/dashboard" style="display:inline-block;padding:8px 20px;background:var(--amber);color:var(--bg);font-family:var(--display);font-weight:700;font-size:12px;text-decoration:none;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%)">View upgrade options</a>
+          <span style="font-size:11px;color:var(--text3)">Or split the program into smaller sections to analyse separately</span>
+        </div>
+      </div>`;
+  } else {
+    const msg = msgs[raw] || raw;
+    errEl.innerHTML = `
+      <div class="result-section-header">
+        <div class="result-section-title" style="color:var(--red)">Analysis failed</div>
+      </div>
+      <div class="result-body" style="color:var(--red)">${msg}</div>`;
+  }
+
   container.appendChild(errEl);
 }
 
