@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg:        #0e0f0f;
@@ -964,36 +966,16 @@ body::before {
     <span class="current" id="program-name">New analysis</span>
   </div>
   <div class="topbar-right">
-    <div class="api-key-wrap" id="api-key-wrap">
-      <input
-        type="password"
-        id="api-key-input"
-        placeholder="sk-ant-... API key"
-        autocomplete="off"
-        spellcheck="false"
-        oninput="onApiKeyInput()"
-        style="
-          background: var(--bg3);
-          border: 1px solid var(--border2);
-          color: var(--text);
-          font-family: var(--mono);
-          font-size: 11px;
-          padding: 6px 12px;
-          width: 220px;
-          outline: none;
-          letter-spacing: 0.04em;
-          transition: border-color 0.2s;
-        "
-        onfocus="this.style.borderColor='var(--amber-dim)'"
-        onblur="this.style.borderColor='var(--border2)'"
-      />
-      <div id="api-key-error" style="display:none;position:absolute;top:52px;right:160px;background:var(--red-dim);border:1px solid rgba(232,80,80,0.4);color:var(--red);font-size:11px;padding:7px 14px;letter-spacing:0.04em;z-index:200;max-width:280px;line-height:1.5"></div>
-    </div>
     <div class="api-status" id="api-status-badge">
-      <div class="dot" id="api-dot"></div>
-      <span id="api-status-text">ENTER API KEY</span>
+      <div class="dot" id="api-dot" style="background:var(--border2)"></div>
+      <span id="api-status-text">CHECKING SESSION</span>
     </div>
-    <a href="/" class="btn-sm">← Home</a>
+    <div id="user-pill" style="display:none;align-items:center;gap:8px;padding:4px 12px;border:1px solid var(--border);font-size:11px;color:var(--text2)">
+      <div id="user-av" style="width:20px;height:20px;border-radius:50%;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:9px;color:var(--amber)">?</div>
+      <span id="user-name">...</span>
+    </div>
+    <a href="/dashboard" class="btn-sm" style="text-decoration:none">Dashboard</a>
+    <a href="/" class="btn-sm" style="background:transparent;border:1px solid var(--border2);color:var(--text2);text-decoration:none;clip-path:none;padding:6px 14px;font-size:11px">← Home</a>
   </div>
 </div>
 
@@ -1711,40 +1693,70 @@ ${code}
 \`\`\``
 };
 
-async function callClaude(prompt) {
-  const apiKey = document.getElementById('api-key-input').value.trim();
-  if (!apiKey) throw new Error('NO_API_KEY');
+// ── SUPABASE SESSION ──────────────────────────────────────────────────
+let supabaseSession = null;
 
-  const fetchPromise = fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
+async function initSession() {
+  if (!window.RPGLENS_CONFIG) return;
+  try {
+    const { createClient } = supabase;
+    const sb = createClient(
+      window.RPGLENS_CONFIG.SUPABASE_URL,
+      window.RPGLENS_CONFIG.SUPABASE_ANON
+    );
+    const { data } = await sb.auth.getSession();
+    supabaseSession = data.session;
 
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('TIMEOUT')), 60000)
-  );
+    const dot  = document.getElementById('api-dot');
+    const txt  = document.getElementById('api-status-text');
+    const pill = document.getElementById('user-pill');
 
-  const response = await Promise.race([fetchPromise, timeoutPromise]);
+    if (supabaseSession) {
+      const user = supabaseSession.user;
+      const meta = user.user_metadata || {};
+      const name = meta.full_name || meta.name || user.email.split('@')[0];
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
 
-  if (response.status === 401) throw new Error('INVALID_API_KEY');
-  if (response.status === 429) throw new Error('RATE_LIMITED');
-  if (!response.ok) {
-    const errBody = await response.json().catch(() => ({}));
-    throw new Error(errBody?.error?.message || `API error ${response.status}`);
+      dot.style.background = 'var(--green)';
+      txt.textContent = 'SIGNED IN';
+      pill.style.display = 'flex';
+      document.getElementById('user-av').textContent = initials;
+      document.getElementById('user-name').textContent = name.split(' ')[0];
+    } else {
+      dot.style.background = 'var(--amber)';
+      txt.textContent = 'NOT SIGNED IN';
+    }
+  } catch(e) {
+    console.warn('Session check failed:', e);
+    document.getElementById('api-status-text').textContent = 'SESSION ERROR';
+  }
+}
+
+async function callClaude(prompt, analysisType) {
+  // If user is logged in, use the proxy (no API key needed)
+  if (supabaseSession) {
+    const resp = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseSession.access_token}`
+      },
+      body: JSON.stringify({ prompt, analysisType })
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      if (resp.status === 429) throw new Error(data.error || 'RATE_LIMITED');
+      if (resp.status === 401) throw new Error('Please sign in to use RPGLens.');
+      throw new Error(data.error || `Server error ${resp.status}`);
+    }
+
+    return data.result;
   }
 
-  const data = await response.json();
-  return data.content.map(b => b.text || '').join('');
+  // Fallback: not logged in — redirect to login
+  throw new Error('NOT_SIGNED_IN');
 }
 
 // ── RENDER HELPERS ────────────────────────────────────────────────────
@@ -1983,10 +1995,9 @@ async function runAnalysis() {
   const code = getActiveCode();
   if (!code || state.loading) return;
 
-  // Check API key before doing anything
-  const apiKey = document.getElementById('api-key-input').value.trim();
-  if (!apiKey) {
-    showApiKeyError('Enter your Anthropic API key above before running analysis.');
+  // Redirect to login if not signed in
+  if (!supabaseSession) {
+    window.location.href = '/login';
     return;
   }
 
@@ -2020,22 +2031,22 @@ async function runAnalysis() {
   const tasks = [];
 
   if (checks.explain) tasks.push(
-    callClaude(PROMPTS.explain(code))
+    callClaude(PROMPTS.explain(code), 'explain')
       .then(r => { state.results.explain = r; renderExplain(r); setTabDone('explain'); })
       .catch(err => setTabError('explain', err))
   );
   if (checks.docs) tasks.push(
-    callClaude(PROMPTS.docs(code))
+    callClaude(PROMPTS.docs(code), 'docs')
       .then(r => { state.results.docs = r; renderDocs(r); setTabDone('docs'); })
       .catch(err => setTabError('docs', err))
   );
   if (checks.risk) tasks.push(
-    callClaude(PROMPTS.risk(code))
+    callClaude(PROMPTS.risk(code), 'risk')
       .then(r => { state.results.risk = r; renderRisk(r); setTabDone('risk'); })
       .catch(err => setTabError('risk', err))
   );
   if (checks.modern) tasks.push(
-    callClaude(PROMPTS.modern(code))
+    callClaude(PROMPTS.modern(code), 'modern')
       .then(r => { state.results.modern = r; renderModern(r); setTabDone('modern'); })
       .catch(err => setTabError('modern', err))
   );
@@ -2132,36 +2143,9 @@ ${text.replace(/\n/g, '\\par\n').replace(/[{}\\]/g, m => '\\' + m)}
   a.click();
 }
 
-function onApiKeyInput() {
-  const key  = document.getElementById('api-key-input').value.trim();
-  const dot  = document.getElementById('api-dot');
-  const txt  = document.getElementById('api-status-text');
-  if (key.startsWith('sk-ant-') && key.length > 20) {
-    dot.style.background = 'var(--green)';
-    txt.textContent = 'API KEY SET';
-    document.getElementById('api-key-error').style.display = 'none';
-  } else if (key.length > 0) {
-    dot.style.background = 'var(--amber)';
-    txt.textContent = 'KEY LOOKS WRONG';
-  } else {
-    dot.style.background = 'var(--border2)';
-    txt.textContent = 'ENTER API KEY';
-  }
-}
-
-function showApiKeyError(msg) {
-  const errEl = document.getElementById('api-key-error');
-  errEl.textContent = '⚑ ' + msg;
-  errEl.style.display = 'block';
-  document.getElementById('api-key-input').style.borderColor = 'var(--red)';
-  setTimeout(() => {
-    errEl.style.display = 'none';
-    document.getElementById('api-key-input').style.borderColor = 'var(--border2)';
-  }, 5000);
-}
-
 // init
 onCodeInput();
+initSession();
 </script>
 </body>
 </html>

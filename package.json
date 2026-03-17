@@ -1,0 +1,12 @@
+{
+  "name": "rpglens",
+  "version": "1.0.0",
+  "description": "RPGLens — IBM i Code Intelligence Platform",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@supabase/supabase-js": "^2.49.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

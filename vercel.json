@@ -2,6 +2,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/analyser",  "dest": "/analyser.html" },
     { "src": "/login",     "dest": "/login.html" },
     { "src": "/signup",    "dest": "/signup.html" },
