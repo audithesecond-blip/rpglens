@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0e0f0f; --bg2:#141516; --bg3:#1a1c1d; --bg4:#1f2122;
+  --border:#2a2d2e; --border2:#363a3b;
+  --amber:#e8a020; --amber2:#f5c060; --amber-dim:#7a5010;
+  --green:#2ec27e; --green-dim:#0f4a2e;
+  --red:#e85050; --blue:#5b9bd5;
+  --text:#e8e4dc; --text2:#9a9690; --text3:#5a5855;
+  --mono:'DM Mono',monospace; --display:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;height:52px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 24px;gap:16px}
+.topbar-logo{display:flex;align-items:center;gap:9px;text-decoration:none;padding-right:20px;border-right:1px solid var(--border)}
+.logo-mark svg{width:24px;height:24px}
+.logo-text{font-family:var(--display);font-weight:800;font-size:17px;color:var(--text);letter-spacing:-0.02em}
+.logo-text span{color:var(--amber)}
+.topbar-title{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.user-pill{display:flex;align-items:center;gap:8px;padding:5px 12px;border:1px solid var(--border);font-size:11px;color:var(--text2)}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:10px;color:var(--amber);flex-shrink:0}
+.plan-badge{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;background:rgba(46,194,126,0.1);border:1px solid rgba(46,194,126,0.3);color:var(--green)}
+.plan-badge.starter{background:rgba(232,160,32,0.1);border-color:var(--amber-dim);color:var(--amber)}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:none;cursor:pointer;letter-spacing:0.04em;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);transition:background 0.2s;text-decoration:none}
+.btn-sm:hover{background:var(--amber2)}
+.btn-ghost{font-family:var(--mono);font-size:11px;padding:5px 14px;background:transparent;border:1px solid var(--border2);color:var(--text3);cursor:pointer;letter-spacing:0.06em;transition:all 0.2s}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text2)}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;padding:32px 32px}
+.page-title{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-0.02em;margin-bottom:4px}
+.page-sub{font-size:12px;color:var(--text2);margin-bottom:32px}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);padding:16px 20px}
+.metric-val{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-0.03em;line-height:1;margin-bottom:6px}
+.metric-val.amber{color:var(--amber)}
+.metric-val.green{color:var(--green)}
+.metric-label{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3)}
+
+/* USAGE BAR */
+.usage-section{background:var(--bg2);border:1px solid var(--border);padding:20px 24px;margin-bottom:28px}
+.usage-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.usage-title{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.usage-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--amber)}
+.usage-bar-wrap{height:6px;background:var(--bg3);border:1px solid var(--border);margin-bottom:8px}
+.usage-bar-fill{height:100%;transition:width 0.6s ease}
+.usage-counts{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);letter-spacing:0.06em}
+.upgrade-cta{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--amber);text-decoration:none;letter-spacing:0.06em;border:1px solid var(--amber-dim);padding:4px 12px;transition:all 0.2s}
+.upgrade-cta:hover{background:rgba(232,160,32,0.06)}
+
+/* QUICK ACTIONS */
+.actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+.action-card{background:var(--bg2);border:1px solid var(--border);padding:20px;cursor:pointer;transition:all 0.2s;text-decoration:none;display:block;position:relative;overflow:hidden}
+.action-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--amber);transform:scaleX(0);transform-origin:left;transition:transform 0.3s}
+.action-card:hover{border-color:var(--border2);background:var(--bg3)}
+.action-card:hover::before{transform:scaleX(1)}
+.action-icon{font-size:22px;margin-bottom:12px;line-height:1}
+.action-title{font-family:var(--display);font-weight:700;font-size:14px;margin-bottom:6px;color:var(--text)}
+.action-desc{font-size:11px;color:var(--text2);line-height:1.6}
+
+/* RECENT */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--amber)}
+.history-empty{background:var(--bg2);border:1px solid var(--border);padding:40px;text-align:center;color:var(--text3)}
+.history-empty-title{font-family:var(--display);font-weight:700;font-size:15px;margin-bottom:8px;color:var(--text2)}
+.history-empty-sub{font-size:12px;line-height:1.6}
+.history-list{display:flex;flex-direction:column;gap:0}
+.history-item{display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-bottom:none;cursor:pointer;transition:background 0.2s;text-decoration:none}
+.history-item:last-child{border-bottom:1px solid var(--border)}
+.history-item:hover{background:var(--bg3)}
+.history-icon{width:32px;height:32px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--display);font-weight:800;color:var(--amber);flex-shrink:0;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%)}
+.history-meta{flex:1;min-width:0}
+.history-name{font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-date{font-size:10px;color:var(--text3);margin-top:2px;letter-spacing:0.05em}
+.history-tags{display:flex;gap:5px;flex-shrink:0}
+.htag{font-size:9px;letter-spacing:0.08em;padding:2px 7px;border:1px solid var(--border);color:var(--text3)}
+.htag.explain{border-color:rgba(91,155,213,0.3);color:var(--blue)}
+.htag.risk{border-color:rgba(232,80,80,0.3);color:var(--red)}
+.htag.modern{border-color:rgba(46,194,126,0.3);color:var(--green)}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn 0.4s ease both}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 32 32" fill="none">
+        <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+        <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+        <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+        <line x1="16" y1="1" x2="16" y2="31" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <span class="topbar-title">Dashboard</span>
+  <div class="topbar-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span id="user-email">Loading...</span>
+    </div>
+    <span class="plan-badge" id="plan-badge">Free</span>
+    <a href="/analyser" class="btn-sm">+ New analysis</a>
+    <button class="btn-ghost" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title fade-in" id="greeting">Good morning</div>
+  <div class="page-sub fade-in">Here's your RPGLens activity this month.</div>
+
+  <!-- METRICS -->
+  <div class="metrics fade-in">
+    <div class="metric-card">
+      <div class="metric-val amber" id="m-used">—</div>
+      <div class="metric-label">Analyses this month</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val" id="m-remaining">—</div>
+      <div class="metric-label">Remaining this month</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val green" id="m-total">—</div>
+      <div class="metric-label">Total analyses ever</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val" id="m-plan">Free</div>
+      <div class="metric-label">Current plan</div>
+    </div>
+  </div>
+
+  <!-- USAGE BAR -->
+  <div class="usage-section fade-in">
+    <div class="usage-header">
+      <div class="usage-title">Monthly usage</div>
+      <a href="#" class="upgrade-cta" id="upgrade-link">&#8679; Upgrade plan</a>
+    </div>
+    <div class="usage-bar-wrap">
+      <div class="usage-bar-fill" id="usage-fill" style="width:0%;background:var(--amber)"></div>
+    </div>
+    <div class="usage-counts">
+      <span id="usage-text">0 of 3 analyses used</span>
+      <span id="reset-text">Resets 1st of next month</span>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="section-header">
+    <div class="section-title">Quick actions</div>
+  </div>
+  <div class="actions-grid fade-in">
+    <a href="/analyser" class="action-card">
+      <div class="action-icon">&#10011;</div>
+      <div class="action-title">New analysis</div>
+      <div class="action-desc">Paste or upload an RPG program and run a full 4-tab analysis.</div>
+    </a>
+    <a href="/analyser" class="action-card">
+      <div class="action-icon">&#9783;</div>
+      <div class="action-title">Generate documentation</div>
+      <div class="action-desc">Export a Word or PDF doc ready for your manager or auditor.</div>
+    </a>
+    <a href="#" class="action-card" onclick="showUpgradeMsg()">
+      <div class="action-icon">&#8679;</div>
+      <div class="action-title">Upgrade to Starter</div>
+      <div class="action-desc">25 analyses/month, all 4 analysis types, Word & PDF export. ₹1,999/mo.</div>
+    </a>
+  </div>
+
+  <!-- RECENT ANALYSES -->
+  <div class="section-header">
+    <div class="section-title">Recent analyses</div>
+  </div>
+  <div id="history-container" class="fade-in">
+    <div class="history-empty">
+      <div class="history-empty-title">No analyses yet</div>
+      <div class="history-empty-sub">Run your first analysis to see your history here.<br/>Your results are saved locally in your browser.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const sb = createClient(
+  window.RPGLENS_CONFIG.SUPABASE_URL,
+  window.RPGLENS_CONFIG.SUPABASE_ANON
+);
+
+const PLAN_LIMITS = { free: 3, starter: 25, team: 999 };
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = '/login'; return; }
+
+  const user = session.user;
+  const meta = user.user_metadata || {};
+  const name = meta.full_name || meta.name || user.email.split('@')[0];
+  const plan = meta.plan || 'free';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+  // Greeting
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = `${greet}, ${name.split(' ')[0]}`;
+
+  // User pill
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('user-email').textContent = name;
+
+  // Plan badge
+  const planBadge = document.getElementById('plan-badge');
+  planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+  if (plan === 'starter' || plan === 'team') planBadge.classList.add('starter');
+
+  // Usage from localStorage
+  const usageKey = `rpglens_usage_${user.id}_${new Date().getMonth()}`;
+  const used = parseInt(localStorage.getItem(usageKey) || '0');
+  const limit = PLAN_LIMITS[plan] || 3;
+  const remaining = Math.max(0, limit - used);
+  const totalKey = `rpglens_total_${user.id}`;
+  const total = parseInt(localStorage.getItem(totalKey) || '0');
+
+  document.getElementById('m-used').textContent = used;
+  document.getElementById('m-remaining').textContent = remaining;
+  document.getElementById('m-remaining').className = 'metric-val ' + (remaining > 0 ? 'green' : 'red');
+  document.getElementById('m-total').textContent = total;
+  document.getElementById('m-plan').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+
+  // Usage bar
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const fill = document.getElementById('usage-fill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct >= 90 ? 'var(--red)' : pct >= 60 ? 'var(--amber)' : 'var(--green)';
+  document.getElementById('usage-text').textContent = `${used} of ${limit} analyses used`;
+
+  if (plan !== 'free') {
+    document.getElementById('upgrade-link').style.display = 'none';
+  }
+
+  // History from localStorage
+  const histKey = `rpglens_history_${user.id}`;
+  const history = JSON.parse(localStorage.getItem(histKey) || '[]');
+  renderHistory(history);
+}
+
+function renderHistory(history) {
+  const container = document.getElementById('history-container');
+  if (!history.length) return;
+
+  const list = document.createElement('div');
+  list.className = 'history-list';
+
+  history.slice(0, 8).forEach(item => {
+    const el = document.createElement('a');
+    el.href = '/analyser';
+    el.className = 'history-item';
+    const ext = (item.ext || 'RPG').toUpperCase().slice(0, 3);
+    el.innerHTML = `
+      <div class="history-icon">${ext}</div>
+      <div class="history-meta">
+        <div class="history-name">${item.name || 'Unnamed program'}</div>
+        <div class="history-date">${item.date || 'Recently'}</div>
+      </div>
+      <div class="history-tags">
+        ${item.tabs?.includes('explain') ? '<span class="htag explain">Explain</span>' : ''}
+        ${item.tabs?.includes('risk')    ? '<span class="htag risk">Risk</span>'    : ''}
+        ${item.tabs?.includes('modern')  ? '<span class="htag modern">Modern</span>' : ''}
+      </div>`;
+    list.appendChild(el);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(list);
+}
+
+function showUpgradeMsg() {
+  alert('Stripe payments coming soon! This will connect to the Starter plan checkout.');
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  window.location.href = '/';
+}
+
+init();
+</script>
+</body>
+</html>
