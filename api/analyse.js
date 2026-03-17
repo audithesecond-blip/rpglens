@@ -1,8 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
-// Plan limits
+// ── PLAN LIMITS ───────────────────────────────────────────────────────
 const PLAN_LIMITS = { free: 3, starter: 25, team: 999 };
+
+// Character limits per plan (approx token cost control)
+// free:    5,000 chars  ≈  ~200 lines RPG  ≈ ~$0.02 per analysis
+// starter: 30,000 chars ≈ ~1,200 lines RPG  ≈ ~$0.10 per analysis
+// team:    150,000 chars ≈ ~6,000 lines RPG  ≈ ~$0.50 per analysis
+const CHAR_LIMITS = { free: 5000, starter: 30000, team: 150000 };
+
+// Friendly names for error messages
+const PLAN_NAMES = { free: "Free", starter: "Starter", team: "Team" };
+const UPGRADE_HINTS = {
+  free:    "Upgrade to Starter (₹1,999/mo) to analyse programs up to 30,000 characters.",
+  starter: "Upgrade to Team (₹6,999/mo) to analyse programs up to 150,000 characters.",
+  team:    "Contact support for enterprise limits above 150,000 characters."
+};
 
 export default async function handler(req, res) {
   // CORS headers
@@ -31,12 +45,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Session expired. Please sign in again." });
     }
 
-    // ── 2. CHECK PLAN & USAGE ─────────────────────────────────────────
+    // ── 2. CHECK PLAN & MONTHLY USAGE ────────────────────────────────
     const plan = user.user_metadata?.plan || "free";
-    const limit = PLAN_LIMITS[plan] || 3;
-    const monthKey = `${new Date().getFullYear()}-${new Date().getMonth()}`;
+    const monthlyLimit = PLAN_LIMITS[plan] || 3;
+    const charLimit    = CHAR_LIMITS[plan]  || 5000;
+    const monthKey     = `${new Date().getFullYear()}-${new Date().getMonth()}`;
 
-    // Get or create usage record
     const { data: usage } = await sb
       .from("usage")
       .select("count")
@@ -46,20 +60,39 @@ export default async function handler(req, res) {
 
     const currentCount = usage?.count || 0;
 
-    if (currentCount >= limit) {
+    if (currentCount >= monthlyLimit) {
       return res.status(429).json({
-        error: `Monthly limit reached. You've used ${currentCount}/${limit} analyses this month.`,
-        upgrade: plan === "free"
+        error: `Monthly limit reached. You have used ${currentCount} of ${monthlyLimit} analyses this month. Your limit resets on the 1st of next month.`,
+        upgrade: plan !== "team"
       });
     }
 
-    // ── 3. VALIDATE REQUEST ───────────────────────────────────────────
-    const { prompt, analysisType } = req.body;
+    // ── 3. VALIDATE REQUEST & ENFORCE CHARACTER LIMIT ─────────────────
+    const { prompt, analysisType, codeLength } = req.body;
+
     if (!prompt || typeof prompt !== "string") {
-      return res.status(400).json({ error: "No prompt provided." });
+      return res.status(400).json({ error: "No code provided." });
     }
-    if (prompt.length > 50000) {
-      return res.status(400).json({ error: "Code too large. Maximum 50,000 characters." });
+
+    // codeLength is sent separately by the client (length of just the code,
+    // not the full prompt with instructions). Fall back to prompt.length.
+    const programLength = codeLength || prompt.length;
+
+    if (programLength > charLimit) {
+      const kb = Math.round(programLength / 1000);
+      const limitKb = Math.round(charLimit / 1000);
+      return res.status(413).json({
+        error: `Program too large for your ${PLAN_NAMES[plan]} plan. Your program is approximately ${kb}KB (${programLength.toLocaleString()} characters). The ${PLAN_NAMES[plan]} plan supports up to ${limitKb}KB (${charLimit.toLocaleString()} characters).`,
+        hint: UPGRADE_HINTS[plan],
+        upgrade: plan !== "team",
+        charLimit,
+        programLength
+      });
+    }
+
+    // Hard server-side cap regardless of plan (safety net)
+    if (prompt.length > 200000) {
+      return res.status(400).json({ error: "Request too large. Maximum 200,000 characters total." });
     }
 
     // ── 4. CALL CLAUDE API ────────────────────────────────────────────
@@ -73,13 +106,12 @@ export default async function handler(req, res) {
 
     const result = message.content.map(b => b.type === "text" ? b.text : "").join("");
 
-    // ── 5. INCREMENT USAGE (only on last of 4 calls = "modern" type) ──
-    // We track per full analysis (4 calls). Increment on the last call.
+    // ── 5. INCREMENT USAGE (on last of 4 calls = "modern" type) ───────
     if (analysisType === "modern") {
       await sb.from("usage").upsert({
-        user_id: user.id,
-        month_key: monthKey,
-        count: currentCount + 1,
+        user_id:    user.id,
+        month_key:  monthKey,
+        count:      currentCount + 1,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,month_key" });
     }
