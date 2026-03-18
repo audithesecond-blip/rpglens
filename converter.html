@@ -53,11 +53,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .icon-btn{background:none;border:1px solid var(--border);color:var(--text3);font-size:11px;padding:4px 10px;cursor:pointer;font-family:var(--mono);letter-spacing:0.06em;transition:all 0.2s}
 .icon-btn:hover{border-color:var(--border2);color:var(--text2)}
 
-.code-input{flex:1;background:var(--bg2);border:none;outline:none;color:#7ab8e8;font-family:var(--mono);font-size:12.5px;line-height:1.85;padding:16px;resize:none;overflow-y:auto;tab-size:4}
+.code-input{flex:1;min-height:180px;background:var(--bg2);border:none;outline:none;color:#7ab8e8;font-family:var(--mono);font-size:12.5px;line-height:1.85;padding:16px;resize:none;overflow-y:auto;tab-size:4}
 .code-input::placeholder{color:var(--text3);font-style:italic}
 
 /* OPTIONS */
-.options-panel{flex-shrink:0;border-top:1px solid var(--border);background:var(--bg3);padding:14px 16px}
+.options-panel{flex-shrink:0;border-top:1px solid var(--border);background:var(--bg3);padding:12px 16px;overflow-y:auto;max-height:340px}
 .options-label{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
 
 .opt-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
@@ -338,6 +338,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 .file-preview {
   flex: 1;
+  min-height: 160px;
   overflow-y: auto;
   padding: 14px 16px;
   font-size: 11.5px;
@@ -533,7 +534,16 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <div class="spinner"></div>
         <span class="btn-label">Convert to free format</span>
       </button>
-      <div class="char-count" id="char-count">Paste fixed-format RPG above to begin</div>
+      <div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--text3);letter-spacing:0.05em" id="char-count">Paste fixed-format RPG above to begin</span>
+          <span style="font-size:10px;color:var(--text3);letter-spacing:0.05em" id="conv-limit-label"></span>
+        </div>
+        <div style="height:2px;background:var(--border);display:none" id="line-bar-wrap">
+          <div id="line-bar-fill" style="height:100%;width:0%;transition:width 0.3s,background 0.3s;background:var(--green)"></div>
+        </div>
+        <div style="margin-top:6px;font-size:10px;color:var(--text3);text-align:right" id="conv-usage-label"></div>
+      </div>
     </div>
   </div>
 
@@ -626,22 +636,85 @@ async function initSession() {
     if (supabaseSession) {
       dot.style.background = 'var(--green)';
       txt.textContent = 'SIGNED IN';
+      await loadConversionUsage();
     } else {
       dot.style.background = 'var(--amber)';
       txt.textContent = 'NOT SIGNED IN';
     }
+    onInput();
   } catch(e) {}
 }
 
 
+// ── PLAN LIMITS (mirrors proxy) ───────────────────────────────────────
+const CONV_LINE_LIMITS  = { free: 500, starter: 1000, team: 2000, admin: 999999 };
+const CONV_LIMITS       = { free: 1,   starter: 5,    team: 20,   admin: 999999 };
+const CONV_LINE_LABELS  = { free: 'Free (500 line limit)', starter: 'Starter (1,000 line limit)', team: 'Team (2,000 line limit)', admin: 'Admin (unlimited)' };
+const CONV_LIMIT_LABELS = { free: '1 conversion/period', starter: '5 conversions/period', team: '20 conversions/period', admin: 'Unlimited' };
+
 // ── INPUT ─────────────────────────────────────────────────────────────
 function onInput() {
-  const code = getActiveCode();
-  const len  = code.length;
-  const btn  = document.getElementById('convert-btn');
-  const cc   = document.getElementById('char-count');
+  const code   = getActiveCode();
+  const len    = code.length;
+  const lines  = len > 0 ? code.split('\n').filter(l => l.trim()).length : 0;
+  const btn    = document.getElementById('convert-btn');
+  const cc     = document.getElementById('char-count');
+  const plan   = supabaseSession?.user?.user_metadata?.plan || 'free';
+  const limit  = CONV_LINE_LIMITS[plan] || 500;
+  const pct    = Math.min(100, Math.round((lines / limit) * 100));
+
   btn.disabled = len < 10;
-  cc.textContent = len > 0 ? `${len.toLocaleString()} characters` : 'Paste fixed-format RPG above to begin';
+
+  if (len === 0) {
+    cc.textContent = 'Paste fixed-format RPG above to begin';
+    document.getElementById('line-bar-wrap').style.display = 'none';
+    document.getElementById('conv-limit-label').textContent = '';
+    cc.style.color = '';
+  } else {
+    cc.textContent = `${lines.toLocaleString()} lines  ·  ${len.toLocaleString()} chars`;
+    document.getElementById('conv-limit-label').textContent = `${pct}% of ${CONV_LINE_LABELS[plan]}`;
+    document.getElementById('line-bar-wrap').style.display = 'block';
+
+    const fill = document.getElementById('line-bar-fill');
+    fill.style.width      = pct + '%';
+    fill.style.background = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--green)';
+
+    if (lines > limit) {
+      btn.disabled = true;
+      cc.style.color = 'var(--red)';
+      document.getElementById('conv-limit-label').style.color = 'var(--red)';
+    } else {
+      cc.style.color = '';
+      document.getElementById('conv-limit-label').style.color = 'var(--text3)';
+    }
+  }
+}
+
+async function loadConversionUsage() {
+  if (!supabaseSession) return;
+  try {
+    const plan  = supabaseSession.user?.user_metadata?.plan || 'free';
+    const limit = CONV_LIMITS[plan] || 1;
+    const userId = supabaseSession.user.id;
+
+    // Read from localStorage (written after each conversion)
+    const signupDate   = new Date(supabaseSession.user.created_at);
+    const daysSince    = Math.floor((new Date() - signupDate) / (1000 * 60 * 60 * 24));
+    const periodNumber = Math.floor(daysSince / 30);
+    const periodKey    = `period_${periodNumber}`;
+    const usageKey     = `rpglens_conv_${userId}_${periodKey}`;
+    const used         = parseInt(localStorage.getItem(usageKey) || '0');
+    const remaining    = Math.max(0, limit - used);
+
+    const el = document.getElementById('conv-usage-label');
+    if (plan === 'admin') {
+      el.textContent = 'Admin — unlimited conversions';
+      el.style.color = 'var(--green)';
+    } else {
+      el.textContent = `${used} of ${limit} conversions used this period  ·  ${remaining} remaining`;
+      el.style.color = remaining === 0 ? 'var(--red)' : remaining <= 1 ? 'var(--amber)' : 'var(--text3)';
+    }
+  } catch(e) {}
 }
 
 function clearInput() {
@@ -660,17 +733,29 @@ function toggleOpt(cb, id) {
 }
 
 // ── CONVERSION ────────────────────────────────────────────────────────
+// Claude max output = 16,000 tokens ≈ ~1,000 RPG lines per chunk.
+// We chunk at ~800 lines to stay safely within limits.
+const CHUNK_LINES = 800;
+
+function splitIntoChunks(code) {
+  const lines  = code.split('\n');
+  if (lines.length <= CHUNK_LINES) return [code];
+  const chunks = [];
+  for (let i = 0; i < lines.length; i += CHUNK_LINES) {
+    chunks.push(lines.slice(i, i + CHUNK_LINES).join('\n'));
+  }
+  return chunks;
+}
+
 async function runConversion() {
   const code = getActiveCode();
   if (!code) return;
-
   if (!supabaseSession) { window.location.href = '/login'; return; }
 
   originalCode = code;
   const btn = document.getElementById('convert-btn');
   btn.disabled = true;
   btn.classList.add('loading');
-  btn.querySelector('.btn-label').textContent = 'Converting...';
 
   const opts = {
     freeformat: document.getElementById('opt-freeformat').querySelector('input').checked,
@@ -680,22 +765,84 @@ async function runConversion() {
     dcl:        document.getElementById('opt-dcl').querySelector('input').checked,
   };
 
-  const prompt = buildPrompt(code, opts);
+  const chunks    = splitIntoChunks(code);
+  const totalLines = code.split('\n').length;
+  const isChunked = chunks.length > 1;
 
   try {
-    const resp = await fetch('/api/analyse', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseSession.access_token}`
-      },
-      body: JSON.stringify({ prompt, analysisType: 'convert', codeLength: code.length })
-    });
+    if (isChunked) {
+      // Multi-chunk conversion
+      btn.querySelector('.btn-label').textContent = `Converting chunk 1 of ${chunks.length}...`;
+      const allCode  = [];
+      const allNotes = [];
 
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
+      for (let i = 0; i < chunks.length; i++) {
+        btn.querySelector('.btn-label').textContent = `Converting chunk ${i+1} of ${chunks.length}...`;
 
-    renderOutput(data.result, code);
+        const chunkLabel = isChunked
+          ? `\nNOTE: This is chunk ${i+1} of ${chunks.length} of a larger program (${totalLines} total lines). ` +
+            (i === 0 ? 'Include **FREE at the top.' : 'Do NOT include **FREE again — continue from where chunk ' + i + ' ended.') +
+            (i === chunks.length - 1 ? ' This is the final chunk — include the ===NOTES=== section.' : ' Do NOT include ===NOTES=== — only include it in the final chunk.')
+          : '';
+
+        const prompt = buildPrompt(chunks[i], opts, chunkLabel);
+
+        const resp = await fetch('/api/analyse', {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${supabaseSession.access_token}`
+          },
+          body: JSON.stringify({
+            prompt,
+            analysisType: i === 0 ? 'convert' : 'convert_chunk',
+            codeLength:   code.length,
+            lineCount:    i === 0 ? totalLines : 0
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
+
+        // Split code from notes
+        const parts     = data.result.split('===NOTES===');
+        const chunkCode = parts[0].trim();
+        allCode.push(chunkCode);
+
+        if (parts[1]) {
+          try {
+            const cleaned = parts[1].replace(/```json|```/g, '').trim();
+            const notes   = JSON.parse(cleaned);
+            allNotes.push(...notes);
+          } catch(e) {}
+        }
+      }
+
+      renderOutput(allCode.join('\n\n') + (allNotes.length ? '\n===NOTES===\n' + JSON.stringify(allNotes) : ''), code);
+      saveConversionUsage();
+
+    } else {
+      // Single chunk
+      btn.querySelector('.btn-label').textContent = 'Converting...';
+      const totalLines = code.split('\n').filter(l => l.trim()).length;
+      const prompt     = buildPrompt(code, opts, '');
+      const resp = await fetch('/api/analyse', {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${supabaseSession.access_token}`
+        },
+        body: JSON.stringify({
+          prompt,
+          analysisType: 'convert',
+          codeLength:   code.length,
+          lineCount:    totalLines
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
+      renderOutput(data.result, code);
+      saveConversionUsage();
+    }
 
   } catch(e) {
     showError(e.message);
@@ -706,7 +853,7 @@ async function runConversion() {
   }
 }
 
-function buildPrompt(code, opts) {
+function buildPrompt(code, opts, chunkNote = '') {
   const optList = [];
   if (opts.freeformat) optList.push('- Convert ALL fixed-format specs (H, F, D, I, C, O) to their free-format equivalents');
   if (opts.opcodes)    optList.push('- Replace legacy op-codes: MOVE→EVAL, MOVEL→EVAL, COMP→IF, Z-ADD→EVAL, Z-SUB→EVAL, GOTO→structured loops where possible, ITER/LEAVE replace GOTO');
@@ -740,7 +887,7 @@ Types:
 - "warn" = conversion made but verify logic is correct  
 - "manual" = could not auto-convert, manual rewrite needed
 
-Fixed-format RPG to convert:
+Fixed-format RPG to convert:${chunkNote}
 ${code}`;
 }
 
@@ -1189,6 +1336,21 @@ function clearUpload() {
 function getActiveCode() {
   if (currentMode === 'upload') return uploadedCode || '';
   return document.getElementById('code-input').value.trim();
+}
+
+function saveConversionUsage() {
+  if (!supabaseSession) return;
+  try {
+    const userId       = supabaseSession.user.id;
+    const signupDate   = new Date(supabaseSession.user.created_at);
+    const daysSince    = Math.floor((new Date() - signupDate) / (1000 * 60 * 60 * 24));
+    const periodNumber = Math.floor(daysSince / 30);
+    const periodKey    = `period_${periodNumber}`;
+    const usageKey     = `rpglens_conv_${userId}_${periodKey}`;
+    const used         = parseInt(localStorage.getItem(usageKey) || '0') + 1;
+    localStorage.setItem(usageKey, String(used));
+    loadConversionUsage();
+  } catch(e) {}
 }
 
 // init

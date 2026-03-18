@@ -137,11 +137,19 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="metrics fade-in">
     <div class="metric-card">
       <div class="metric-val amber" id="m-used">—</div>
-      <div class="metric-label">Analyses this month</div>
+      <div class="metric-label">Analyses used</div>
     </div>
     <div class="metric-card">
       <div class="metric-val" id="m-remaining">—</div>
-      <div class="metric-label">Remaining this month</div>
+      <div class="metric-label">Analyses left</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val amber" id="m-conv-used">—</div>
+      <div class="metric-label">Conversions used</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val" id="m-conv-remaining">—</div>
+      <div class="metric-label">Conversions left</div>
     </div>
     <div class="metric-card">
       <div class="metric-val green" id="m-total">—</div>
@@ -153,10 +161,10 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
 
-  <!-- USAGE BAR -->
+  <!-- USAGE BAR — ANALYSES -->
   <div class="usage-section fade-in">
     <div class="usage-header">
-      <div class="usage-title">Monthly usage</div>
+      <div class="usage-title">Analysis usage</div>
       <a href="#" class="upgrade-cta" id="upgrade-link">&#8679; Upgrade plan</a>
     </div>
     <div class="usage-bar-wrap">
@@ -164,7 +172,22 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
     <div class="usage-counts">
       <span id="usage-text">0 of 3 analyses used</span>
-      <span id="reset-text">Resets 1st of next month</span>
+      <span id="reset-text">Resets in 30 days</span>
+    </div>
+  </div>
+
+  <!-- USAGE BAR — CONVERSIONS -->
+  <div class="usage-section fade-in">
+    <div class="usage-header">
+      <div class="usage-title">Conversion usage</div>
+      <a href="/converter" class="upgrade-cta">&#8644; Go to converter</a>
+    </div>
+    <div class="usage-bar-wrap">
+      <div class="usage-bar-fill" id="conv-fill" style="width:0%;background:var(--green)"></div>
+    </div>
+    <div class="usage-counts">
+      <span id="conv-text">0 of 1 conversions used</span>
+      <span id="conv-reset-text"></span>
     </div>
   </div>
 
@@ -204,7 +227,10 @@ const sb = createClient(
   window.RPGLENS_CONFIG.SUPABASE_ANON
 );
 
-const PLAN_LIMITS = { free: 3, starter: 25, team: 999, admin: 999999 };
+const PLAN_LIMITS      = { free: 3,   starter: 25,  team: 150,  admin: 999999 };
+const CONV_LIMITS      = { free: 1,   starter: 5,   team: 20,   admin: 999999 };
+const PLAN_PRICES      = { free: '₹0', starter: '₹2,999/mo', team: '₹9,999/mo', admin: 'Admin' };
+const CONV_LINE_LIMITS = { free: 500, starter: 1000, team: 2000, admin: 999999 };
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
@@ -230,42 +256,58 @@ async function init() {
   planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
   if (plan === 'starter' || plan === 'team') planBadge.classList.add('starter');
 
-  // ── Rolling 30-day period (mirrors api/analyse.js logic) ──────────
-  const signupDate      = new Date(user.created_at);
-  const now             = new Date();
-  const daysSinceSignup = Math.floor((now - signupDate) / (1000 * 60 * 60 * 24));
-  const periodNumber    = Math.floor(daysSinceSignup / 30);
-  const periodStart     = new Date(signupDate.getTime() + periodNumber * 30 * 24 * 60 * 60 * 1000);
-  const periodEnd       = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const periodKey       = `period_${periodNumber}`;
+  // ── Rolling 30-day period ─────────────────────────────────────────
+  const signupDate   = new Date(user.created_at);
+  const now          = new Date();
+  const daysSince    = Math.floor((now - signupDate) / (1000 * 60 * 60 * 24));
+  const periodNumber = Math.floor(daysSince / 30);
+  const periodStart  = new Date(signupDate.getTime() + periodNumber * 30 * 24 * 60 * 60 * 1000);
+  const periodEnd    = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const periodKey    = `period_${periodNumber}`;
+  const daysLeft     = Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24));
+  const resetLabel   = periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const resetStr     = `Resets ${resetLabel} (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`;
 
-  const usageKey  = `rpglens_usage_${user.id}_${periodKey}`;
-  const used      = parseInt(localStorage.getItem(usageKey) || '0');
-  const limit     = PLAN_LIMITS[plan] || 3;
-  const remaining = Math.max(0, limit - used);
-  const totalKey  = `rpglens_total_${user.id}`;
-  const total     = parseInt(localStorage.getItem(totalKey) || '0');
+  // ── Analysis usage ────────────────────────────────────────────────
+  const usageKey      = `rpglens_usage_${user.id}_${periodKey}`;
+  const used          = parseInt(localStorage.getItem(usageKey) || '0');
+  const analysisLimit = PLAN_LIMITS[plan] || 3;
+  const remaining     = Math.max(0, analysisLimit - used);
+  const totalKey      = `rpglens_total_${user.id}`;
+  const total         = parseInt(localStorage.getItem(totalKey) || '0');
 
-  const daysLeft    = Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24));
-  const resetLabel  = periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  document.getElementById('m-used').textContent      = plan === 'admin' ? '∞' : used;
+  document.getElementById('m-remaining').textContent = plan === 'admin' ? '∞' : remaining;
+  document.getElementById('m-remaining').className   = 'metric-val ' + (remaining > 0 || plan === 'admin' ? 'green' : 'red');
+  document.getElementById('m-total').textContent     = total;
+  document.getElementById('m-plan').textContent      = plan.charAt(0).toUpperCase() + plan.slice(1) + (PLAN_PRICES[plan] && plan !== 'free' && plan !== 'admin' ? ' — ' + PLAN_PRICES[plan] : '');
 
-  document.getElementById('m-used').textContent = used;
-  document.getElementById('m-remaining').textContent = remaining;
-  document.getElementById('m-remaining').className = 'metric-val ' + (remaining > 0 ? 'green' : 'red');
-  document.getElementById('m-total').textContent = total;
-  document.getElementById('m-plan').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
-
-  // Usage bar
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const pct  = analysisLimit > 0 && plan !== 'admin' ? Math.min(100, Math.round((used / analysisLimit) * 100)) : 0;
   const fill = document.getElementById('usage-fill');
-  fill.style.width = pct + '%';
+  fill.style.width      = pct + '%';
   fill.style.background = pct >= 90 ? 'var(--red)' : pct >= 60 ? 'var(--amber)' : 'var(--green)';
-  document.getElementById('usage-text').textContent = `${used} of ${limit} analyses used`;
-  document.getElementById('reset-text').textContent = `Resets ${resetLabel} (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`;
+  document.getElementById('usage-text').textContent  = plan === 'admin' ? 'Unlimited analyses' : `${used} of ${analysisLimit} analyses used`;
+  document.getElementById('reset-text').textContent  = plan === 'admin' ? '' : resetStr;
 
-  if (plan !== 'free') {
-    document.getElementById('upgrade-link').style.display = 'none';
-  }
+  if (plan !== 'free') document.getElementById('upgrade-link').style.display = 'none';
+
+  // ── Conversion usage ─────────────────────────────────────────────
+  const convKey       = `rpglens_conv_${user.id}_${periodKey}`;
+  const convUsed      = parseInt(localStorage.getItem(convKey) || '0');
+  const convLimit     = CONV_LIMITS[plan] || 1;
+  const convRemaining = Math.max(0, convLimit - convUsed);
+  const lineLimit     = CONV_LINE_LIMITS[plan] || 500;
+
+  document.getElementById('m-conv-used').textContent      = plan === 'admin' ? '∞' : convUsed;
+  document.getElementById('m-conv-remaining').textContent = plan === 'admin' ? '∞' : convRemaining;
+  document.getElementById('m-conv-remaining').className   = 'metric-val ' + (convRemaining > 0 || plan === 'admin' ? 'green' : 'red');
+
+  const convPct  = convLimit > 0 && plan !== 'admin' ? Math.min(100, Math.round((convUsed / convLimit) * 100)) : 0;
+  const convFill = document.getElementById('conv-fill');
+  convFill.style.width      = convPct + '%';
+  convFill.style.background = convPct >= 90 ? 'var(--red)' : convPct >= 60 ? 'var(--amber)' : 'var(--green)';
+  document.getElementById('conv-text').textContent       = plan === 'admin' ? 'Unlimited conversions' : `${convUsed} of ${convLimit} conversions used  ·  up to ${lineLimit.toLocaleString()} lines each`;
+  document.getElementById('conv-reset-text').textContent = plan === 'admin' ? '' : resetStr;
 
   // History from localStorage
   const histKey = `rpglens_history_${user.id}`;
