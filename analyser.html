@@ -1503,48 +1503,54 @@ function cleanIBMiSourceListing(raw) {
   const lines   = raw.split('\n');
   const cleaned = [];
 
-  for (const line of lines) {
+  for (let line of lines) {
+    // Step 1: Iteratively strip ALL leading noise until stable
     let t = line.trimEnd();
-    if (!t.trim()) continue;
+    let prev = null;
+    while (t !== prev) {
+      prev = t;
+      t = t
+        .replace(/^\s+/, '')
+        .replace(/^\|+\s*/, '')
+        .replace(/^\/+\d*\s+/, '')
+        .replace(/^\d{4,7}(?:\.\d{2})?\s+/, '')
+        .replace(/^[A-Z]{1,3}\d{1,4}\s+/, '')
+        .replace(/^\d{1,3}\s+(?=[A-Z*\/])/, '')
+        .replace(/^\d{2}\/\d{2}\/\d{2,4}\s+/, '');
+    }
 
-    // ── Skip header/noise lines ───────────────────────────────────
-    if (/5[76][67]\d\w/.test(t)) continue;
-    if (/^V\dR\dM\d/.test(t.trim())) continue;
-    if (/SEU SOURCE LISTING/.test(t)) continue;
-    if (/SEQNBR\*/.test(t)) continue;
-    if (/^\s*\.[\s\.]+/.test(t)) continue;
-    if (/^\s*PAGE\s+\d+\s*$/.test(t)) continue;
-    if (/^[\s|*F=\-]{0,3}[*F=\-]{6,}\s*$/.test(t)) continue;
+    // Step 2: Strip trailing date
+    t = t.replace(/\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/, '').trimEnd();
 
-    // ── Skip lines that are ONLY a date ──────────────────────────
-    if (/^[\s|\/\d]{0,4}\d{2}\/\d{2}\/\d{2,4}\s*$/.test(t)) continue;
+    if (!t || t.length < 2) continue;
 
-    // ── Strip ALL leading noise: pipes, slashes, partial seq nums ─
-    t = t
-      .replace(/^\s*\|+\s*/g, '')           // leading pipes
-      .replace(/^\/\d+\s+/, '')             // /4 /1 /2 etc
-      .replace(/^\s*\d{4,7}(?:\.\d{2})?\s+/, '') // full seq numbers with space
-      .replace(/^\s*\d{4,7}(?=[A-Z*\/ ])/, '')    // seq concatenated onto spec (no space)
-      .replace(/^\s*\d{1,3}\s+(?=[A-Z*])/, '');   // short remnants
+    // Step 3: Skip known noise
+    const up = t.toUpperCase();
+    if (/^5[76][67]\d/.test(up)) continue;
+    if (/^V\dR\dM\d/.test(up)) continue;
+    if (/^SEU SOURCE/.test(up)) continue;
+    if (/^SEQNBR/.test(up)) continue;
+    if (/^SOURCE FILE/.test(up)) continue;
+    if (/^MEMBER[\s\.]/.test(up)) continue;
+    if (/^IPLIBS\//.test(up)) continue;
+    if (/^QRPGLESRC|^QCLSRC|^QRPGSRC|^QRPGSRC/.test(up)) continue;
+    if (/^\.[\s\.]{2,}/.test(t)) continue;
+    if (/^PAGE\s+\d+$/.test(up)) continue;
+    if (/^[*=\-]{5,}$/.test(t.replace(/\s/g, ''))) continue;
+    if (/^F\*{5,}/.test(t)) continue;
 
-    // ── Strip inline date from START ──────────────────────────────
-    t = t.replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}\s+/, '');
+    // Step 4: Whitelist — only keep lines that look like RPG
+    const firstToken = t.split(/\s+/)[0].toUpperCase();
+    const isFixedSpec   = /^[HFEIDCOPMAB\*]$/.test(firstToken);
+    const looksLikeSpec = /^[HFEIDCOPMAB\*]\s/.test(t);
+    const isFreeKeyword = /^(\*\*FREE|\*\*NOMAIN|DCL-|END-|IF|ELSE|ELSEIF|ENDIF|DOW|DOU|FOR|ENDDO|ENDFOR|SELECT|WHEN|OTHER|ENDSL|MONITOR|ENDMON|RETURN|LEAVE|ITER|EXSR|CALLP|EVAL|CHAIN|READ|READP|READE|WRITE|UPDATE|DELETE|OPEN|CLOSE|SETLL|SETGT|EXFMT|DSPLY|DUMP|RESET|BEGSR|ENDSR|SORTA|CLEAR|EXEC|ENDEXEC|FETCH|INSERT|FROM|WHERE|INTO|ON-ERROR)/.test(firstToken);
+    const isComment     = /^\*/.test(t);
 
-    // ── Strip trailing date at END (handles 1 or 2 digit month/day) ─
-    t = t.replace(/\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/, '');
-    // Also handle date directly concatenated to a number (no space): 16009/10/98
-    t = t.replace(/\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/, '');
+    if (!isFixedSpec && !looksLikeSpec && !isFreeKeyword && !isComment) continue;
 
-    t = t.trimEnd();
-    if (!t.trim()) continue;
-    if (t.trim().length < 2) continue;
-
-    // ── Skip pure divider remnants ────────────────────────────────
-    if (/^[*F]{4,}$/.test(t.trim().replace(/\s/g, ''))) continue;
-
-    // ── Compress multiple spaces (preserves tokens for Claude) ───
-    const compressed = t.trim().replace(/\s{2,}/g, ' ');
-    if (compressed) cleaned.push(compressed);
+    // Step 5: Compress internal whitespace
+    const compressed = t.replace(/\s{2,}/g, ' ');
+    if (compressed.trim()) cleaned.push(compressed);
   }
 
   if (cleaned.length < 5) return raw;
