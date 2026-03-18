@@ -1519,34 +1519,36 @@ function cleanIBMiSourceListing(raw) {
         .replace(/^\d{2}\/\d{2}\/\d{2,4}\s+/, '');
     }
 
-    // Step 2: Strip trailing date
+    // Step 2: Strip trailing date (MM/DD/YY or MM/DD/YYYY)
     t = t.replace(/\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/, '').trimEnd();
 
     if (!t || t.length < 2) continue;
 
-    // Step 3: Skip known noise
+    // Step 3: Skip definite listing noise
     const up = t.toUpperCase();
-    if (/^5[76][67]\d/.test(up)) continue;
-    if (/^V\dR\dM\d/.test(up)) continue;
+    if (/^5[76][67]\d/.test(up)) continue;           // 5770WDS
+    if (/^V\dR\dM\d/.test(up)) continue;             // V7R4M0
     if (/^SEU SOURCE/.test(up)) continue;
     if (/^SEQNBR/.test(up)) continue;
     if (/^SOURCE FILE/.test(up)) continue;
     if (/^MEMBER[\s\.]/.test(up)) continue;
     if (/^IPLIBS\//.test(up)) continue;
-    if (/^QRPGLESRC|^QCLSRC|^QRPGSRC|^QRPGSRC/.test(up)) continue;
+    if (/^QRPGLESRC|^QCLSRC|^QRPGSRC/.test(up)) continue;
     if (/^\.[\s\.]{2,}/.test(t)) continue;
     if (/^PAGE\s+\d+$/.test(up)) continue;
-    if (/^[*=\-]{5,}$/.test(t.replace(/\s/g, ''))) continue;
-    if (/^F\*{5,}/.test(t)) continue;
+    if (/^[*=\-]{6,}$/.test(t.replace(/\s/g, ''))) continue;  // ==== ---- only
 
-    // Step 4: Whitelist — only keep lines that look like RPG
-    const firstToken = t.split(/\s+/)[0].toUpperCase();
-    const isFixedSpec   = /^[HFEIDCOPMAB\*]$/.test(firstToken);
-    const looksLikeSpec = /^[HFEIDCOPMAB\*]\s/.test(t);
-    const isFreeKeyword = /^(\*\*FREE|\*\*NOMAIN|DCL-|END-|IF|ELSE|ELSEIF|ENDIF|DOW|DOU|FOR|ENDDO|ENDFOR|SELECT|WHEN|OTHER|ENDSL|MONITOR|ENDMON|RETURN|LEAVE|ITER|EXSR|CALLP|EVAL|CHAIN|READ|READP|READE|WRITE|UPDATE|DELETE|OPEN|CLOSE|SETLL|SETGT|EXFMT|DSPLY|DUMP|RESET|BEGSR|ENDSR|SORTA|CLEAR|EXEC|ENDEXEC|FETCH|INSERT|FROM|WHERE|INTO|ON-ERROR)/.test(firstToken);
-    const isComment     = /^\*/.test(t);
+    // Step 4: Keep anything that starts with a valid RPG character
+    // Fixed-format spec: first char is H F E I D C O P M A B
+    // Comments: first char is *
+    // Free-format: starts with ** or known keyword
+    const firstChar = t[0].toUpperCase();
 
-    if (!isFixedSpec && !looksLikeSpec && !isFreeKeyword && !isComment) continue;
+    const isFixedFormatSpec = /^[HFEIDCOPMAB\*]/.test(firstChar);
+    const isFreeFormat      = /^(\*\*|DCL-|END-PROC|END-DS|END-IF|END-DO|END-FOR|END-SL|END-MON)/i.test(t);
+    const isFreeKeyword     = /^(IF |ELSE |ELSEIF |DOW |DOU |FOR |ENDDO|ENDFOR|SELECT|WHEN |OTHER|ENDSL|MONITOR|ENDMON|RETURN|LEAVE|ITER|EXSR |CALLP |EVAL |CHAIN |READ |READP|READE|WRITE |UPDATE|DELETE|OPEN |CLOSE|SETLL|SETGT|EXFMT|DSPLY|BEGSR|ENDSR|SORTA|CLEAR|ON-ERROR|EXEC SQL|ENDEXEC)/i.test(t);
+
+    if (!isFixedFormatSpec && !isFreeFormat && !isFreeKeyword) continue;
 
     // Step 5: Compress internal whitespace
     const compressed = t.replace(/\s{2,}/g, ' ');
