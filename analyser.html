@@ -1429,26 +1429,118 @@ async function extractDocx(file) {
 }
 
 async function extractPdf(file) {
-  // Load PDF.js for PDF extraction
   if (!window.pdfjsLib) {
     await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
     window.pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
   }
+
   document.getElementById('proc-sub-label').textContent = 'Parsing PDF pages...';
   const arrayBuffer = await file.arrayBuffer();
-  const pdf         = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const pages       = [];
+  const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer, verbosity: 0 }).promise;
+  const allLines = [];
 
   for (let i = 1; i <= pdf.numPages; i++) {
     document.getElementById('proc-sub-label').textContent =
       `Extracting page ${i} of ${pdf.numPages}...`;
     const page    = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const str     = content.items.map(item => item.str).join(' ');
-    pages.push(str);
+    const content = await page.getTextContent({ normalizeWhitespace: false });
+
+    // Group text items by Y position (line) — IBM i PDFs are positional
+    const lineMap = {};
+    for (const item of content.items) {
+      if (!item.str || item.str.trim() === '') continue;
+      // Round Y to nearest 2 units to group items on same line
+      const y = Math.round(item.transform[5] / 2) * 2;
+      if (!lineMap[y]) lineMap[y] = [];
+      lineMap[y].push({ x: item.transform[4], text: item.str });
+    }
+
+    // Sort lines top-to-bottom (descending Y in PDF coords), items left-to-right
+    const sortedYs = Object.keys(lineMap).map(Number).sort((a, b) => b - a);
+    for (const y of sortedYs) {
+      const items = lineMap[y].sort((a, b) => a.x - b.x);
+      const line  = items.map(i => i.text).join('');
+      allLines.push(line);
+    }
   }
-  return pages.join('\n');
+
+  const rawText = allLines.join('\n');
+
+  // Detect if this is an IBM i SEU source listing and clean it
+  const isIBMiListing = /5770\w+|5769\w+|SEQNBR|SEU SOURCE|IPLIBS|QRPGLESRC|QCLSRC|V\dR\dM\d/.test(rawText);
+  if (isIBMiListing) {
+    document.getElementById('proc-sub-label').textContent = 'Detected IBM i source listing — cleaning...';
+    return cleanIBMiSourceListing(rawText);
+  }
+
+  return rawText;
+}
+
+function cleanIBMiSourceListing(raw) {
+  const lines  = raw.split('\n');
+  const cleaned = [];
+
+  for (const line of lines) {
+    const t = line.trim();
+
+    // Skip blank lines
+    if (!t) continue;
+
+    // Skip IBM i header lines
+    if (/^5[76][67][0-9]\w+/.test(t)) continue;              // 5770WDS, 5769RG1 etc
+    if (/^V\dR\dM\d/.test(t)) continue;                       // V7R4M0
+    if (/SEU SOURCE LISTING/.test(t)) continue;
+    if (/SEQNBR\*\.\.\.\+/.test(t)) continue;                 // Column ruler
+    if (/^\.\s*\.\s*\.\s*\./.test(t)) continue;               // Dot leader lines
+    if (/^IPLIBS|^QRPGLESRC|^QCLSRC|^QRPGSRC/.test(t)) continue;
+    if (/^\s*PAGE\s+\d+\s*$/.test(t)) continue;               // Page number
+    if (/^F\*{10,}/.test(t)) continue;                        // F***** divider lines
+    if (/^\*{10,}/.test(t)) continue;                         // ***** divider lines
+    if (/^\s*\d{2}\/\d{2}\/\d{2,4}\s+\d+\s+F\*/.test(t)) continue; // Date + seq + F* comment
+
+    // Match SEU source line format:
+    // [seq] [date?] [spec line]
+    // e.g: "0001.00          FSALES     IF  E            DISK"
+    // e.g: "0006.00 09/10/98 C                   READ  SALES"
+    const seqMatch = t.match(
+      /^(\d{4,7}(?:\.\d{2})?)\s+(?:\d{2}\/\d{2}\/\d{2,4}\s+)?(.*)$/
+    );
+
+    if (seqMatch) {
+      const codePart = seqMatch[2].trimEnd();
+      // Skip if remaining part is just a comment header or empty
+      if (!codePart || /^F\*/.test(codePart.trim())) continue;
+      cleaned.push(codePart);
+      continue;
+    }
+
+    // Free-format RPG lines (no sequence number — some export formats)
+    // Keep lines that look like RPG specs or free-format keywords
+    if (/^\s*(\*\*FREE|\*\*NOMAIN)/i.test(t)) { cleaned.push(t); continue; }
+    if (/^\s*(DCL-[SFPC]|DCL-F|DCL-DS|DCL-SUBF|DCL-PROC|END-PROC|END-DS|END-IF|END-DO|END-FOR|END-MON|END-SL)/i.test(t)) { cleaned.push(t); continue; }
+    if (/^\s*(IF|ELSE|ELSEIF|ENDIF|DOW|DOU|FOR|ENDDO|ENDFOR|SELECT|WHEN|OTHER|ENDSL|MONITOR|ON-ERROR|ENDMON|RETURN|LEAVE|ITER|EXSR|CALLP|EVAL|CHAIN|READ|READP|READE|WRITE|UPDATE|DELETE|OPEN|CLOSE|SETLL|SETGT|EXFMT|DSPLY|DUMP|RESET)/i.test(t)) { cleaned.push(t); continue; }
+
+    // Keep lines that start with a valid RPG spec letter in col 6 (fixed format)
+    // After stripping 5-char sequence, col 6 = spec type
+    const fixedSpec = t.match(/^.{5}([HFEIDCOPMABh feidcopma])/);
+    if (fixedSpec) { cleaned.push(t); continue; }
+  }
+
+  // Final pass — remove any remaining sequence numbers at start of lines
+  const finalLines = cleaned.map(line => {
+    // Remove leading sequence number if present (e.g. "0001.00 " at start)
+    return line.replace(/^\d{4,7}(?:\.\d{2})?\s+/, '');
+  });
+
+  const result = finalLines.join('\n').trim();
+
+  // If we cleaned too aggressively (less than 5 lines), return raw text instead
+  if (finalLines.length < 5) {
+    return raw;
+  }
+
+  return result;
 }
 
 function loadScript(src) {
@@ -1481,7 +1573,10 @@ function showFileLoaded(file, text, ext) {
 
   const kb    = (file.size / 1024).toFixed(1);
   const lines = text.split('\n').length;
-  sizeEl.textContent = `${kb} KB · ${lines.toLocaleString()} lines extracted`;
+  const isIBMi = /5770\w+|5769\w+|SEQNBR|SEU SOURCE/i.test('') === false &&
+                 file.name.toLowerCase().endsWith('.pdf') &&
+                 lines > 5;
+  sizeEl.textContent = `${kb} KB · ${lines.toLocaleString()} lines extracted${file.name.toLowerCase().endsWith('.pdf') && lines > 5 ? ' · IBM i listing cleaned' : ''}`;
 
   previewEl.textContent = text;
 
