@@ -1752,10 +1752,21 @@ Program name, language, format (fixed/free), estimated lines of code, primary fu
 ## EXECUTIVE SUMMARY
 [Non-technical 3-4 sentence summary suitable for a manager or auditor]
 
-## FILE & DATA STRUCTURES
-Create a table with columns: Field Name | Type | Length | Description | Used For
+## FILES USED
+Create a table with columns: File Name | Access | Usage | Description
+- File Name: the F-spec filename (e.g. CUSTMAST)
+- Access: how it is opened — Input, Output, Update, Combined
+- Usage: Keyed, Sequential, Full procedural etc
+- Description: what business data this file holds
+Do NOT include a Length column for files — files do not have a length.
 
-## SUBROUTINES & PROCEDURES  
+## DATA STRUCTURES & KEY FIELDS
+Create a table with columns: Field/DS Name | Type | Length | Description | Used For
+- Only include D-spec data structures and key fields here, not files
+- Type: Packed, Char, Data Structure, Array, Pointer etc
+- Length: the declared length/precision (e.g. 9,2 or 10 or 80)
+
+## SUBROUTINES & PROCEDURES
 List each subroutine/procedure with: Name | Purpose | Called From | Returns
 
 ## ERROR HANDLING
