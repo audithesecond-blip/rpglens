@@ -126,21 +126,10 @@ body::before {
   animation: pulse 2s ease-in-out infinite;
 }
 
-.btn-sm {
-  font-family: var(--display);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 16px;
-  background: var(--amber);
-  color: var(--bg);
-  border: none;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
-  transition: background 0.2s;
-  text-decoration: none;
-}
-.btn-sm:hover { background: var(--amber2); }
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:1px solid transparent;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block;white-space:nowrap;border-radius:2px}
+.btn-sm:hover{opacity:0.88}
+.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
 
 /* ── MAIN LAYOUT ── */
 .app-body {
@@ -974,8 +963,9 @@ body::before {
       <div id="user-av" style="width:20px;height:20px;border-radius:50%;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:9px;color:var(--amber)">?</div>
       <span id="user-name">...</span>
     </div>
-    <a href="/dashboard" class="btn-sm" style="text-decoration:none">Dashboard</a>
-    <a href="/" class="btn-sm" style="background:transparent;border:1px solid var(--border2);color:var(--text2);text-decoration:none;clip-path:none;padding:6px 14px;font-size:11px">← Home</a>
+    <a href="/converter" class="btn-sm" style="background:var(--green);border-color:var(--green)">&#8644; Converter</a>
+    <a href="/dashboard" class="btn-sm">Dashboard</a>
+    <a href="/" class="btn-sm ghost">← Home</a>
   </div>
 </div>
 

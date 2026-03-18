@@ -36,9 +36,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
 .api-status{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0.1em;color:var(--text3);padding:4px 10px;border:1px solid var(--border)}
 .api-status .dot{width:6px;height:6px;border-radius:50%;background:var(--border2)}
-.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:none;cursor:pointer;letter-spacing:0.04em;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);transition:background 0.2s;text-decoration:none;display:inline-block}
-.btn-sm:hover{background:var(--amber2)}
-.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);clip-path:none;padding:5px 14px}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:1px solid transparent;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block;white-space:nowrap;border-radius:2px}
+.btn-sm:hover{opacity:0.88}
+.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
 .btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
 
 /* LAYOUT */
@@ -415,6 +415,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="dot" id="api-dot"></div>
       <span id="api-status-text">CHECKING SESSION</span>
     </div>
+    <a href="/analyser" class="btn-sm">+ Analyser</a>
     <a href="/dashboard" class="btn-sm ghost">Dashboard</a>
     <a href="/" class="btn-sm ghost">← Home</a>
   </div>

@@ -36,10 +36,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .user-avatar{width:22px;height:22px;border-radius:50%;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:10px;color:var(--amber);flex-shrink:0}
 .plan-badge{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;background:rgba(46,194,126,0.1);border:1px solid rgba(46,194,126,0.3);color:var(--green)}
 .plan-badge.starter{background:rgba(232,160,32,0.1);border-color:var(--amber-dim);color:var(--amber)}
-.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:none;cursor:pointer;letter-spacing:0.04em;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);transition:background 0.2s;text-decoration:none}
-.btn-sm:hover{background:var(--amber2)}
-.btn-ghost{font-family:var(--mono);font-size:11px;padding:5px 14px;background:transparent;border:1px solid var(--border2);color:var(--text3);cursor:pointer;letter-spacing:0.06em;transition:all 0.2s}
-.btn-ghost:hover{border-color:var(--border2);color:var(--text2)}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:1px solid transparent;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block;white-space:nowrap;border-radius:2px}
+.btn-sm:hover{opacity:0.88}
+
 
 /* MAIN */
 .main{flex:1;overflow-y:auto;padding:32px 32px}
@@ -124,7 +123,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <span id="user-email">Loading...</span>
     </div>
     <span class="plan-badge" id="plan-badge">Free</span>
-    <a href="/analyser" class="btn-sm">+ New analysis</a>
+    <a href="/analyser"  class="btn-sm">+ New analysis</a>
+    <a href="/converter" class="btn-sm" style="background:var(--green);border-color:var(--green)">&#8644; New conversion</a>
     <button class="btn-ghost" onclick="signOut()">Sign out</button>
   </div>
 </div>
