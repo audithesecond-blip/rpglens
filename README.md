@@ -8,7 +8,7 @@ AI-powered RPG code analyser. Paste or upload any IBM i / RPG source code and ge
 
 ## Pages
 - `/` — Landing page
-- `/analyser` — The analysis tool
+- `/analyser` — The analysis tool 
 
 ## Tech stack
 - Pure HTML/CSS/JS — no framework, no build step
