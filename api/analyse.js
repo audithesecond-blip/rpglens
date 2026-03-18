@@ -106,15 +106,15 @@ export default async function handler(req, res) {
 
     const result = message.content.map(b => b.type === "text" ? b.text : "").join("");
 
-    // ── 5. INCREMENT USAGE (on last of 4 calls = "modern" type) ───────
-    if (analysisType === "modern") {
-      await sb.from("usage").upsert({
-        user_id:    user.id,
-        month_key:  monthKey,
-        count:      currentCount + 1,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "user_id,month_key" });
-    }
+    // ── 5. INCREMENT USAGE on every successful analysis call ──────────
+    // Each tab = 1 API call. We count each call so the monthly limit
+    // applies per analysis (4 calls). Increment every time.
+    await sb.from("usage").upsert({
+      user_id:    user.id,
+      month_key:  monthKey,
+      count:      currentCount + 1,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id,month_key" });
 
     return res.status(200).json({ result });
 
