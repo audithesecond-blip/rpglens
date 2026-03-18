@@ -1148,18 +1148,6 @@ function showFileLoaded(file, text, ext) {
   iconEl.className   = `file-type-icon ${typeClass}`;
   nameEl.textContent = file.name;
 
-  // ── Set program name from filename ────────────────────────────────
-  // Strip extension and clean up: "SAR248 (1).pdf" → "SAR248"
-  const baseName = file.name
-    .replace(/\.[^.]+$/, '')           // remove extension
-    .replace(/\s*\(\d+\)\s*$/, '')     // remove trailing (1), (2) etc
-    .replace(/[_\-]+/g, ' ')           // underscores/dashes to spaces
-    .trim()
-    .toUpperCase();
-  if (baseName) {
-    document.getElementById('program-name').textContent = baseName;
-  }
-
   const kb    = (file.size / 1024).toFixed(1);
   const lines = text.split('\n').length;
   sizeEl.textContent = `${kb} KB · ${lines.toLocaleString()} lines extracted${file.name.toLowerCase().endsWith('.pdf') && lines > 5 ? ' · IBM i listing cleaned' : ''}`;
