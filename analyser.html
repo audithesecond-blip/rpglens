@@ -1440,35 +1440,77 @@ async function extractPdf(file) {
   const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer, verbosity: 0 }).promise;
   const allLines = [];
 
+  // Sample first page to detect character width and left margin
+  let charWidth = 0;
+  let leftMargin = 0;
+
   for (let i = 1; i <= pdf.numPages; i++) {
     document.getElementById('proc-sub-label').textContent =
       `Extracting page ${i} of ${pdf.numPages}...`;
+
     const page    = await pdf.getPage(i);
     const content = await page.getTextContent({ normalizeWhitespace: false });
 
-    // Group text items by Y position (line) — IBM i PDFs are positional
-    const lineMap = {};
-    for (const item of content.items) {
-      if (!item.str || item.str.trim() === '') continue;
-      // Round Y to nearest 2 units to group items on same line
-      const y = Math.round(item.transform[5] / 2) * 2;
-      if (!lineMap[y]) lineMap[y] = [];
-      lineMap[y].push({ x: item.transform[4], text: item.str });
+    // On first page: calibrate character width from font size
+    if (i === 1 && content.items.length > 0) {
+      // Find the most common font height (= char height for monospace)
+      const heights = content.items
+        .filter(it => it.str && it.str.trim())
+        .map(it => Math.abs(it.transform[3]));
+      heights.sort((a, b) => a - b);
+      const medianHeight = heights[Math.floor(heights.length / 2)] || 7;
+      // For Courier/monospace: char width ≈ 0.6 × height
+      charWidth = medianHeight * 0.601;
+
+      // Left margin = minimum X of non-empty items
+      const xs = content.items
+        .filter(it => it.str && it.str.trim())
+        .map(it => it.transform[4]);
+      leftMargin = Math.min(...xs);
     }
 
-    // Sort lines top-to-bottom (descending Y in PDF coords), items left-to-right
+    // Group text items by Y position
+    const lineMap = {};
+    for (const item of content.items) {
+      if (!item.str) continue;
+      const y = Math.round(item.transform[5] / 2) * 2;
+      if (!lineMap[y]) lineMap[y] = [];
+      lineMap[y].push({
+        x:    item.transform[4],
+        text: item.str,
+        w:    item.width || (item.str.length * charWidth)
+      });
+    }
+
+    // Reconstruct each line as fixed-width text using column positions
     const sortedYs = Object.keys(lineMap).map(Number).sort((a, b) => b - a);
+
     for (const y of sortedYs) {
       const items = lineMap[y].sort((a, b) => a.x - b.x);
-      const line  = items.map(i => i.text).join('');
-      allLines.push(line);
+
+      // Build a fixed-width buffer — 256 chars wide to be safe
+      const buf = new Array(256).fill(' ');
+
+      for (const item of items) {
+        if (!item.text) continue;
+        // Calculate column from X position
+        const col = Math.max(0, Math.round((item.x - leftMargin) / charWidth));
+        for (let c = 0; c < item.text.length; c++) {
+          const pos = col + c;
+          if (pos < buf.length) buf[pos] = item.text[c];
+        }
+      }
+
+      // Trim trailing spaces but keep internal spacing intact
+      const line = buf.join('').trimEnd();
+      if (line.trim()) allLines.push(line);
     }
   }
 
   const rawText = allLines.join('\n');
 
-  // Detect if this is an IBM i SEU source listing and clean it
-  const isIBMiListing = /5770\w+|5769\w+|SEQNBR|SEU SOURCE|IPLIBS|QRPGLESRC|QCLSRC|V\dR\dM\d/.test(rawText);
+  // Detect IBM i SEU source listing
+  const isIBMiListing = /5770\w+|5769\w+|SEQNBR|SEU SOURCE|QRPGLESRC|QCLSRC|V\dR\dM\d/.test(rawText);
   if (isIBMiListing) {
     document.getElementById('proc-sub-label').textContent = 'Detected IBM i source listing — cleaning...';
     return cleanIBMiSourceListing(rawText);
@@ -1478,67 +1520,70 @@ async function extractPdf(file) {
 }
 
 function cleanIBMiSourceListing(raw) {
-  const lines  = raw.split('\n');
+  const lines   = raw.split('\n');
   const cleaned = [];
 
   for (const line of lines) {
-    const t = line.trim();
+    // Work on the raw line (not trimmed) to preserve column positions
+    const t = line.trimEnd();
+    const trimmed = t.trim();
 
     // Skip blank lines
-    if (!t) continue;
+    if (!trimmed) continue;
 
-    // Skip IBM i header lines
-    if (/^5[76][67][0-9]\w+/.test(t)) continue;              // 5770WDS, 5769RG1 etc
-    if (/^V\dR\dM\d/.test(t)) continue;                       // V7R4M0
-    if (/SEU SOURCE LISTING/.test(t)) continue;
-    if (/SEQNBR\*\.\.\.\+/.test(t)) continue;                 // Column ruler
-    if (/^\.\s*\.\s*\.\s*\./.test(t)) continue;               // Dot leader lines
-    if (/^IPLIBS|^QRPGLESRC|^QCLSRC|^QRPGSRC/.test(t)) continue;
-    if (/^\s*PAGE\s+\d+\s*$/.test(t)) continue;               // Page number
-    if (/^F\*{10,}/.test(t)) continue;                        // F***** divider lines
-    if (/^\*{10,}/.test(t)) continue;                         // ***** divider lines
-    if (/^\s*\d{2}\/\d{2}\/\d{2,4}\s+\d+\s+F\*/.test(t)) continue; // Date + seq + F* comment
+    // ── Skip IBM i listing header/noise lines ──────────────────────
+    if (/5[76][67]\d\w/.test(trimmed)) continue;          // 5770WDS etc
+    if (/^V\dR\dM\d/.test(trimmed)) continue;             // V7R4M0
+    if (/SEU SOURCE LISTING/.test(trimmed)) continue;
+    if (/SEQNBR\*/.test(trimmed)) continue;               // Column ruler
+    if (/^\.\s*\.\s*\./.test(trimmed)) continue;          // Dot leaders
+    if (/^\s*PAGE\s+\d+\s*$/.test(trimmed)) continue;    // Page number only
+    if (/^[\*F]{10,}$/.test(trimmed.replace(/\s/g,''))) continue; // **** or F**** dividers
 
-    // Match SEU source line format:
-    // [seq] [date?] [spec line]
-    // e.g: "0001.00          FSALES     IF  E            DISK"
-    // e.g: "0006.00 09/10/98 C                   READ  SALES"
-    const seqMatch = t.match(
-      /^(\d{4,7}(?:\.\d{2})?)\s+(?:\d{2}\/\d{2}\/\d{2,4}\s+)?(.*)$/
-    );
+    // ── IBM i SEU listing line format ──────────────────────────────
+    // Cols 1-6:  sequence number (e.g. "0001.0" or "  8100")
+    // Cols 7-14: optional change date (MM/DD/YY)
+    // Col 6:     spec type for fixed format OR space for free format
+    // Cols 7-80: actual source code
+
+    // Match sequence number at start (with spaces preserved from fixed-width)
+    // Sequence can be: "0001.00" or "  8100" or "010000"
+    const seqPattern = /^(\s{0,2}\d{4,7}(?:\.\d{2})?)\s+((?:\d{2}\/\d{2}\/\d{2,4}\s+)?)(.*)/;
+    const seqMatch = t.match(seqPattern);
 
     if (seqMatch) {
-      const codePart = seqMatch[2].trimEnd();
-      // Skip if remaining part is just a comment header or empty
-      if (!codePart || /^F\*/.test(codePart.trim())) continue;
-      cleaned.push(codePart);
+      // seqMatch[3] is everything after the sequence (and optional date)
+      let codePart = seqMatch[3];
+
+      // Skip pure comment/divider lines from the listing
+      if (/^F\*{5,}/.test(codePart.trim())) continue;
+      if (/^\*{5,}/.test(codePart.trim())) continue;
+
+      // Skip if it's just a listing date/change marker with no code
+      if (/^\d{2}\/\d{2}\/\d{2,4}\s*$/.test(codePart.trim())) continue;
+
+      if (codePart.trim()) cleaned.push(codePart.trimEnd());
       continue;
     }
 
-    // Free-format RPG lines (no sequence number — some export formats)
-    // Keep lines that look like RPG specs or free-format keywords
-    if (/^\s*(\*\*FREE|\*\*NOMAIN)/i.test(t)) { cleaned.push(t); continue; }
-    if (/^\s*(DCL-[SFPC]|DCL-F|DCL-DS|DCL-SUBF|DCL-PROC|END-PROC|END-DS|END-IF|END-DO|END-FOR|END-MON|END-SL)/i.test(t)) { cleaned.push(t); continue; }
-    if (/^\s*(IF|ELSE|ELSEIF|ENDIF|DOW|DOU|FOR|ENDDO|ENDFOR|SELECT|WHEN|OTHER|ENDSL|MONITOR|ON-ERROR|ENDMON|RETURN|LEAVE|ITER|EXSR|CALLP|EVAL|CHAIN|READ|READP|READE|WRITE|UPDATE|DELETE|OPEN|CLOSE|SETLL|SETGT|EXFMT|DSPLY|DUMP|RESET)/i.test(t)) { cleaned.push(t); continue; }
+    // ── Free-format lines with no sequence number ──────────────────
+    if (/^\s*(\*\*FREE|\*\*NOMAIN|\*\*)/i.test(trimmed)) { cleaned.push(t); continue; }
+    if (/^\s*(DCL-|END-PROC|END-DS|END-IF|END-DO|END-FOR|END-SL|END-MON)/i.test(trimmed)) { cleaned.push(t); continue; }
+    if (/^\s*(IF\s|ELSE|ELSEIF|ENDIF|DOW\s|DOU\s|FOR\s|ENDDO|ENDFOR|SELECT|WHEN\s|OTHER|ENDSL|RETURN|LEAVE|ITER|EXSR|CALLP|EVAL\s|CHAIN|READ\s|READP|READE|WRITE|UPDATE|DELETE|OPEN\s|CLOSE|SETLL|SETGT|EXFMT|DSPLY)/i.test(trimmed)) { cleaned.push(t); continue; }
 
-    // Keep lines that start with a valid RPG spec letter in col 6 (fixed format)
-    // After stripping 5-char sequence, col 6 = spec type
-    const fixedSpec = t.match(/^.{5}([HFEIDCOPMABh feidcopma])/);
-    if (fixedSpec) { cleaned.push(t); continue; }
+    // ── Fixed-format lines — col 6 is the spec type ────────────────
+    // After removing seq number the first non-space char should be spec letter
+    if (/^[HFEIDCOPMABhfeidcopma ]\s/.test(codePart || '')) { cleaned.push(t); continue; }
   }
 
-  // Final pass — remove any remaining sequence numbers at start of lines
-  const finalLines = cleaned.map(line => {
-    // Remove leading sequence number if present (e.g. "0001.00 " at start)
-    return line.replace(/^\d{4,7}(?:\.\d{2})?\s+/, '');
-  });
+  // Nothing cleaned — return raw as fallback
+  if (cleaned.length < 5) return raw;
 
-  const result = finalLines.join('\n').trim();
-
-  // If we cleaned too aggressively (less than 5 lines), return raw text instead
-  if (finalLines.length < 5) {
-    return raw;
-  }
+  // Join and strip any remaining sequence-number prefixes
+  const result = cleaned.map(line => {
+    // Strip any leftover leading sequence numbers (e.g. "0001.00 " at start)
+    return line.replace(/^\s*\d{4,7}(?:\.\d{2})?\s+/, '');
+  }).join('\n').trimEnd();
 
   return result;
 }
