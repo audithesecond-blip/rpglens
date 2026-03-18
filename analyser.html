@@ -1159,7 +1159,7 @@ body::before {
 
     <!-- EXPORT BAR -->
     <div class="export-bar">
-      <span class="export-label">Export:</span>
+      <span class="export-label">Download:</span>
       <button class="export-btn" id="export-word" onclick="exportWord()" disabled>
         <svg viewBox="0 0 16 16"><path d="M2 2h9l3 3v9H2V2z"/><path d="M11 2v3h3"/><path d="M5 8l1.5 4L8 8l1.5 4L11 8"/></svg>
         Word (.docx)
@@ -1167,6 +1167,10 @@ body::before {
       <button class="export-btn" id="export-pdf" onclick="exportPDF()" disabled>
         <svg viewBox="0 0 16 16"><path d="M2 2h9l3 3v9H2V2z"/><path d="M11 2v3h3"/><rect x="4" y="9" width="8" height="1"/><rect x="4" y="11" width="6" height="1"/></svg>
         PDF
+      </button>
+      <button class="export-btn" id="export-txt" onclick="exportText()" disabled>
+        <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12"/><path d="M5 6h6M5 9h6M5 12h4"/></svg>
+        Text (.txt)
       </button>
       <button class="export-btn" id="export-copy" onclick="copyResults()" disabled>
         <svg viewBox="0 0 16 16"><rect x="5" y="5" width="9" height="10"/><path d="M3 3H11V5H3z"/></svg>
@@ -2194,7 +2198,7 @@ async function runAnalysis() {
   });
 
   // disable exports
-  ['export-word','export-pdf','export-copy'].forEach(id => {
+  ['export-word','export-pdf','export-txt','export-copy'].forEach(id => {
     document.getElementById(id).disabled = true;
   });
 
@@ -2238,7 +2242,7 @@ async function runAnalysis() {
   // enable exports if we have results
   const hasResults = Object.values(state.results).some(r => r !== null);
   if (hasResults) {
-    ['export-word','export-pdf','export-copy'].forEach(id => {
+    ['export-word','export-pdf','export-txt','export-copy'].forEach(id => {
       document.getElementById(id).disabled = false;
     });
 
@@ -2337,44 +2341,248 @@ function setTabError(tab, err) {
 }
 
 // ── EXPORT ────────────────────────────────────────────────────────────
+const EXPORT_LABELS = {
+  explain: 'EXPLANATION',
+  docs:    'DOCUMENTATION',
+  risk:    'RISK ANALYSIS',
+  modern:  'MODERNISATION PLAN'
+};
+
+function getProgramName() {
+  return document.getElementById('program-name').textContent.trim() || 'RPGLens_Report';
+}
+
 function getAllResultsText() {
   const parts = [];
-  const labels = { explain: 'EXPLANATION', docs: 'DOCUMENTATION', risk: 'RISK ANALYSIS', modern: 'MODERNISATION PLAN' };
   Object.entries(state.results).forEach(([key, val]) => {
-    if (val) parts.push(`\n${'='.repeat(60)}\n${labels[key]}\n${'='.repeat(60)}\n\n${val}`);
+    if (val) parts.push(`\n${'='.repeat(60)}\n${EXPORT_LABELS[key]}\n${'='.repeat(60)}\n\n${val}`);
   });
-  return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${document.getElementById('program-name').textContent}\n${parts.join('\n\n')}`;
+  return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${getProgramName()}\n${parts.join('\n\n')}`;
 }
 
 function copyResults() {
   navigator.clipboard.writeText(getAllResultsText());
+  const btn = document.getElementById('export-copy');
+  const orig = btn.innerHTML;
+  btn.innerHTML = btn.innerHTML.replace('Copy text', 'Copied!');
+  setTimeout(() => { btn.innerHTML = orig; }, 2000);
 }
 
+// ── TEXT DOWNLOAD ─────────────────────────────────────────────────────
+function exportText() {
+  const text = getAllResultsText();
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  triggerDownload(blob, `RPGLens_${getProgramName()}_${dateStamp()}.txt`);
+}
+
+// ── WORD (.docx) DOWNLOAD ─────────────────────────────────────────────
+async function exportWord() {
+  const btn = document.getElementById('export-word');
+  btn.innerHTML = btn.innerHTML.replace('Word (.docx)', 'Building...');
+  btn.disabled = true;
+
+  try {
+    // Load docx library from CDN
+    if (!window.docx) {
+      await loadScript('https://cdn.jsdelivr.net/npm/docx@9.5.3/build/index.umd.js');
+    }
+
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel,
+            AlignmentType, BorderStyle, PageBreak } = window.docx;
+
+    const progName  = getProgramName();
+    const generated = new Date().toLocaleString();
+    const children  = [];
+
+    // Cover heading
+    children.push(new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      children: [new TextRun({ text: 'RPGLens Analysis Report', bold: true, size: 36, color: '1A3C6E' })]
+    }));
+    children.push(new Paragraph({
+      children: [new TextRun({ text: `Program: ${progName}`, size: 22, color: '5F5E5A' })]
+    }));
+    children.push(new Paragraph({
+      children: [new TextRun({ text: `Generated: ${generated}`, size: 20, color: '9A9690' })]
+    }));
+    children.push(new Paragraph({ children: [new TextRun('')] }));
+
+    const sectionOrder = ['explain', 'docs', 'risk', 'modern'];
+
+    sectionOrder.forEach((key, idx) => {
+      const val = state.results[key];
+      if (!val) return;
+
+      if (idx > 0) children.push(new Paragraph({ children: [new PageBreak()] }));
+
+      // Section heading
+      children.push(new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '2E75B6', space: 4 } },
+        children: [new TextRun({ text: EXPORT_LABELS[key], bold: true, size: 30, color: '1A3C6E' })]
+      }));
+      children.push(new Paragraph({ children: [new TextRun('')] }));
+
+      // Parse markdown into Word paragraphs
+      const lines = val.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('## ')) {
+          children.push(new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            children: [new TextRun({ text: line.replace(/^##\s+/, ''), bold: true, size: 26, color: '2E75B6' })]
+          }));
+        } else if (line.startsWith('### ')) {
+          children.push(new Paragraph({
+            heading: HeadingLevel.HEADING_3,
+            children: [new TextRun({ text: line.replace(/^###\s+/, ''), bold: true, size: 22, color: '5F5E5A' })]
+          }));
+        } else if (line.match(/^\|.+\|$/)) {
+          // Table row — render as plain text in Word (simple approach)
+          const cells = line.split('|').filter(c => c.trim() && !c.match(/^[\s\-:]+$/));
+          if (cells.length > 0) {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: cells.join('  |  ').trim(), size: 20, font: 'Courier New' })]
+            }));
+          }
+        } else if (line.match(/^[\s\-:]+\|/)) {
+          // Skip markdown table separator rows
+        } else if (line.trim()) {
+          // Parse inline bold (**text**) and other formatting
+          const runs = [];
+          const parts = line.split(/(\*\*[^*]+\*\*)/g);
+          for (const part of parts) {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              runs.push(new TextRun({ text: part.slice(2, -2), bold: true, size: 22 }));
+            } else if (part) {
+              runs.push(new TextRun({ text: part, size: 22 }));
+            }
+          }
+          children.push(new Paragraph({ spacing: { before: 40, after: 40 }, children: runs }));
+        } else {
+          children.push(new Paragraph({ children: [new TextRun('')] }));
+        }
+      }
+    });
+
+    const doc = new Document({
+      styles: { default: { document: { run: { font: 'Arial', size: 22 } } } },
+      sections: [{
+        properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+        children
+      }]
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    triggerDownload(blob, `RPGLens_${progName}_${dateStamp()}.docx`);
+
+  } catch (e) {
+    console.error('Word export failed:', e);
+    // Fallback to RTF if docx fails
+    exportWordFallback();
+  } finally {
+    btn.innerHTML = btn.innerHTML.replace('Building...', 'Word (.docx)');
+    btn.disabled = false;
+  }
+}
+
+function exportWordFallback() {
+  const text = getAllResultsText();
+  const rtf  = `{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}{\\f0\\fs22 ${
+    text.replace(/\\/g,'\\\\').replace(/[{}]/g, m => '\\' + m).replace(/\n/g,'\\par ')
+  }}`;
+  triggerDownload(new Blob([rtf], { type: 'application/rtf' }), `RPGLens_${getProgramName()}_${dateStamp()}.rtf`);
+}
+
+// ── PDF DOWNLOAD ──────────────────────────────────────────────────────
 function exportPDF() {
-  const text = getAllResultsText();
-  const blob = new Blob([text], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `RPGLens_${document.getElementById('program-name').textContent}_${Date.now()}.txt`;
-  a.click();
+  const progName  = getProgramName();
+  const generated = new Date().toLocaleString();
+
+  // Build a styled HTML page and print to PDF
+  const sections = Object.entries(state.results)
+    .filter(([, v]) => v)
+    .map(([key, val]) => {
+      const html = val
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/^(\|.+\|)$/gm, (_, row) => {
+          const cells = row.split('|').filter(c => c.trim() && !c.match(/^[\s\-:]+$/));
+          return cells.length ? `<tr>${cells.map(c => `<td>${c.trim()}</td>`).join('')}</tr>` : '';
+        })
+        .replace(/(<tr>[\s\S]*?<\/tr>)/g, '<table>$1</table>')
+        .replace(/\n{2,}/g, '</p><p>')
+        .replace(/\n/g, '<br/>');
+      return `
+        <div class="section">
+          <h1>${EXPORT_LABELS[key]}</h1>
+          <div class="content"><p>${html}</p></div>
+        </div>`;
+    }).join('');
+
+  const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>RPGLens — ${progName}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.6; }
+  .cover { padding: 40px 0 32px; border-bottom: 3px solid #1A3C6E; margin-bottom: 32px; }
+  .cover h1 { font-size: 26pt; color: #1A3C6E; margin-bottom: 8px; }
+  .cover p { color: #5F5E5A; font-size: 10pt; }
+  .section { margin-bottom: 40px; page-break-inside: avoid; }
+  .section h1 { font-size: 16pt; color: #1A3C6E; border-bottom: 2px solid #2E75B6; padding-bottom: 6px; margin-bottom: 16px; page-break-after: avoid; }
+  h2 { font-size: 13pt; color: #2E75B6; margin: 20px 0 8px; page-break-after: avoid; }
+  h3 { font-size: 11pt; color: #5F5E5A; margin: 14px 0 6px; page-break-after: avoid; }
+  p { margin-bottom: 8px; }
+  strong { color: #1a1a1a; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10pt; }
+  td, th { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+  tr:nth-child(even) td { background: #f5f5f3; }
+  .footer { margin-top: 40px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 9pt; color: #9A9690; }
+  @media print {
+    body { margin: 0; }
+    .section { page-break-inside: auto; }
+    .section + .section { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+  <div class="cover">
+    <h1>RPGLens Analysis Report</h1>
+    <p><strong>Program:</strong> ${progName}</p>
+    <p><strong>Generated:</strong> ${generated}</p>
+  </div>
+  ${sections}
+  <div class="footer">Generated by RPGLens · rpglens.vercel.app · Your code never leaves your browser</div>
+</body>
+</html>`;
+
+  // Open in new window and trigger print dialog (Save as PDF)
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(htmlContent);
+  win.document.close();
+  win.onload = () => {
+    setTimeout(() => {
+      win.print();
+    }, 500);
+  };
 }
 
-function exportWord() {
-  const text = getAllResultsText();
-  // Basic RTF export that Word can open
-  const rtf = `{\\rtf1\\ansi\\deff0
-{\\fonttbl{\\f0 Courier New;}{\\f1 Arial;}}
-{\\colortbl;\\red14\\green15\\blue15;\\red232\\green160\\blue32;}
-\\f1\\fs24\\b RPGLens Analysis Report\\b0\\par
-\\f0\\fs20 Generated: ${new Date().toLocaleString()}\\par
-Program: ${document.getElementById('program-name').textContent}\\par\\par
-${text.replace(/\n/g, '\\par\n').replace(/[{}\\]/g, m => '\\' + m)}
-}`;
-  const blob = new Blob([rtf], { type: 'application/rtf' });
+// ── HELPERS ───────────────────────────────────────────────────────────
+function triggerDownload(blob, filename) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `RPGLens_${document.getElementById('program-name').textContent}_${Date.now()}.rtf`;
+  a.download = filename;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function dateStamp() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 }
 
 // init
