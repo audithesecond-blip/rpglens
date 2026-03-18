@@ -1591,11 +1591,20 @@ function showFileLoaded(file, text, ext) {
   iconEl.className   = `file-type-icon ${typeClass}`;
   nameEl.textContent = file.name;
 
+  // ── Set program name from filename ────────────────────────────────
+  // Strip extension and clean up: "SAR248 (1).pdf" → "SAR248"
+  const baseName = file.name
+    .replace(/\.[^.]+$/, '')           // remove extension
+    .replace(/\s*\(\d+\)\s*$/, '')     // remove trailing (1), (2) etc
+    .replace(/[_\-]+/g, ' ')           // underscores/dashes to spaces
+    .trim()
+    .toUpperCase();
+  if (baseName) {
+    document.getElementById('program-name').textContent = baseName;
+  }
+
   const kb    = (file.size / 1024).toFixed(1);
   const lines = text.split('\n').length;
-  const isIBMi = /5770\w+|5769\w+|SEQNBR|SEU SOURCE/i.test('') === false &&
-                 file.name.toLowerCase().endsWith('.pdf') &&
-                 lines > 5;
   sizeEl.textContent = `${kb} KB · ${lines.toLocaleString()} lines extracted${file.name.toLowerCase().endsWith('.pdf') && lines > 5 ? ' · IBM i listing cleaned' : ''}`;
 
   previewEl.textContent = text;
@@ -2255,16 +2264,24 @@ async function runAnalysis() {
         const progName = document.getElementById('program-name').textContent;
         const ext      = currentMode === 'upload' ? 'RPG' : 'paste';
         const tabs     = Object.entries(checks).filter(([,v]) => v).map(([k]) => k);
+        const id       = `result_${userId}_${Date.now()}`;
+
+        // Save full results separately (keyed by id)
+        localStorage.setItem(id, JSON.stringify(state.results));
 
         history.unshift({
+          id,
           name: progName,
           date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
           ext,
           tabs
         });
 
-        // Keep only last 20
-        localStorage.setItem(histKey, JSON.stringify(history.slice(0, 20)));
+        // Keep last 10 history entries — clean up old result keys
+        const trimmed = history.slice(0, 10);
+        const keep    = new Set(trimmed.map(h => h.id));
+        history.slice(10).forEach(h => { if (h.id) localStorage.removeItem(h.id); });
+        localStorage.setItem(histKey, JSON.stringify(trimmed));
 
         // ── Update usage count in localStorage ─────────────────────
         const month    = `${new Date().getFullYear()}-${new Date().getMonth()}`;
@@ -2588,6 +2605,46 @@ function dateStamp() {
 // init
 onCodeInput();
 initSession();
+
+// ── RESTORE FROM HISTORY ──────────────────────────────────────────────
+function restoreFromHistory(id) {
+  if (!id) return;
+  try {
+    const saved = localStorage.getItem(id);
+    if (!saved) return;
+    const results = JSON.parse(saved);
+
+    // Restore results into state
+    state.results = results;
+
+    // Render each available result
+    if (results.explain) { renderExplain(results.explain); setTabDone('explain'); }
+    if (results.docs)    { renderDocs(results.docs);       setTabDone('docs'); }
+    if (results.risk)    { renderRisk(results.risk);       setTabDone('risk'); }
+    if (results.modern)  { renderModern(results.modern);   setTabDone('modern'); }
+
+    // Switch to first available tab
+    const first = ['explain','docs','risk','modern'].find(t => results[t]);
+    if (first) switchTab(first);
+
+    // Enable exports
+    ['export-word','export-pdf','export-txt','export-copy'].forEach(id => {
+      document.getElementById(id).disabled = false;
+    });
+
+    // Update button label
+    document.getElementById('analyse-btn').querySelector('.btn-label').textContent = 'Re-analyse';
+
+  } catch(e) { console.warn('Restore failed:', e); }
+}
+
+// Check if we were sent here with a result ID to restore
+const urlParams = new URLSearchParams(window.location.search);
+const restoreId = urlParams.get('restore');
+if (restoreId) {
+  // Wait for session to init first
+  setTimeout(() => restoreFromHistory(restoreId), 800);
+}
 </script>
 </body>
 </html>

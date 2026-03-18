@@ -276,7 +276,7 @@ function renderHistory(history) {
 
   history.slice(0, 8).forEach(item => {
     const el = document.createElement('a');
-    el.href = '/analyser';
+    el.href = item.id ? `/analyser?restore=${item.id}` : '/analyser';
     el.className = 'history-item';
     const ext = (item.ext || 'RPG').toUpperCase().slice(0, 3);
     el.innerHTML = `
