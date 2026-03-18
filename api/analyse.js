@@ -45,11 +45,20 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Session expired. Please sign in again." });
     }
 
-    // ── 2. CHECK PLAN & MONTHLY USAGE ────────────────────────────────
+    // ── 2. CHECK PLAN & ROLLING 30-DAY USAGE ────────────────────────
     const plan = user.user_metadata?.plan || "free";
     const monthlyLimit = PLAN_LIMITS[plan] || 3;
     const charLimit    = CHAR_LIMITS[plan]  || 30000;
-    const monthKey     = `${new Date().getFullYear()}-${new Date().getMonth()}`;
+
+    // Rolling 30-day window anchored to account creation date
+    // Period key = "userId_periodNumber" so each user resets on their own 30-day cycle
+    const signupDate   = new Date(user.created_at);
+    const now          = new Date();
+    const daysSinceSignup = Math.floor((now - signupDate) / (1000 * 60 * 60 * 24));
+    const periodNumber = Math.floor(daysSinceSignup / 30);
+    const periodStart  = new Date(signupDate.getTime() + periodNumber * 30 * 24 * 60 * 60 * 1000);
+    const periodEnd    = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const monthKey     = `period_${periodNumber}`; // used as the DB key
 
     const { data: usage } = await sb
       .from("usage")
@@ -62,7 +71,8 @@ export default async function handler(req, res) {
 
     if (currentCount >= monthlyLimit) {
       return res.status(429).json({
-        error: `Monthly limit reached. You have used ${currentCount} of ${monthlyLimit} analyses this month. Your limit resets on the 1st of next month.`,
+        error: `Monthly limit reached. You have used ${currentCount} of ${monthlyLimit} analyses this period. Your limit resets on ${periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}.`,
+        resetDate: periodEnd.toISOString(),
         upgrade: plan !== "team"
       });
     }
@@ -116,7 +126,12 @@ export default async function handler(req, res) {
       updated_at: new Date().toISOString()
     }, { onConflict: "user_id,month_key" });
 
-    return res.status(200).json({ result });
+    return res.status(200).json({
+      result,
+      periodKey:  monthKey,
+      periodEnd:  periodEnd.toISOString(),
+      usageCount: currentCount + 1
+    });
 
   } catch (err) {
     console.error("Proxy error:", err);
