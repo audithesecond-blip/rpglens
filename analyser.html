@@ -1508,51 +1508,60 @@ function cleanIBMiSourceListing(raw) {
     const trimmed = t.trim();
     if (!trimmed) continue;
 
-    // ── Skip noise lines ──────────────────────────────────────────
+    // ── Skip header/noise ─────────────────────────────────────────
     if (/5[76][67]\d\w/.test(trimmed)) continue;
     if (/^V\dR\dM\d/.test(trimmed)) continue;
     if (/SEU SOURCE LISTING/.test(trimmed)) continue;
     if (/SEQNBR\*/.test(trimmed)) continue;
     if (/^\.\s*\.\s*\./.test(trimmed)) continue;
     if (/^\s*PAGE\s+\d+\s*$/.test(trimmed)) continue;
-    if (/^[*F=\-]{8,}$/.test(trimmed.replace(/\s/g, ''))) continue;
+    if (/^[*=\-]{6,}$/.test(trimmed.replace(/\s/g, ''))) continue;
 
-    // ── Skip standalone date lines (MM/DD/YY or MM/DD/YYYY alone) ─
-    if (/^\d{2}\/\d{2}\/\d{2,4}\s*$/.test(trimmed)) continue;
+    // ── Skip ANY line that is ONLY a date (with optional spaces/pipes) ─
+    if (/^[\s|]*\d{2}\/\d{2}\/\d{2,4}\s*$/.test(t)) continue;
 
-    // ── Strip leading pipe characters (SEU column marker) ─────────
-    const noPipe = t.replace(/^\s*\|\s*/, '');
+    // ── Strip leading pipe ────────────────────────────────────────
+    let work = t.replace(/^\s*\|+\s*/, '');
 
-    // ── Match SEU sequence number format ──────────────────────────
-    // Seq can be "0001.00" or "  8100" then optional date then code
-    const seqMatch = noPipe.match(
-      /^(\s{0,2}\d{4,7}(?:\.\d{2})?)\s+(?:\d{2}\/\d{2}\/\d{2,4}\s+)?(.+)$/
+    // ── Strip sequence number + optional date ─────────────────────
+    // Sequence formats seen in IBM i:
+    //   "0001300 " or "  1300 " or "001300 " or "1300 "
+    //   Followed by optional "MM/DD/YY "
+    // Use greedy match: strip any leading digits (4-7), optional dot+2digits,
+    // then spaces, then optional date, then spaces
+    const seqStripped = work.replace(
+      /^\s*\d{4,7}(?:\.\d{2})?\s+(?:\d{2}\/\d{2}\/\d{2,4}\s+)?/,
+      ''
     );
 
-    if (seqMatch) {
-      const codePart = seqMatch[2].trimEnd();
-      if (!codePart.trim()) continue;
-      if (/^[*F]{5,}$/.test(codePart.trim().replace(/\s/g, ''))) continue;
-      cleaned.push(codePart);
+    // If stripping worked and left something meaningful, use it
+    if (seqStripped.trim()) {
+      work = seqStripped;
+    } else if (!seqStripped.trim() && work.trim()) {
+      // Nothing left after strip — skip this line (was pure seq+date)
       continue;
     }
 
-    // ── Free-format keywords ───────────────────────────────────────
-    if (/^\s*(\*\*FREE|\*\*NOMAIN)/i.test(trimmed))   { cleaned.push(noPipe.trimEnd()); continue; }
-    if (/^\s*(DCL-|END-PROC|END-DS|END-IF|END-DO|END-FOR|END-SL|END-MON)/i.test(trimmed)) { cleaned.push(noPipe.trimEnd()); continue; }
-    if (/^\s*(IF |ELSE|ELSEIF|ENDIF|DOW |DOU |FOR |ENDDO|ENDFOR|SELECT|WHEN |OTHER|ENDSL|RETURN|LEAVE|ITER|EXSR|CALLP|EVAL |CHAIN|READ |READP|READE|WRITE|UPDATE|DELETE|OPEN |CLOSE|SETLL|SETGT|EXFMT|DSPLY)/i.test(trimmed)) { cleaned.push(noPipe.trimEnd()); continue; }
+    // ── Skip if only a date remains after stripping seq ───────────
+    if (/^\d{2}\/\d{2}\/\d{2,4}\s*$/.test(work.trim())) continue;
 
-    // ── Fixed-format spec lines (H/F/E/I/D/C/O in col 6) ─────────
-    if (/^[HFEIDCOPhfeidcop][ \t]/.test(trimmed)) { cleaned.push(noPipe.trimEnd()); continue; }
+    // ── Skip pure comment divider lines ──────────────────────────
+    if (/^[F]?\*{5,}/.test(work.trim())) continue;
+
+    // ── Must have meaningful content ─────────────────────────────
+    if (work.trim().length < 2) continue;
+
+    // ── Compress multiple internal spaces to single space ─────────
+    // Fixed-format RPG uses positional columns but Claude only needs tokens
+    // "FIPSAPLGA  IF  E          K DISK" → "FIPSAPLGA IF E K DISK"
+    const compressed = work.trim().replace(/\s{2,}/g, ' ');
+
+    cleaned.push(compressed);
   }
 
   if (cleaned.length < 5) return raw;
 
-  // Final: strip any residual leading sequence numbers
-  return cleaned
-    .map(line => line.replace(/^\s*\d{4,7}(?:\.\d{2})?\s+/, ''))
-    .join('\n')
-    .trimEnd();
+  return cleaned.join('\n').trimEnd();
 }
 
 function loadScript(src) {
@@ -1653,12 +1662,12 @@ function onCodeInput() {
   const cc   = document.getElementById('char-count');
 
   // Plan char limits (mirrors api/analyse.js)
-  const PLAN_CHAR_LIMITS = { free: 5000, starter: 30000, team: 150000 };
-  const PLAN_LABELS      = { free: 'Free (5KB limit)', starter: 'Starter (30KB limit)', team: 'Team (150KB limit)' };
+  const PLAN_CHAR_LIMITS = { free: 30000, starter: 100000, team: 300000 };
+  const PLAN_LABELS      = { free: 'Free (30KB limit)', starter: 'Starter (100KB limit)', team: 'Team (300KB limit)' };
 
   // Get plan from session if available
   const plan      = supabaseSession?.user?.user_metadata?.plan || 'free';
-  const charLimit = PLAN_CHAR_LIMITS[plan] || 5000;
+  const charLimit = PLAN_CHAR_LIMITS[plan] || 30000;
 
   btn.disabled = len < 10 || state.loading;
 
