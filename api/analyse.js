@@ -8,13 +8,13 @@ const PLAN_LIMITS = { free: 3, starter: 25, team: 999 };
 // free:    5,000 chars  ≈  ~200 lines RPG  ≈ ~$0.02 per analysis
 // starter: 30,000 chars ≈ ~1,200 lines RPG  ≈ ~$0.10 per analysis
 // team:    150,000 chars ≈ ~6,000 lines RPG  ≈ ~$0.50 per analysis
-const CHAR_LIMITS = { free: 5000, starter: 30000, team: 150000 };
+const CHAR_LIMITS = { free: 30000, starter: 100000, team: 300000 };
 
 // Friendly names for error messages
 const PLAN_NAMES = { free: "Free", starter: "Starter", team: "Team" };
 const UPGRADE_HINTS = {
-  free:    "Upgrade to Starter (₹1,999/mo) to analyse programs up to 30,000 characters.",
-  starter: "Upgrade to Team (₹6,999/mo) to analyse programs up to 150,000 characters.",
+  free:    "Upgrade to Starter (₹1,999/mo) to analyse programs up to 100,000 characters.",
+  starter: "Upgrade to Team (₹6,999/mo) to analyse programs up to 300,000 characters.",
   team:    "Contact support for enterprise limits above 150,000 characters."
 };
 
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     // ── 2. CHECK PLAN & MONTHLY USAGE ────────────────────────────────
     const plan = user.user_metadata?.plan || "free";
     const monthlyLimit = PLAN_LIMITS[plan] || 3;
-    const charLimit    = CHAR_LIMITS[plan]  || 5000;
+    const charLimit    = CHAR_LIMITS[plan]  || 30000;
     const monthKey     = `${new Date().getFullYear()}-${new Date().getMonth()}`;
 
     const { data: usage } = await sb
