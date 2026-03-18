@@ -134,6 +134,252 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 
+/* ── INPUT MODE TOGGLE ── */
+.input-mode-toggle {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg3);
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 9px 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.mode-btn:hover { color: var(--text2); }
+.mode-btn.active { color: var(--amber); border-bottom-color: var(--amber); background: rgba(232,160,32,0.03); }
+.mode-btn .mode-icon { font-size: 13px; line-height: 1; }
+
+/* ── DROP ZONE ── */
+.upload-zone {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 24px 20px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-zone.visible { display: flex; }
+
+.upload-zone.drag-over .drop-border { border-color: var(--amber); }
+.upload-zone.drag-over .drop-inner  { background: rgba(232,160,32,0.04); }
+
+.drop-border {
+  width: 100%;
+  flex: 1;
+  border: 1px dashed var(--border2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.drop-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  transition: background 0.2s;
+}
+
+.drop-icon {
+  width: 52px; height: 52px;
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+  color: var(--text3);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.upload-zone.drag-over .drop-icon { border-color: var(--amber-dim); color: var(--amber); }
+
+.drop-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text2);
+  text-align: center;
+}
+
+.drop-sub {
+  font-size: 11px;
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+}
+
+.file-type-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.file-badge {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.file-badge.txt  { border-color: rgba(91,155,213,0.4);  color: var(--blue); }
+.file-badge.docx { border-color: rgba(46,194,126,0.4);  color: var(--green); }
+.file-badge.pdf  { border-color: rgba(232,80,80,0.4);   color: var(--red); }
+
+.upload-or {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.upload-file-btn {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 8px 22px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: all 0.2s;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+
+.upload-file-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+
+/* ── FILE LOADED STATE ── */
+.file-loaded {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.file-loaded.visible { display: flex; }
+
+.file-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.file-type-icon {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
+  flex-shrink: 0;
+}
+
+.file-type-icon.txt  { background: rgba(91,155,213,0.15);  color: var(--blue); }
+.file-type-icon.docx { background: rgba(46,194,126,0.15);  color: var(--green); }
+.file-type-icon.pdf  { background: rgba(232,80,80,0.15);   color: var(--red); }
+
+.file-meta { flex: 1; overflow: hidden; }
+.file-name { font-size: 12px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-size { font-size: 10px; color: var(--text3); letter-spacing: 0.06em; margin-top: 1px; }
+
+.file-clear-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.file-clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+.file-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  font-size: 11.5px;
+  color: #7ab8e8;
+  font-family: var(--mono);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  background: var(--bg2);
+}
+
+/* ── PROCESSING OVERLAY ── */
+.processing-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(14,15,15,0.88);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 10;
+}
+
+.processing-overlay.visible { display: flex; }
+
+.proc-spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.proc-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.proc-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; }
+
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .fade-in{animation:fadeIn 0.3s ease both}
@@ -186,16 +432,69 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="panel-header">
       <div class="panel-title">Fixed-format RPG input</div>
       <div class="panel-actions">
-        <button class="icon-btn" onclick="clearInput()">Clear</button>
+        <button class="icon-btn" id="btn-clear" onclick="clearInput()">Clear</button>
         <button class="icon-btn" onclick="copyInput()">Copy</button>
       </div>
     </div>
 
+    <!-- MODE TOGGLE -->
+    <div class="input-mode-toggle">
+      <button class="mode-btn active" id="mode-paste" onclick="switchMode('paste')">
+        <span class="mode-icon">&#9113;</span> Paste code
+      </button>
+      <button class="mode-btn" id="mode-upload" onclick="switchMode('upload')">
+        <span class="mode-icon">&#8679;</span> Upload file
+      </button>
+    </div>
+
+    <!-- PASTE MODE -->
     <textarea class="code-input" id="code-input"
       placeholder="// Paste fixed-format RPG source here&#10;// Supports: RPG III, RPG IV fixed-format, OPM RPG&#10;&#10;// Example:&#10;// C           READ  CUSTFILE&#10;// C     EOF   DOUEQ *ON&#10;// C           CHAIN CUSTNO CUSTMAST&#10;// C           ENDDO"
       spellcheck="false" autocomplete="off" oninput="onInput()"></textarea>
 
-    <div class="sample-bar">
+    <!-- UPLOAD MODE -->
+    <div class="upload-zone" id="upload-zone"
+      ondragover="handleDragOver(event)"
+      ondragleave="handleDragLeave(event)"
+      ondrop="handleDrop(event)"
+      onclick="triggerFileInput()">
+      <div class="drop-border">
+        <div class="drop-inner">
+          <div class="drop-icon">&#8679;</div>
+          <div class="drop-title">Drop your file here</div>
+          <div class="drop-sub">or click to browse</div>
+          <div class="file-type-badges">
+            <span class="file-badge txt">.TXT</span>
+            <span class="file-badge docx">.DOCX</span>
+            <span class="file-badge pdf">.PDF</span>
+          </div>
+          <div class="upload-or">&#8212; or &#8212;</div>
+          <button class="upload-file-btn" onclick="event.stopPropagation();triggerFileInput()">Browse files</button>
+          <div class="drop-sub" style="margin-top:4px">Notepad &middot; Word documents &middot; PDF</div>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept=".txt,.text,.rpgle,.rpg,.clle,.cl,.sqlrpgle,.docx,.pdf" style="display:none" onchange="handleFileSelect(event)"/>
+      <div class="processing-overlay" id="processing-overlay">
+        <div class="proc-spinner"></div>
+        <div class="proc-label">Extracting text</div>
+        <div class="proc-sub" id="proc-sub-label">Reading file...</div>
+      </div>
+    </div>
+
+    <!-- FILE LOADED STATE -->
+    <div class="file-loaded" id="file-loaded">
+      <div class="file-info-bar">
+        <div class="file-type-icon txt" id="file-type-icon">TXT</div>
+        <div class="file-meta">
+          <div class="file-name" id="file-name-display">filename.txt</div>
+          <div class="file-size" id="file-size-display">0 KB</div>
+        </div>
+        <button class="file-clear-btn" onclick="clearUpload()">&#10005; Remove</button>
+      </div>
+      <div class="file-preview" id="file-preview"></div>
+    </div>
+
+    <div class="sample-bar" id="sample-bar">
       <span class="sample-label">Sample:</span>
       <button class="sample-btn" onclick="loadSample()">Fixed-format calc</button>
     </div>
@@ -319,6 +618,9 @@ let convertedCode   = '';
 let showingDiff     = false;
 let originalCode    = '';
 
+let currentMode = 'paste';
+let uploadedCode = null;
+
 // ── SESSION ───────────────────────────────────────────────────────────
 async function initSession() {
   try {
@@ -375,7 +677,7 @@ function loadSample() {
 
 // ── INPUT ─────────────────────────────────────────────────────────────
 function onInput() {
-  const code = document.getElementById('code-input').value.trim();
+  const code = getActiveCode();
   const len  = code.length;
   const btn  = document.getElementById('convert-btn');
   const cc   = document.getElementById('char-count');
@@ -385,12 +687,13 @@ function onInput() {
 
 function clearInput() {
   document.getElementById('code-input').value = '';
+  uploadedCode = null;
   onInput();
   resetOutput();
 }
 
 function copyInput() {
-  navigator.clipboard.writeText(document.getElementById('code-input').value);
+  navigator.clipboard.writeText(getActiveCode());
 }
 
 function toggleOpt(cb, id) {
@@ -399,7 +702,7 @@ function toggleOpt(cb, id) {
 
 // ── CONVERSION ────────────────────────────────────────────────────────
 async function runConversion() {
-  const code = document.getElementById('code-input').value.trim();
+  const code = getActiveCode();
   if (!code) return;
 
   if (!supabaseSession) { window.location.href = '/login'; return; }
@@ -607,6 +910,364 @@ function triggerDownload(blob, filename) {
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  const pasteArea  = document.getElementById('code-input');
+  const uploadZone = document.getElementById('upload-zone');
+  const fileLoaded = document.getElementById('file-loaded');
+  const sampleBar  = document.getElementById('sample-bar');
+
+  document.getElementById('mode-paste').classList.toggle('active', mode === 'paste');
+  document.getElementById('mode-upload').classList.toggle('active', mode === 'upload');
+
+  if (mode === 'paste') {
+    pasteArea.style.display  = '';
+    uploadZone.style.display = 'none';
+    uploadZone.classList.remove('visible');
+    fileLoaded.classList.remove('visible');
+    sampleBar.style.display  = '';
+    onCodeInput();
+  } else {
+    pasteArea.style.display  = 'none';
+    sampleBar.style.display  = 'none';
+    if (uploadedCode) {
+      uploadZone.classList.remove('visible');
+      fileLoaded.classList.add('visible');
+    } else {
+      uploadZone.classList.add('visible');
+      fileLoaded.classList.remove('visible');
+    }
+    onCodeInput();
+  }
+}
+
+function triggerFileInput() {
+  document.getElementById('file-input').click();
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('upload-zone').classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+  e.target.value = '';
+}
+
+async function processFile(file) {
+  const overlay   = document.getElementById('processing-overlay');
+  const subLabel  = document.getElementById('proc-sub-label');
+  const ext       = file.name.split('.').pop().toLowerCase();
+  const allowed   = ['txt','text','rpgle','rpg','clle','cl','sqlrpgle','docx','pdf'];
+
+  if (!allowed.includes(ext)) {
+    showFileError('Unsupported file type. Please use .txt, .docx, or .pdf');
+    return;
+  }
+
+  overlay.classList.add('visible');
+  subLabel.textContent = 'Reading ' + file.name + '...';
+
+  try {
+    let text = '';
+
+    if (['txt','text','rpgle','rpg','clle','cl','sqlrpgle'].includes(ext)) {
+      subLabel.textContent = 'Reading plain text file...';
+      text = await readAsText(file);
+
+    } else if (ext === 'docx') {
+      subLabel.textContent = 'Extracting text from Word document...';
+      text = await extractDocx(file);
+
+    } else if (ext === 'pdf') {
+      subLabel.textContent = 'Extracting text from PDF...';
+      text = await extractPdf(file);
+    }
+
+    text = text.trim();
+    if (!text || text.length < 5) throw new Error('No readable text found in file');
+
+    uploadedCode = text;
+    showFileLoaded(file, text, ext);
+
+  } catch (err) {
+    overlay.classList.remove('visible');
+    showFileError(err.message || 'Failed to read file');
+  } finally {
+    overlay.classList.remove('visible');
+  }
+}
+
+function readAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsText(file);
+  });
+}
+
+async function extractDocx(file) {
+  // Load mammoth.js for DOCX extraction
+  if (!window.mammoth) {
+    await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js');
+  }
+  document.getElementById('proc-sub-label').textContent = 'Parsing Word document XML...';
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await window.mammoth.extractRawValue({ arrayBuffer });
+  if (!result.value) throw new Error('Could not extract text from Word document');
+  return result.value;
+}
+
+async function extractPdf(file) {
+  if (!window.pdfjsLib) {
+    await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+
+  document.getElementById('proc-sub-label').textContent = 'Parsing PDF pages...';
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer, verbosity: 0 }).promise;
+  const allLines = [];
+
+  let charWidth  = 0;
+  let leftMargin = 0;
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    document.getElementById('proc-sub-label').textContent =
+      `Extracting page ${i} of ${pdf.numPages}...`;
+
+    const page    = await pdf.getPage(i);
+    const content = await page.getTextContent({ normalizeWhitespace: false });
+
+    // Calibrate on first page
+    if (i === 1 && content.items.length > 0) {
+      const validItems = content.items.filter(it => it.str && it.str.trim());
+      const heights = validItems.map(it => Math.abs(it.transform[3])).filter(h => h > 0);
+      heights.sort((a, b) => a - b);
+      const medH = heights[Math.floor(heights.length / 2)] || 7;
+      charWidth  = medH * 0.601;
+      leftMargin = Math.min(...validItems.map(it => it.transform[4]));
+    }
+
+    // Group by Y — use larger tolerance (4 units) to merge
+    // items on the same logical line that IBM i renders at slightly different Ys
+    const lineMap = {};
+    for (const item of content.items) {
+      if (!item.str || !item.str.trim()) continue;
+      const y = Math.round(item.transform[5] / 4) * 4;
+      if (!lineMap[y]) lineMap[y] = [];
+      lineMap[y].push({ x: item.transform[4], text: item.str });
+    }
+
+    const sortedYs = Object.keys(lineMap).map(Number).sort((a, b) => b - a);
+
+    for (const y of sortedYs) {
+      const items = lineMap[y].sort((a, b) => a.x - b.x);
+
+      // Build fixed-width buffer
+      const buf = new Array(132).fill(' ');
+      for (const item of items) {
+        const col = Math.max(0, Math.round((item.x - leftMargin) / charWidth));
+        for (let c = 0; c < item.text.length; c++) {
+          if (col + c < buf.length) buf[col + c] = item.text[c];
+        }
+      }
+
+      // Trim trailing spaces — critical to keep size manageable
+      const line = buf.join('').trimEnd();
+      if (line.trim()) allLines.push(line);
+    }
+  }
+
+  const rawText = allLines.join('\n');
+  const isIBMiListing = /5770\w+|5769\w+|SEQNBR|SEU SOURCE|QRPGLESRC|QCLSRC|V\dR\dM\d/.test(rawText);
+  if (isIBMiListing) {
+    document.getElementById('proc-sub-label').textContent = 'Detected IBM i source listing — cleaning...';
+    return cleanIBMiSourceListing(rawText);
+  }
+  return rawText;
+}
+
+function cleanIBMiSourceListing(raw) {
+  const lines   = raw.split('\n');
+  const cleaned = [];
+
+  for (let line of lines) {
+    // Step 1: Iteratively strip ALL leading noise until stable
+    let t = line.trimEnd();
+    let prev = null;
+    while (t !== prev) {
+      prev = t;
+      t = t
+        .replace(/^\s+/, '')
+        .replace(/^\|+\s*/, '')
+        .replace(/^\/+\d*\s+/, '')
+        .replace(/^\d{4,7}(?:\.\d{2})?\s+/, '')
+        .replace(/^[A-Z]{1,3}\d{1,4}\s+/, '')
+        .replace(/^\d{1,3}\s+(?=[A-Z*\/])/, '')
+        .replace(/^\d{2}\/\d{2}\/\d{2,4}\s+/, '');
+    }
+
+    // Step 2: Strip trailing date (MM/DD/YY or MM/DD/YYYY)
+    t = t.replace(/\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/, '').trimEnd();
+
+    if (!t || t.length < 2) continue;
+
+    // Step 3: Skip definite listing noise
+    const up = t.toUpperCase();
+    if (/^5[76][67]\d/.test(up)) continue;           // 5770WDS
+    if (/^V\dR\dM\d/.test(up)) continue;             // V7R4M0
+    if (/^SEU SOURCE/.test(up)) continue;
+    if (/^SEQNBR/.test(up)) continue;
+    if (/^SOURCE FILE/.test(up)) continue;
+    if (/^MEMBER[\s\.]/.test(up)) continue;
+    if (/^IPLIBS\//.test(up)) continue;
+    if (/^QRPGLESRC|^QCLSRC|^QRPGSRC/.test(up)) continue;
+    if (/^\.[\s\.]{2,}/.test(t)) continue;
+    if (/^PAGE\s+\d+$/.test(up)) continue;
+    if (/^[*=\-]{6,}$/.test(t.replace(/\s/g, ''))) continue;  // ==== ---- only
+
+    // Step 4: Keep anything that starts with a valid RPG character
+    // Fixed-format spec: first char is H F E I D C O P M A B
+    // Comments: first char is *
+    // Free-format: starts with ** or known keyword
+    const firstChar = t[0].toUpperCase();
+
+    const isFixedFormatSpec = /^[HFEIDCOPMAB\*]/.test(firstChar);
+    const isFreeFormat      = /^(\*\*|DCL-|END-PROC|END-DS|END-IF|END-DO|END-FOR|END-SL|END-MON)/i.test(t);
+    const isFreeKeyword     = /^(IF |ELSE |ELSEIF |DOW |DOU |FOR |ENDDO|ENDFOR|SELECT|WHEN |OTHER|ENDSL|MONITOR|ENDMON|RETURN|LEAVE|ITER|EXSR |CALLP |EVAL |CHAIN |READ |READP|READE|WRITE |UPDATE|DELETE|OPEN |CLOSE|SETLL|SETGT|EXFMT|DSPLY|BEGSR|ENDSR|SORTA|CLEAR|ON-ERROR|EXEC SQL|ENDEXEC)/i.test(t);
+
+    if (!isFixedFormatSpec && !isFreeFormat && !isFreeKeyword) continue;
+
+    // Step 5: Compress internal whitespace
+    const compressed = t.replace(/\s{2,}/g, ' ');
+    if (compressed.trim()) cleaned.push(compressed);
+  }
+
+  if (cleaned.length < 5) return raw;
+  return cleaned.join('\n').trimEnd();
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src     = src;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Could not load: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+function showFileLoaded(file, text, ext) {
+  const uploadZone = document.getElementById('upload-zone');
+  const fileLoaded = document.getElementById('file-loaded');
+  const iconEl     = document.getElementById('file-type-icon');
+  const nameEl     = document.getElementById('file-name-display');
+  const sizeEl     = document.getElementById('file-size-display');
+  const previewEl  = document.getElementById('file-preview');
+
+  const typeMap = {
+    txt: 'TXT', text: 'TXT', rpgle: 'RPG', rpg: 'RPG',
+    clle: 'CL', cl: 'CL', sqlrpgle: 'SQL', docx: 'DOC', pdf: 'PDF'
+  };
+  const typeClass = ['docx'].includes(ext) ? 'docx' : ext === 'pdf' ? 'pdf' : 'txt';
+
+  iconEl.textContent = typeMap[ext] || ext.toUpperCase();
+  iconEl.className   = `file-type-icon ${typeClass}`;
+  nameEl.textContent = file.name;
+
+  // ── Set program name from filename ────────────────────────────────
+  // Strip extension and clean up: "SAR248 (1).pdf" → "SAR248"
+  const baseName = file.name
+    .replace(/\.[^.]+$/, '')           // remove extension
+    .replace(/\s*\(\d+\)\s*$/, '')     // remove trailing (1), (2) etc
+    .replace(/[_\-]+/g, ' ')           // underscores/dashes to spaces
+    .trim()
+    .toUpperCase();
+  if (baseName) {
+    document.getElementById('program-name').textContent = baseName;
+  }
+
+  const kb    = (file.size / 1024).toFixed(1);
+  const lines = text.split('\n').length;
+  sizeEl.textContent = `${kb} KB · ${lines.toLocaleString()} lines extracted${file.name.toLowerCase().endsWith('.pdf') && lines > 5 ? ' · IBM i listing cleaned' : ''}`;
+
+  previewEl.textContent = text;
+
+  uploadZone.classList.remove('visible');
+  fileLoaded.classList.add('visible');
+
+  onCodeInput();
+}
+
+function showFileError(msg) {
+  const zone = document.getElementById('upload-zone');
+  zone.classList.add('visible');
+
+  const existing = document.getElementById('file-error-msg');
+  if (existing) existing.remove();
+
+  const errDiv = document.createElement('div');
+  errDiv.id    = 'file-error-msg';
+  errDiv.style.cssText = 'margin-top:12px;font-size:11px;color:var(--red);text-align:center;letter-spacing:0.04em;padding:8px 16px;border:1px solid rgba(232,80,80,0.3);background:rgba(232,80,80,0.06)';
+  errDiv.textContent = '⚑ ' + msg;
+  zone.querySelector('.drop-inner').appendChild(errDiv);
+  setTimeout(() => errDiv.remove(), 4000);
+}
+
+function clearUpload() {
+  uploadedCode = null;
+  document.getElementById('file-preview').textContent = '';
+  document.getElementById('file-loaded').classList.remove('visible');
+  document.getElementById('upload-zone').classList.add('visible');
+  const errMsg = document.getElementById('file-error-msg');
+  if (errMsg) errMsg.remove();
+  onCodeInput();
+}
+
+// ── Override showFileLoaded for converter ───────────────────────────
+function showFileLoaded(file, text, ext) {
+  const uploadZone = document.getElementById('upload-zone');
+  const fileLoaded = document.getElementById('file-loaded');
+  const iconEl     = document.getElementById('file-type-icon');
+  const nameEl     = document.getElementById('file-name-display');
+  const sizeEl     = document.getElementById('file-size-display');
+  const previewEl  = document.getElementById('file-preview');
+  const typeMap = { txt:'TXT',text:'TXT',rpgle:'RPG',rpg:'RPG',clle:'CL',cl:'CL',sqlrpgle:'SQL',docx:'DOC',pdf:'PDF' };
+  const typeClass = ext === 'docx' ? 'docx' : ext === 'pdf' ? 'pdf' : 'txt';
+  iconEl.textContent = typeMap[ext] || ext.toUpperCase();
+  iconEl.className   = `file-type-icon ${typeClass}`;
+  nameEl.textContent = file.name;
+  const kb    = (file.size / 1024).toFixed(1);
+  const lines = text.split('\n').length;
+  sizeEl.textContent = `${kb} KB \u00b7 ${lines.toLocaleString()} lines extracted${file.name.toLowerCase().endsWith('.pdf') && lines > 5 ? ' \u00b7 IBM i listing cleaned' : ''}`;
+  previewEl.textContent = text;
+  uploadZone.classList.remove('visible');
+  fileLoaded.classList.add('visible');
+  onInput();
+}
+
+// ── getActiveCode for converter ───────────────────────────────────────
+function getActiveCode() {
+  if (currentMode === 'upload') return uploadedCode || '';
+  return document.getElementById('code-input').value.trim();
 }
 
 // init
