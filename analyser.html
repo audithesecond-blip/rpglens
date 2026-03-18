@@ -1714,32 +1714,41 @@ function switchTab(tab) {
 
 // ── API CALL ───────────────────────────────────────────────────────────
 const PROMPTS = {
-  explain: (code) => `You are an expert IBM i / AS400 RPG developer and analyst with 20+ years of experience.
+  explain: (code) => `You are an expert IBM i / AS400 RPG developer and analyst with 20+ years of experience in production IBM i systems.
 
-Analyse the following RPG source code and provide a detailed plain-English explanation.
+Analyse the following RPG source code thoroughly and provide a DETAILED plain-English explanation. Be specific — name actual field names, file names, subroutine names, and values from the code. Do not be vague or generic.
 
-Structure your response in these exact sections using these exact headings:
+Structure your response using these exact headings:
+
 ## PROGRAM OVERVIEW
-[2-3 sentence summary of what this program does in business terms]
+3-4 sentences covering: what this program does, what business process it serves, when it would typically run (batch/interactive/called), and what system it likely belongs to.
 
-## PURPOSE & BUSINESS LOGIC  
-[Explain what business problem this solves, who would use it, when it runs]
+## PURPOSE & BUSINESS LOGIC
+Explain in detail the business problem this program solves. What triggers it? Who uses the output? What business rules does it enforce? What would break if this program stopped running? Be specific to THIS program, not generic.
 
 ## INPUT & OUTPUT
-[List files read, files written, parameters accepted, data produced]
+List every file used with its access mode (Input/Output/Update/Keyed). List any entry parameters (*ENTRY PLIST). Describe what data comes in and what data goes out or gets updated. Include key fields used for lookups.
 
 ## KEY LOGIC WALKTHROUGH
-[Walk through the main logic step by step in plain English — not code, prose]
+Walk through the COMPLETE program logic step by step in plain English. Cover:
+- Initialisation and setup
+- Each major loop or conditional block — what condition triggers it, what happens inside
+- Each subroutine — what it does, what fields it reads and sets
+- How the program ends and what state it leaves files in
+Be thorough. A developer unfamiliar with this program should be able to understand every significant decision point.
 
-## NOTABLE PATTERNS
-[Highlight any interesting techniques, patterns, or important details a reviewer should know]
+## BUSINESS RULES IDENTIFIED
+List specific business rules embedded in the code. Examples: discount thresholds, status codes and their meanings, validation rules, calculation formulas. Quote actual field names and values (e.g. "If CRTYPE = 'G' then discount is 15%").
+
+## NOTABLE PATTERNS & CONCERNS
+Flag anything a code reviewer or auditor should pay attention to: hardcoded values, complex logic, performance considerations, dependencies on specific data states, or anything unusual about this program's approach.
 
 RPG Source Code:
 \`\`\`
 ${code}
 \`\`\`
 
-Write for a mixed audience: technical developers AND non-technical IT managers. Be clear, specific, and concise.`,
+Important: Be specific and detailed. Name actual fields, files, values and subroutines from the code. A superficial or generic response is not acceptable.`,
 
   docs: (code) => `You are a technical documentation specialist for IBM i systems.
 
@@ -2232,6 +2241,39 @@ async function runAnalysis() {
     ['export-word','export-pdf','export-copy'].forEach(id => {
       document.getElementById(id).disabled = false;
     });
+
+    // ── Save to localStorage history ────────────────────────────────
+    if (supabaseSession) {
+      try {
+        const userId   = supabaseSession.user.id;
+        const histKey  = `rpglens_history_${userId}`;
+        const history  = JSON.parse(localStorage.getItem(histKey) || '[]');
+        const progName = document.getElementById('program-name').textContent;
+        const ext      = currentMode === 'upload' ? 'RPG' : 'paste';
+        const tabs     = Object.entries(checks).filter(([,v]) => v).map(([k]) => k);
+
+        history.unshift({
+          name: progName,
+          date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          ext,
+          tabs
+        });
+
+        // Keep only last 20
+        localStorage.setItem(histKey, JSON.stringify(history.slice(0, 20)));
+
+        // ── Update usage count in localStorage ─────────────────────
+        const month    = `${new Date().getFullYear()}-${new Date().getMonth()}`;
+        const usageKey = `rpglens_usage_${userId}_${month}`;
+        const used     = parseInt(localStorage.getItem(usageKey) || '0') + 1;
+        localStorage.setItem(usageKey, String(used));
+
+        const totalKey = `rpglens_total_${userId}`;
+        const total    = parseInt(localStorage.getItem(totalKey) || '0') + 1;
+        localStorage.setItem(totalKey, String(total));
+
+      } catch(e) { console.warn('History save failed:', e); }
+    }
   }
 }
 

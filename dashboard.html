@@ -235,13 +235,14 @@ async function init() {
   planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
   if (plan === 'starter' || plan === 'team') planBadge.classList.add('starter');
 
-  // Usage from localStorage
-  const usageKey = `rpglens_usage_${user.id}_${new Date().getMonth()}`;
-  const used = parseInt(localStorage.getItem(usageKey) || '0');
-  const limit = PLAN_LIMITS[plan] || 3;
+  // Usage from localStorage — key matches analyser: YYYY-M
+  const month    = `${new Date().getFullYear()}-${new Date().getMonth()}`;
+  const usageKey = `rpglens_usage_${user.id}_${month}`;
+  const used     = parseInt(localStorage.getItem(usageKey) || '0');
+  const limit    = PLAN_LIMITS[plan] || 3;
   const remaining = Math.max(0, limit - used);
-  const totalKey = `rpglens_total_${user.id}`;
-  const total = parseInt(localStorage.getItem(totalKey) || '0');
+  const totalKey  = `rpglens_total_${user.id}`;
+  const total     = parseInt(localStorage.getItem(totalKey) || '0');
 
   document.getElementById('m-used').textContent = used;
   document.getElementById('m-remaining').textContent = remaining;
