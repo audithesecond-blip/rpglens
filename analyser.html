@@ -2284,9 +2284,13 @@ async function runAnalysis() {
         localStorage.setItem(histKey, JSON.stringify(trimmed));
 
         // ── Update usage count in localStorage ─────────────────────
-        const month    = `${new Date().getFullYear()}-${new Date().getMonth()}`;
-        const usageKey = `rpglens_usage_${userId}_${month}`;
-        const used     = parseInt(localStorage.getItem(usageKey) || '0') + 1;
+        // Key must match dashboard: period_N based on signup date
+        const signupDate      = new Date(supabaseSession.user.created_at);
+        const daysSinceSignup = Math.floor((new Date() - signupDate) / (1000 * 60 * 60 * 24));
+        const periodNumber    = Math.floor(daysSinceSignup / 30);
+        const periodKey       = `period_${periodNumber}`;
+        const usageKey        = `rpglens_usage_${userId}_${periodKey}`;
+        const used            = parseInt(localStorage.getItem(usageKey) || '0') + 1;
         localStorage.setItem(usageKey, String(used));
 
         const totalKey = `rpglens_total_${userId}`;
