@@ -1670,8 +1670,8 @@ function onCodeInput() {
   const cc   = document.getElementById('char-count');
 
   // Plan char limits (mirrors api/analyse.js)
-  const PLAN_CHAR_LIMITS = { free: 30000, starter: 100000, team: 300000 };
-  const PLAN_LABELS      = { free: 'Free (30KB limit)', starter: 'Starter (100KB limit)', team: 'Team (300KB limit)' };
+  const PLAN_CHAR_LIMITS = { free: 30000, starter: 100000, team: 300000, admin: 999999 };
+  const PLAN_LABELS      = { free: 'Free (30KB limit)', starter: 'Starter (100KB limit)', team: 'Team (300KB limit)', admin: 'Admin (unlimited)' };
 
   // Get plan from session if available
   const plan      = supabaseSession?.user?.user_metadata?.plan || 'free';
@@ -1706,11 +1706,16 @@ function onCodeInput() {
     }
   }
 
-  // Detect program name
-  const nameMatch = code.match(/(?:\/\/\s*Program[:\s]+|H\s+)([A-Z0-9]+)/i);
-  if (nameMatch) document.getElementById('program-name').textContent = nameMatch[1];
-  else if (len > 0) document.getElementById('program-name').textContent = 'Unnamed program';
-  else document.getElementById('program-name').textContent = 'New analysis';
+  // Detect program name — only in paste mode, and only if not already set from a file
+  if (currentMode === 'paste') {
+    const nameMatch = code.match(/(?:\/\/\s*Program[:\s]+|H\s+)([A-Z0-9]+)/i);
+    if (nameMatch) document.getElementById('program-name').textContent = nameMatch[1];
+    else if (len > 0) document.getElementById('program-name').textContent = 'Unnamed program';
+    else document.getElementById('program-name').textContent = 'New analysis';
+  } else if (currentMode === 'upload' && !uploadedCode) {
+    document.getElementById('program-name').textContent = 'New analysis';
+  }
+  // In upload mode with a file loaded, name is already set by showFileLoaded — don't touch it
 }
 
 function toggleOpt(cb, id) {

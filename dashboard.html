@@ -209,7 +209,7 @@ const sb = createClient(
   window.RPGLENS_CONFIG.SUPABASE_ANON
 );
 
-const PLAN_LIMITS = { free: 3, starter: 25, team: 999 };
+const PLAN_LIMITS = { free: 3, starter: 25, team: 999, admin: 999999 };
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
