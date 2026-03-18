@@ -4,6 +4,7 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/analyser",  "dest": "/analyser.html" },
+    { "src": "/converter", "dest": "/converter.html" },
     { "src": "/login",     "dest": "/login.html" },
     { "src": "/signup",    "dest": "/signup.html" },
     { "src": "/dashboard", "dest": "/dashboard.html" },

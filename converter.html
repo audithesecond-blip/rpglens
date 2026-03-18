@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens — Fixed to Free Format Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0e0f0f; --bg2:#141516; --bg3:#1a1c1d; --bg4:#1f2122;
+  --border:#2a2d2e; --border2:#363a3b;
+  --amber:#e8a020; --amber2:#f5c060; --amber-dim:#7a5010;
+  --green:#2ec27e; --green-dim:#0f4a2e;
+  --red:#e85050; --red-dim:#4a1515;
+  --blue:#5b9bd5; --text:#e8e4dc; --text2:#9a9690; --text3:#5a5855;
+  --mono:'DM Mono',monospace; --display:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;height:52px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 20px;gap:16px;position:relative}
+.topbar-logo{display:flex;align-items:center;gap:9px;text-decoration:none;padding-right:20px;border-right:1px solid var(--border)}
+.logo-mark svg{width:24px;height:24px}
+.logo-text{font-family:var(--display);font-weight:800;font-size:17px;color:var(--text);letter-spacing:-0.02em}
+.logo-text span{color:var(--amber)}
+.topbar-breadcrumb{font-size:11px;color:var(--text3);letter-spacing:0.08em;display:flex;align-items:center;gap:8px}
+.topbar-breadcrumb .sep{color:var(--border2)}
+.topbar-breadcrumb .current{color:var(--amber)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.api-status{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0.1em;color:var(--text3);padding:4px 10px;border:1px solid var(--border)}
+.api-status .dot{width:6px;height:6px;border-radius:50%;background:var(--border2)}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:none;cursor:pointer;letter-spacing:0.04em;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);transition:background 0.2s;text-decoration:none;display:inline-block}
+.btn-sm:hover{background:var(--amber2)}
+.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);clip-path:none;padding:5px 14px}
+.btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
+
+/* LAYOUT */
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* INPUT PANEL */
+.input-panel{width:420px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--bg2)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.panel-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.panel-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--amber)}
+.panel-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{background:none;border:1px solid var(--border);color:var(--text3);font-size:11px;padding:4px 10px;cursor:pointer;font-family:var(--mono);letter-spacing:0.06em;transition:all 0.2s}
+.icon-btn:hover{border-color:var(--border2);color:var(--text2)}
+
+.code-input{flex:1;background:var(--bg2);border:none;outline:none;color:#7ab8e8;font-family:var(--mono);font-size:12.5px;line-height:1.85;padding:16px;resize:none;overflow-y:auto;tab-size:4}
+.code-input::placeholder{color:var(--text3);font-style:italic}
+
+/* OPTIONS */
+.options-panel{flex-shrink:0;border-top:1px solid var(--border);background:var(--bg3);padding:14px 16px}
+.options-label{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+
+.opt-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.opt-check{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg2);border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;user-select:none}
+.opt-check:hover{border-color:var(--border2)}
+.opt-check.active{border-color:var(--amber-dim);background:rgba(232,160,32,0.04)}
+.opt-check input{display:none}
+.opt-box{width:14px;height:14px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s}
+.opt-check.active .opt-box{background:var(--amber);border-color:var(--amber)}
+.opt-check.active .opt-box::after{content:'';width:7px;height:5px;border-left:1.5px solid var(--bg);border-bottom:1.5px solid var(--bg);transform:rotate(-45deg) translateY(-1px);display:block}
+.opt-label{font-size:11px;color:var(--text2);letter-spacing:0.04em}
+.opt-check.active .opt-label{color:var(--amber)}
+.opt-desc{font-size:10px;color:var(--text3);margin-left:22px;line-height:1.5}
+
+.convert-btn{width:100%;padding:13px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:0.06em;cursor:pointer;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;text-transform:uppercase}
+.convert-btn:hover:not(:disabled){background:var(--amber2);transform:translateY(-1px);box-shadow:0 6px 24px rgba(232,160,32,0.2)}
+.convert-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.convert-btn .spinner{width:14px;height:14px;border:2px solid rgba(14,15,15,0.3);border-top-color:var(--bg);border-radius:50%;animation:spin 0.7s linear infinite;display:none}
+.convert-btn.loading .spinner{display:block}
+.convert-btn.loading .btn-label{opacity:0.7}
+.char-count{text-align:right;font-size:10px;color:var(--text3);margin-top:8px;letter-spacing:0.05em}
+
+/* OUTPUT PANEL */
+.output-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+.output-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0}
+.output-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.output-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--green)}
+.output-actions{display:flex;gap:8px}
+
+.output-area{flex:1;overflow-y:auto;padding:0;position:relative}
+
+/* EMPTY STATE */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--text3);padding:60px;text-align:center}
+.empty-icon{width:64px;height:64px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;clip-path:polygon(16px 0%,100% 0%,calc(100% - 16px) 100%,0% 100%);color:var(--border2);margin-bottom:8px}
+.empty-title{font-family:var(--display);font-weight:700;font-size:16px;color:var(--text3)}
+.empty-sub{font-size:12px;color:var(--text3);max-width:320px;line-height:1.7}
+
+/* CONVERTED CODE */
+.converted-wrap{display:none;flex-direction:column;height:100%}
+.converted-wrap.visible{display:flex}
+
+.conversion-summary{flex-shrink:0;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg3)}
+.sum-item{flex:1;padding:10px 16px;border-right:1px solid var(--border);font-size:11px}
+.sum-item:last-child{border-right:none}
+.sum-val{font-family:var(--display);font-weight:700;font-size:18px;color:var(--amber);line-height:1;margin-bottom:3px}
+.sum-val.green{color:var(--green)}
+.sum-label{font-size:10px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase}
+
+.code-output{flex:1;overflow-y:auto;padding:16px;font-family:var(--mono);font-size:12.5px;line-height:1.85;color:#9fd89a;background:var(--bg2);white-space:pre-wrap;word-break:break-all}
+
+/* NOTES PANEL */
+.notes-panel{flex-shrink:0;border-top:1px solid var(--border);background:var(--bg3);padding:12px 16px;max-height:180px;overflow-y:auto}
+.notes-title{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.notes-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--amber)}
+.note-item{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text2);line-height:1.5}
+.note-item:last-child{border-bottom:none}
+.note-badge{flex-shrink:0;font-size:9px;letter-spacing:0.1em;padding:2px 7px;font-family:var(--display);font-weight:700;white-space:nowrap;margin-top:1px}
+.note-badge.info{background:rgba(91,155,213,0.1);border:1px solid rgba(91,155,213,0.3);color:var(--blue)}
+.note-badge.warn{background:rgba(232,160,32,0.1);border:1px solid var(--amber-dim);color:var(--amber)}
+.note-badge.manual{background:rgba(232,80,80,0.1);border:1px solid rgba(232,80,80,0.3);color:var(--red)}
+
+/* EXPORT BAR */
+.export-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg3)}
+.export-label{font-size:11px;color:var(--text3);letter-spacing:0.08em}
+.export-btn{display:flex;align-items:center;gap:6px;padding:6px 14px;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;background:transparent;border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all 0.2s}
+.export-btn:hover{border-color:var(--amber-dim);color:var(--amber)}
+.export-btn:disabled{opacity:0.3;cursor:not-allowed}
+.export-sep{flex:1}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn 0.3s ease both}
+
+/* SAMPLE BAR */
+.sample-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg3)}
+.sample-label{font-size:10px;color:var(--text3);letter-spacing:0.1em}
+.sample-btn{font-size:10px;padding:3px 10px;background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-family:var(--mono);letter-spacing:0.06em;transition:all 0.2s}
+.sample-btn:hover{border-color:var(--amber-dim);color:var(--amber)}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 32 32" fill="none">
+        <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+        <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+        <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+        <line x1="16" y1="1" x2="16" y2="31" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <div class="topbar-breadcrumb">
+    <span>Converter</span>
+    <span class="sep">/</span>
+    <span class="current">Fixed → Free format</span>
+  </div>
+  <div class="topbar-right">
+    <div class="api-status">
+      <div class="dot" id="api-dot"></div>
+      <span id="api-status-text">CHECKING SESSION</span>
+    </div>
+    <a href="/dashboard" class="btn-sm ghost">Dashboard</a>
+    <a href="/" class="btn-sm ghost">← Home</a>
+  </div>
+</div>
+
+<!-- APP BODY -->
+<div class="app-body">
+
+  <!-- INPUT PANEL -->
+  <div class="input-panel">
+    <div class="panel-header">
+      <div class="panel-title">Fixed-format RPG input</div>
+      <div class="panel-actions">
+        <button class="icon-btn" onclick="clearInput()">Clear</button>
+        <button class="icon-btn" onclick="copyInput()">Copy</button>
+      </div>
+    </div>
+
+    <textarea class="code-input" id="code-input"
+      placeholder="// Paste fixed-format RPG source here&#10;// Supports: RPG III, RPG IV fixed-format, OPM RPG&#10;&#10;// Example:&#10;// C           READ  CUSTFILE&#10;// C     EOF   DOUEQ *ON&#10;// C           CHAIN CUSTNO CUSTMAST&#10;// C           ENDDO"
+      spellcheck="false" autocomplete="off" oninput="onInput()"></textarea>
+
+    <div class="sample-bar">
+      <span class="sample-label">Sample:</span>
+      <button class="sample-btn" onclick="loadSample()">Fixed-format calc</button>
+    </div>
+
+    <div class="options-panel">
+      <div class="options-label">Conversion options</div>
+      <div class="opt-row">
+        <label class="opt-check active" id="opt-freeformat">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-freeformat')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Convert to free-format RPG</span>
+        </label>
+        <div class="opt-desc">Replace all fixed-format specs with modern free-format equivalents</div>
+
+        <label class="opt-check active" id="opt-opcodes">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-opcodes')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Modernise op-codes</span>
+        </label>
+        <div class="opt-desc">Replace MOVE/MOVEL with EVAL, COMP with IF, GOTO with structured loops</div>
+
+        <label class="opt-check active" id="opt-bifs">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-bifs')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Use built-in functions (BIFs)</span>
+        </label>
+        <div class="opt-desc">Replace %SUBST, %TRIM, %LEN, %FOUND etc where applicable</div>
+
+        <label class="opt-check active" id="opt-comments">
+          <input type="checkbox" checked onchange="toggleOpt(this,'opt-comments')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Preserve all comments</span>
+        </label>
+        <div class="opt-desc">Keep all * and // comments in the converted output</div>
+
+        <label class="opt-check" id="opt-dcl">
+          <input type="checkbox" onchange="toggleOpt(this,'opt-dcl')"/>
+          <div class="opt-box"></div>
+          <span class="opt-label">Convert D-specs to DCL-S / DCL-DS</span>
+        </label>
+        <div class="opt-desc">Experimental — converts data structures and field definitions</div>
+      </div>
+
+      <button class="convert-btn" id="convert-btn" onclick="runConversion()" disabled>
+        <div class="spinner"></div>
+        <span class="btn-label">Convert to free format</span>
+      </button>
+      <div class="char-count" id="char-count">Paste fixed-format RPG above to begin</div>
+    </div>
+  </div>
+
+  <!-- OUTPUT PANEL -->
+  <div class="output-panel">
+    <div class="output-header">
+      <div class="output-title">Free-format output</div>
+      <div class="output-actions">
+        <button class="icon-btn" id="btn-copy-output" onclick="copyOutput()" disabled>Copy code</button>
+        <button class="icon-btn" id="btn-diff" onclick="toggleDiff()" disabled>Show diff</button>
+      </div>
+    </div>
+
+    <div class="output-area">
+      <!-- Empty state -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">&#8644;</div>
+        <div class="empty-title">No conversion yet</div>
+        <div class="empty-sub">Paste your fixed-format RPG on the left. RPGLens will convert it to modern free-format ILE RPG, modernise op-codes, and flag anything that needs manual review.</div>
+      </div>
+
+      <!-- Converted output -->
+      <div class="converted-wrap" id="converted-wrap">
+        <div class="conversion-summary" id="conversion-summary">
+          <div class="sum-item">
+            <div class="sum-val green" id="sum-lines">0</div>
+            <div class="sum-label">Lines converted</div>
+          </div>
+          <div class="sum-item">
+            <div class="sum-val" id="sum-opcodes">0</div>
+            <div class="sum-label">Op-codes modernised</div>
+          </div>
+          <div class="sum-item">
+            <div class="sum-val" id="sum-bifs">0</div>
+            <div class="sum-label">BIFs introduced</div>
+          </div>
+          <div class="sum-item">
+            <div class="sum-val amber" id="sum-manual">0</div>
+            <div class="sum-label">Manual review needed</div>
+          </div>
+        </div>
+
+        <div class="code-output" id="code-output"></div>
+
+        <div class="notes-panel" id="notes-panel" style="display:none">
+          <div class="notes-title">Conversion notes &amp; manual review items</div>
+          <div id="notes-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT BAR -->
+    <div class="export-bar">
+      <span class="export-label">Download:</span>
+      <button class="export-btn" id="exp-rpgle" onclick="exportRpgle()" disabled>
+        Free-format (.rpgle)
+      </button>
+      <button class="export-btn" id="exp-txt" onclick="exportTxt()" disabled>
+        Text (.txt)
+      </button>
+      <div class="export-sep"></div>
+      <span style="font-size:10px;color:var(--text3);letter-spacing:0.06em">Always review converted code before compiling</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const sb = createClient(window.RPGLENS_CONFIG.SUPABASE_URL, window.RPGLENS_CONFIG.SUPABASE_ANON);
+
+let supabaseSession = null;
+let convertedCode   = '';
+let showingDiff     = false;
+let originalCode    = '';
+
+// ── SESSION ───────────────────────────────────────────────────────────
+async function initSession() {
+  try {
+    const { data } = await sb.auth.getSession();
+    supabaseSession = data.session;
+    const dot = document.getElementById('api-dot');
+    const txt = document.getElementById('api-status-text');
+    if (supabaseSession) {
+      dot.style.background = 'var(--green)';
+      txt.textContent = 'SIGNED IN';
+    } else {
+      dot.style.background = 'var(--amber)';
+      txt.textContent = 'NOT SIGNED IN';
+    }
+  } catch(e) {}
+}
+
+// ── SAMPLE ────────────────────────────────────────────────────────────
+function loadSample() {
+  document.getElementById('code-input').value = `     H DFTACTGRP(*NO) ACTGRP(*CALLER)
+     FCUSTMAST  IF   E           K DISK
+     FORDFILE   UF   E           K DISK
+
+     D TotalAmt        S              9P 2
+     D NetAmt          S              9P 2
+     D Discount        S              5P 2
+     D CustId          S             10A
+     D ErrMsg          S            100A
+
+     C     *ENTRY        PLIST
+     C                   PARM                    CustId
+
+     C     CustId        CHAIN     CUSTMAST
+     C                   IF        %FOUND(CUSTMAST)
+     C                   SELECT
+     C                   WHEN      CUST_TYPE = 'G'
+     C                   EVAL      Discount = 0.15
+     C                   WHEN      CUST_TYPE = 'S'
+     C                   EVAL      Discount = 0.08
+     C                   OTHER
+     C                   EVAL      Discount = 0.05
+     C                   ENDSL
+     C                   EVAL      TotalAmt = ORD_QTY * ORD_PRICE
+     C                   EVAL      NetAmt = TotalAmt * (1 - Discount)
+     C                   EVAL      ORD_NETAMT = NetAmt
+     C                   UPDATE    ORDFILE
+     C                   ELSE
+     C                   EVAL      ErrMsg = 'Customer not found: ' + %TRIM(CustId)
+     C                   DSPLY                   ErrMsg
+     C                   ENDIF
+     C                   EVAL      *INLR = *ON`;
+  onInput();
+}
+
+// ── INPUT ─────────────────────────────────────────────────────────────
+function onInput() {
+  const code = document.getElementById('code-input').value.trim();
+  const len  = code.length;
+  const btn  = document.getElementById('convert-btn');
+  const cc   = document.getElementById('char-count');
+  btn.disabled = len < 10;
+  cc.textContent = len > 0 ? `${len.toLocaleString()} characters` : 'Paste fixed-format RPG above to begin';
+}
+
+function clearInput() {
+  document.getElementById('code-input').value = '';
+  onInput();
+  resetOutput();
+}
+
+function copyInput() {
+  navigator.clipboard.writeText(document.getElementById('code-input').value);
+}
+
+function toggleOpt(cb, id) {
+  document.getElementById(id).classList.toggle('active', cb.checked);
+}
+
+// ── CONVERSION ────────────────────────────────────────────────────────
+async function runConversion() {
+  const code = document.getElementById('code-input').value.trim();
+  if (!code) return;
+
+  if (!supabaseSession) { window.location.href = '/login'; return; }
+
+  originalCode = code;
+  const btn = document.getElementById('convert-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-label').textContent = 'Converting...';
+
+  const opts = {
+    freeformat: document.getElementById('opt-freeformat').querySelector('input').checked,
+    opcodes:    document.getElementById('opt-opcodes').querySelector('input').checked,
+    bifs:       document.getElementById('opt-bifs').querySelector('input').checked,
+    comments:   document.getElementById('opt-comments').querySelector('input').checked,
+    dcl:        document.getElementById('opt-dcl').querySelector('input').checked,
+  };
+
+  const prompt = buildPrompt(code, opts);
+
+  try {
+    const resp = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseSession.access_token}`
+      },
+      body: JSON.stringify({ prompt, analysisType: 'convert', codeLength: code.length })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
+
+    renderOutput(data.result, code);
+
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.querySelector('.btn-label').textContent = 'Re-convert';
+  }
+}
+
+function buildPrompt(code, opts) {
+  const optList = [];
+  if (opts.freeformat) optList.push('- Convert ALL fixed-format specs (H, F, D, I, C, O) to their free-format equivalents');
+  if (opts.opcodes)    optList.push('- Replace legacy op-codes: MOVE→EVAL, MOVEL→EVAL, COMP→IF, Z-ADD→EVAL, Z-SUB→EVAL, GOTO→structured loops where possible, ITER/LEAVE replace GOTO');
+  if (opts.bifs)       optList.push('- Use BIFs where applicable: %TRIM, %LEN, %SUBST, %FOUND, %ERROR, %EOF, %CHAR, %DEC, %INT, %ADDR');
+  if (opts.comments)   optList.push('- Preserve ALL comments from the original (both * and // style), converting * to // in free format');
+  if (opts.dcl)        optList.push('- Convert D-specs: standalone fields to DCL-S, data structures to DCL-DS with subfields');
+
+  return `You are a senior IBM i RPG modernisation expert with 25+ years converting fixed-format RPG to free-format ILE RPG.
+
+Convert the following fixed-format RPG source code to modern free-format ILE RPG.
+
+CONVERSION REQUIREMENTS:
+${optList.join('\n')}
+- Add **FREE as the first line
+- Preserve ALL business logic exactly — do not change what the program does, only how it is written
+- Keep all field names, file names, and subroutine names identical
+- Where conversion is ambiguous or requires manual verification, add a comment: // TODO: Review - [reason]
+
+OUTPUT FORMAT:
+Respond with TWO sections separated by exactly this marker: ===NOTES===
+
+Section 1: The complete converted free-format RPG code only — no explanation, no markdown fences, just the raw RPG source
+
+Section 2 (after ===NOTES===): A JSON array of conversion notes in this exact format:
+[
+  {"type": "info|warn|manual", "msg": "description of what was done or needs review"}
+]
+
+Types:
+- "info" = automatic conversion made (informational)
+- "warn" = conversion made but verify logic is correct  
+- "manual" = could not auto-convert, manual rewrite needed
+
+Fixed-format RPG to convert:
+${code}`;
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function renderOutput(raw, original) {
+  const parts     = raw.split('===NOTES===');
+  convertedCode   = (parts[0] || raw).trim();
+  const notesJson = parts[1] ? parts[1].trim() : '[]';
+
+  let notes = [];
+  try {
+    const cleaned = notesJson.replace(/```json|```/g, '').trim();
+    notes = JSON.parse(cleaned);
+  } catch(e) { notes = []; }
+
+  // Summary counts
+  const origLines = original.split('\n').filter(l => l.trim()).length;
+  const convLines = convertedCode.split('\n').filter(l => l.trim()).length;
+  const opCount   = notes.filter(n => n.type === 'info').length;
+  const bifCount  = notes.filter(n => n.msg && n.msg.toLowerCase().includes('bif') || n.msg.includes('%')).length;
+  const manCount  = notes.filter(n => n.type === 'manual').length;
+
+  document.getElementById('sum-lines').textContent   = convLines;
+  document.getElementById('sum-opcodes').textContent = opCount;
+  document.getElementById('sum-bifs').textContent    = bifCount;
+  document.getElementById('sum-manual').textContent  = manCount;
+  document.getElementById('sum-manual').className    = 'sum-val ' + (manCount > 0 ? 'amber' : 'green');
+
+  // Code output
+  document.getElementById('code-output').textContent = convertedCode;
+
+  // Notes
+  if (notes.length > 0) {
+    const list = document.getElementById('notes-list');
+    list.innerHTML = '';
+    notes.forEach(n => {
+      const div = document.createElement('div');
+      div.className = 'note-item';
+      div.innerHTML = `<span class="note-badge ${n.type}">${n.type.toUpperCase()}</span><span>${n.msg}</span>`;
+      list.appendChild(div);
+    });
+    document.getElementById('notes-panel').style.display = 'block';
+  }
+
+  // Show output
+  document.getElementById('empty-state').style.display = 'none';
+  const wrap = document.getElementById('converted-wrap');
+  wrap.classList.add('visible');
+
+  // Enable buttons
+  ['btn-copy-output','btn-diff','exp-rpgle','exp-txt'].forEach(id => {
+    document.getElementById(id).disabled = false;
+  });
+}
+
+function resetOutput() {
+  convertedCode = '';
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('converted-wrap').classList.remove('visible');
+  document.getElementById('notes-panel').style.display = 'none';
+  ['btn-copy-output','btn-diff','exp-rpgle','exp-txt'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+}
+
+function showError(msg) {
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('empty-state').innerHTML = `
+    <div class="empty-icon" style="color:var(--red)">&#9651;</div>
+    <div class="empty-title" style="color:var(--red)">Conversion failed</div>
+    <div class="empty-sub" style="color:var(--red)">${msg}</div>`;
+}
+
+// ── DIFF VIEW ─────────────────────────────────────────────────────────
+function toggleDiff() {
+  showingDiff = !showingDiff;
+  const out = document.getElementById('code-output');
+  const btn = document.getElementById('btn-diff');
+  if (showingDiff) {
+    btn.textContent = 'Show converted';
+    // Simple side-by-side in one pane: show original with >> prefix, converted with << prefix
+    const origLines = originalCode.split('\n');
+    const convLines = convertedCode.split('\n');
+    const maxLen    = Math.max(origLines.length, convLines.length);
+    let diff = '';
+    for (let i = 0; i < maxLen; i++) {
+      const o = origLines[i] || '';
+      const c = convLines[i] || '';
+      if (o !== c) {
+        if (o) diff += `- ${o}\n`;
+        if (c) diff += `+ ${c}\n`;
+      } else {
+        diff += `  ${c}\n`;
+      }
+    }
+    out.textContent = diff;
+    out.style.color = '#e8e4dc';
+  } else {
+    btn.textContent = 'Show diff';
+    out.textContent = convertedCode;
+    out.style.color = '#9fd89a';
+  }
+}
+
+// ── EXPORTS ───────────────────────────────────────────────────────────
+function copyOutput() {
+  navigator.clipboard.writeText(convertedCode);
+  const btn = document.getElementById('btn-copy-output');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy code', 2000);
+}
+
+function exportRpgle() {
+  const name = 'CONVERTED_' + new Date().toISOString().slice(0,10).replace(/-/g,'');
+  triggerDownload(new Blob([convertedCode], { type: 'text/plain;charset=utf-8' }), `${name}.rpgle`);
+}
+
+function exportTxt() {
+  const name = 'CONVERTED_' + new Date().toISOString().slice(0,10).replace(/-/g,'');
+  triggerDownload(new Blob([convertedCode], { type: 'text/plain;charset=utf-8' }), `${name}.txt`);
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+// init
+onInput();
+initSession();
+</script>
+</body>
+</html>
