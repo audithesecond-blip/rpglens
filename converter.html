@@ -384,11 +384,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .fade-in{animation:fadeIn 0.3s ease both}
 
-/* SAMPLE BAR */
-.sample-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg3)}
-.sample-label{font-size:10px;color:var(--text3);letter-spacing:0.1em}
-.sample-btn{font-size:10px;padding:3px 10px;background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-family:var(--mono);letter-spacing:0.06em;transition:all 0.2s}
-.sample-btn:hover{border-color:var(--amber-dim);color:var(--amber)}
 </style>
 </head>
 <body>
@@ -494,10 +489,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="file-preview" id="file-preview"></div>
     </div>
 
-    <div class="sample-bar" id="sample-bar">
-      <span class="sample-label">Sample:</span>
-      <button class="sample-btn" onclick="loadSample()">Fixed-format calc</button>
-    </div>
 
     <div class="options-panel">
       <div class="options-label">Conversion options</div>
@@ -611,7 +602,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 <script>
 const { createClient } = supabase;
-const sb = createClient(window.RPGLENS_CONFIG.SUPABASE_URL, window.RPGLENS_CONFIG.SUPABASE_ANON);
+let _sb = null;
+function getSb() {
+  if (!_sb) _sb = createClient(window.RPGLENS_CONFIG.SUPABASE_URL, window.RPGLENS_CONFIG.SUPABASE_ANON);
+  return _sb;
+}
 
 let supabaseSession = null;
 let convertedCode   = '';
@@ -624,7 +619,7 @@ let uploadedCode = null;
 // ── SESSION ───────────────────────────────────────────────────────────
 async function initSession() {
   try {
-    const { data } = await sb.auth.getSession();
+    const { data } = await getSb().auth.getSession();
     supabaseSession = data.session;
     const dot = document.getElementById('api-dot');
     const txt = document.getElementById('api-status-text');
@@ -638,42 +633,6 @@ async function initSession() {
   } catch(e) {}
 }
 
-// ── SAMPLE ────────────────────────────────────────────────────────────
-function loadSample() {
-  document.getElementById('code-input').value = `     H DFTACTGRP(*NO) ACTGRP(*CALLER)
-     FCUSTMAST  IF   E           K DISK
-     FORDFILE   UF   E           K DISK
-
-     D TotalAmt        S              9P 2
-     D NetAmt          S              9P 2
-     D Discount        S              5P 2
-     D CustId          S             10A
-     D ErrMsg          S            100A
-
-     C     *ENTRY        PLIST
-     C                   PARM                    CustId
-
-     C     CustId        CHAIN     CUSTMAST
-     C                   IF        %FOUND(CUSTMAST)
-     C                   SELECT
-     C                   WHEN      CUST_TYPE = 'G'
-     C                   EVAL      Discount = 0.15
-     C                   WHEN      CUST_TYPE = 'S'
-     C                   EVAL      Discount = 0.08
-     C                   OTHER
-     C                   EVAL      Discount = 0.05
-     C                   ENDSL
-     C                   EVAL      TotalAmt = ORD_QTY * ORD_PRICE
-     C                   EVAL      NetAmt = TotalAmt * (1 - Discount)
-     C                   EVAL      ORD_NETAMT = NetAmt
-     C                   UPDATE    ORDFILE
-     C                   ELSE
-     C                   EVAL      ErrMsg = 'Customer not found: ' + %TRIM(CustId)
-     C                   DSPLY                   ErrMsg
-     C                   ENDIF
-     C                   EVAL      *INLR = *ON`;
-  onInput();
-}
 
 // ── INPUT ─────────────────────────────────────────────────────────────
 function onInput() {
@@ -917,8 +876,6 @@ function switchMode(mode) {
   const pasteArea  = document.getElementById('code-input');
   const uploadZone = document.getElementById('upload-zone');
   const fileLoaded = document.getElementById('file-loaded');
-  const sampleBar  = document.getElementById('sample-bar');
-
   document.getElementById('mode-paste').classList.toggle('active', mode === 'paste');
   document.getElementById('mode-upload').classList.toggle('active', mode === 'upload');
 
@@ -927,11 +884,9 @@ function switchMode(mode) {
     uploadZone.style.display = 'none';
     uploadZone.classList.remove('visible');
     fileLoaded.classList.remove('visible');
-    sampleBar.style.display  = '';
-    onCodeInput();
+    onInput();
   } else {
     pasteArea.style.display  = 'none';
-    sampleBar.style.display  = 'none';
     if (uploadedCode) {
       uploadZone.classList.remove('visible');
       fileLoaded.classList.add('visible');
@@ -939,7 +894,7 @@ function switchMode(mode) {
       uploadZone.classList.add('visible');
       fileLoaded.classList.remove('visible');
     }
-    onCodeInput();
+    onInput();
   }
 }
 
@@ -1214,7 +1169,7 @@ function showFileLoaded(file, text, ext) {
   uploadZone.classList.remove('visible');
   fileLoaded.classList.add('visible');
 
-  onCodeInput();
+  onInput();
 }
 
 function showFileError(msg) {
@@ -1239,30 +1194,9 @@ function clearUpload() {
   document.getElementById('upload-zone').classList.add('visible');
   const errMsg = document.getElementById('file-error-msg');
   if (errMsg) errMsg.remove();
-  onCodeInput();
-}
-
-// ── Override showFileLoaded for converter ───────────────────────────
-function showFileLoaded(file, text, ext) {
-  const uploadZone = document.getElementById('upload-zone');
-  const fileLoaded = document.getElementById('file-loaded');
-  const iconEl     = document.getElementById('file-type-icon');
-  const nameEl     = document.getElementById('file-name-display');
-  const sizeEl     = document.getElementById('file-size-display');
-  const previewEl  = document.getElementById('file-preview');
-  const typeMap = { txt:'TXT',text:'TXT',rpgle:'RPG',rpg:'RPG',clle:'CL',cl:'CL',sqlrpgle:'SQL',docx:'DOC',pdf:'PDF' };
-  const typeClass = ext === 'docx' ? 'docx' : ext === 'pdf' ? 'pdf' : 'txt';
-  iconEl.textContent = typeMap[ext] || ext.toUpperCase();
-  iconEl.className   = `file-type-icon ${typeClass}`;
-  nameEl.textContent = file.name;
-  const kb    = (file.size / 1024).toFixed(1);
-  const lines = text.split('\n').length;
-  sizeEl.textContent = `${kb} KB \u00b7 ${lines.toLocaleString()} lines extracted${file.name.toLowerCase().endsWith('.pdf') && lines > 5 ? ' \u00b7 IBM i listing cleaned' : ''}`;
-  previewEl.textContent = text;
-  uploadZone.classList.remove('visible');
-  fileLoaded.classList.add('visible');
   onInput();
 }
+
 
 // ── getActiveCode for converter ───────────────────────────────────────
 function getActiveCode() {
