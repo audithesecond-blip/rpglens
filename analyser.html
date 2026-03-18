@@ -1573,7 +1573,7 @@ function cleanIBMiSourceListing(raw) {
 
     // ── Fixed-format lines — col 6 is the spec type ────────────────
     // After removing seq number the first non-space char should be spec letter
-    if (/^[HFEIDCOPMABhfeidcopma ]\s/.test(codePart || '')) { cleaned.push(t); continue; }
+    if (/^[HFEIDCOPMABhfeidcopma ]\s/.test(trimmed)) { cleaned.push(t); continue; }
   }
 
   // Nothing cleaned — return raw as fallback
