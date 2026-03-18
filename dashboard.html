@@ -218,6 +218,17 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="history-empty-sub">Run your first analysis to see your history here.<br/>Your results are saved locally in your browser.</div>
     </div>
   </div>
+
+  <!-- RECENT CONVERSIONS -->
+  <div class="section-header" style="margin-top:24px">
+    <div class="section-title">Recent conversions</div>
+  </div>
+  <div id="conv-history-container" class="fade-in">
+    <div class="history-empty">
+      <div class="history-empty-title">No conversions yet</div>
+      <div class="history-empty-sub">Convert a fixed-format program to see your history here.<br/><a href="/converter" style="color:var(--amber)">Go to converter →</a></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -313,6 +324,11 @@ async function init() {
   const histKey = `rpglens_history_${user.id}`;
   const history = JSON.parse(localStorage.getItem(histKey) || '[]');
   renderHistory(history);
+
+  // Conversion history
+  const convHistKey = `rpglens_conv_history_${user.id}`;
+  const convHistory = JSON.parse(localStorage.getItem(convHistKey) || '[]');
+  renderConvHistory(convHistory);
 }
 
 function renderHistory(history) {
@@ -337,6 +353,34 @@ function renderHistory(history) {
         ${item.tabs?.includes('explain') ? '<span class="htag explain">Explain</span>' : ''}
         ${item.tabs?.includes('risk')    ? '<span class="htag risk">Risk</span>'    : ''}
         ${item.tabs?.includes('modern')  ? '<span class="htag modern">Modern</span>' : ''}
+      </div>`;
+    list.appendChild(el);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(list);
+}
+
+function renderConvHistory(history) {
+  const container = document.getElementById('conv-history-container');
+  if (!history.length) return;
+
+  const list = document.createElement('div');
+  list.className = 'history-list';
+
+  history.slice(0, 8).forEach(item => {
+    const el = document.createElement('a');
+    el.href      = item.id ? `/converter?restore=${item.id}` : '/converter';
+    el.className = 'history-item';
+    el.innerHTML = `
+      <div class="history-icon" style="background:rgba(46,194,126,0.12);color:var(--green)">RPG</div>
+      <div class="history-meta">
+        <div class="history-name">${item.name || 'Unnamed program'}</div>
+        <div class="history-date">${item.date || 'Recently'}</div>
+      </div>
+      <div class="history-tags">
+        <span class="htag" style="background:rgba(46,194,126,0.1);border-color:rgba(46,194,126,0.3);color:var(--green)">${item.lines ? item.lines + ' lines' : 'Converted'}</span>
+        <span class="htag" style="background:rgba(46,194,126,0.06);border-color:rgba(46,194,126,0.2);color:var(--green);opacity:0.7">Free format</span>
       </div>`;
     list.appendChild(el);
   });

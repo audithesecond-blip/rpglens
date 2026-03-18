@@ -1346,16 +1346,76 @@ function saveConversionUsage() {
     const daysSince    = Math.floor((new Date() - signupDate) / (1000 * 60 * 60 * 24));
     const periodNumber = Math.floor(daysSince / 30);
     const periodKey    = `period_${periodNumber}`;
-    const usageKey     = `rpglens_conv_${userId}_${periodKey}`;
-    const used         = parseInt(localStorage.getItem(usageKey) || '0') + 1;
+
+    // Increment usage counter
+    const usageKey = `rpglens_conv_${userId}_${periodKey}`;
+    const used     = parseInt(localStorage.getItem(usageKey) || '0') + 1;
     localStorage.setItem(usageKey, String(used));
+
+    // Save conversion history
+    const histKey = `rpglens_conv_history_${userId}`;
+    const history = JSON.parse(localStorage.getItem(histKey) || '[]');
+    const id      = `conv_${userId}_${Date.now()}`;
+
+    // Save the converted result separately
+    localStorage.setItem(id, JSON.stringify({
+      convertedCode,
+      originalLines: originalCode.split('\n').filter(l => l.trim()).length,
+      convLines:     convertedCode.split('\n').filter(l => l.trim()).length
+    }));
+
+    // Get program name from breadcrumb or filename
+    const progName = document.getElementById('file-name-display')?.textContent?.replace(/\.[^.]+$/, '').replace(/\s*\(\d+\)\s*$/, '').trim().toUpperCase() || 'Unnamed program';
+
+    history.unshift({
+      id,
+      name: progName || 'Unnamed program',
+      date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      lines: convertedCode.split('\n').filter(l => l.trim()).length
+    });
+
+    // Keep last 10, clean up old result keys
+    history.slice(10).forEach(h => { if (h.id) localStorage.removeItem(h.id); });
+    localStorage.setItem(histKey, JSON.stringify(history.slice(0, 10)));
+
     loadConversionUsage();
-  } catch(e) {}
+  } catch(e) { console.warn('saveConversionUsage failed:', e); }
+}
+
+// ── RESTORE FROM HISTORY ──────────────────────────────────────────────
+function restoreConversion(id) {
+  if (!id) return;
+  try {
+    const saved = localStorage.getItem(id);
+    if (!saved) return;
+    const { convertedCode: code, convLines } = JSON.parse(saved);
+    if (!code) return;
+
+    convertedCode = code;
+    document.getElementById('code-output').textContent = code;
+    document.getElementById('sum-lines').textContent   = convLines || code.split('\n').filter(l => l.trim()).length;
+    document.getElementById('sum-opcodes').textContent = '—';
+    document.getElementById('sum-bifs').textContent    = '—';
+    document.getElementById('sum-manual').textContent  = '—';
+
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('converted-wrap').classList.add('visible');
+    ['btn-copy-output','btn-diff','exp-rpgle','exp-txt'].forEach(id => {
+      document.getElementById(id).disabled = false;
+    });
+
+    document.getElementById('convert-btn').querySelector('.btn-label').textContent = 'Re-convert';
+  } catch(e) { console.warn('Restore failed:', e); }
 }
 
 // init
 onInput();
 initSession();
+
+// Check for restore param
+const _urlParams  = new URLSearchParams(window.location.search);
+const _restoreId  = _urlParams.get('restore');
+if (_restoreId) setTimeout(() => restoreConversion(_restoreId), 800);
 </script>
 </body>
 </html>
