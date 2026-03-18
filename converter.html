@@ -880,13 +880,12 @@ function switchMode(mode) {
   document.getElementById('mode-upload').classList.toggle('active', mode === 'upload');
 
   if (mode === 'paste') {
-    pasteArea.style.display  = '';
-    uploadZone.style.display = 'none';
+    pasteArea.style.display = '';
     uploadZone.classList.remove('visible');
     fileLoaded.classList.remove('visible');
     onInput();
   } else {
-    pasteArea.style.display  = 'none';
+    pasteArea.style.display = 'none';
     if (uploadedCode) {
       uploadZone.classList.remove('visible');
       fileLoaded.classList.add('visible');
