@@ -591,9 +591,10 @@ function setTabError(tab,err){
 // ── EXPORT ──────────────────────────────────────────────────────────
 const EXPORT_LABELS={explain:'EXPLANATION',docs:'DOCUMENTATION',risk:'RISK ANALYSIS',modern:'MODERNISATION PLAN'};
 function getProgramName(){return document.getElementById('program-name').textContent.trim()||'RPGLens_Report';}
+function getSafeFilename(){return getProgramName().replace(/[^a-zA-Z0-9_\-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')||'RPGLens_Report';}
 function getAllResultsText(){const parts=[];Object.entries(state.results).forEach(([key,val])=>{if(val)parts.push(`\n${'='.repeat(60)}\n${EXPORT_LABELS[key]}\n${'='.repeat(60)}\n\n${val}`);});return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${getProgramName()}\n${parts.join('\n\n')}`;}
 function copyResults(){navigator.clipboard.writeText(getAllResultsText());const btn=document.getElementById('export-copy'),orig=btn.innerHTML;btn.innerHTML=btn.innerHTML.replace('Copy text','Copied!');setTimeout(()=>{btn.innerHTML=orig;},2000);}
-function exportText(){triggerDownload(new Blob([getAllResultsText()],{type:'text/plain;charset=utf-8'}),`RPGLens_${getProgramName()}_${dateStamp()}.txt`);}
+function exportText(){triggerDownload(new Blob([getAllResultsText()],{type:'text/plain;charset=utf-8'}),`RPGLens_${getSafeFilename()}_${dateStamp()}.txt`);}
 
 // FIX 1: Word export — explicit Uint8Array conversion prevents corrupt file
 async function exportWord(){
@@ -623,15 +624,14 @@ async function exportWord(){
     });
     const doc=new Document({styles:{default:{document:{run:{font:'Arial',size:22}}}},sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1440,right:1440,bottom:1440,left:1440}}},children}]});
     // KEY FIX: convert to Uint8Array explicitly — browser Blob requires this
-    const buffer=await Packer.toBuffer(doc);
-    const uint8=buffer instanceof Uint8Array?buffer:new Uint8Array(buffer);
-    triggerDownload(new Blob([uint8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),`RPGLens_${progName}_${dateStamp()}.docx`);
+    const blob=await Packer.toBlob(doc);
+    triggerDownload(blob,`RPGLens_${getSafeFilename()}_${dateStamp()}.docx`);
   }catch(e){
     console.error('Word export failed:',e);
     // RTF fallback
     const text=getAllResultsText();
     const rtf=`{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}{\\f0\\fs22 ${text.replace(/\\/g,'\\\\').replace(/[{}]/g,m=>'\\'+m).replace(/\n/g,'\\par ')}}}`;
-    triggerDownload(new Blob([rtf],{type:'application/rtf'}),`RPGLens_${getProgramName()}_${dateStamp()}.rtf`);
+    triggerDownload(new Blob([rtf],{type:'application/rtf'}),`RPGLens_${getSafeFilename()}_${dateStamp()}.rtf`);
   }finally{btn.innerHTML=btn.innerHTML.replace('Building...','Word (.docx)');btn.disabled=false;}
 }
 
@@ -669,7 +669,10 @@ tr:nth-child(even) td{background:#f5f5f3}
 .footer{margin-top:40px;padding-top:10px;border-top:1px solid #ccc;font-size:9pt;color:#9A9690}
 @media print{.save-hint{display:none}.section+.section{page-break-before:always}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
-<div class="save-hint">&#128196; To save as PDF: <span>In the print dialog, change Destination to <strong>Save as PDF</strong></span></div>
+<div class="save-hint" style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+  <span>&#128196; To save as PDF: In the print dialog, set Destination to <strong>Save as PDF</strong></span>
+  <button onclick="window.print()" style="background:#fff;color:#1a3c6e;border:none;padding:8px 18px;font-weight:bold;cursor:pointer;font-size:10pt;border-radius:2px;flex-shrink:0">&#128438; Print / Save PDF</button>
+</div>
 <div class="wrap">
 <div class="cover"><h1>RPGLens Analysis Report</h1><p><strong>Program:</strong> ${progName}</p><p><strong>Generated:</strong> ${generated}</p></div>
 ${sections}
