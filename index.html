@@ -1193,60 +1193,59 @@
   <div class="hero-tag">IBM i &nbsp;/&nbsp; AS400 &nbsp;/&nbsp; RPG &nbsp;/&nbsp; ILE &nbsp;/&nbsp; CL &nbsp;/&nbsp; COBOL</div>
   <h1 class="hero-title">
     Your IBM&nbsp;i code,<br/>
-    <span class="accent">finally explained.</span>
+    <span class="accent">understood and modernised.</span>
   </h1>
   <p class="hero-sub">
-    Paste code or upload a file (.rpgle, .txt, .docx, .pdf). Get plain-English explanations, audit-ready documentation, risk reports, and a modernisation roadmap — in 30 seconds.
+    Explain, document, and risk-analyse any RPG program in seconds — or convert legacy fixed-format RPG directly to modern free-format ILE RPG. The fastest path to IBM i modernisation.
   </p>
   <div class="hero-actions">
-    <a href="/analyser" class="btn-primary">Try free — open analyser</a>
+    <a href="/analyser" class="btn-primary">Analyse code — free</a>
+    <a href="/converter" class="btn-primary" style="background:var(--green);border-color:var(--green)">&#8644; Convert to free format</a>
     <a href="#how" class="btn-ghost">See how it works</a>
   </div>
   <p class="hero-note">No installation &nbsp;·&nbsp; Supports .rpgle, .txt, .docx, .pdf &nbsp;·&nbsp; Your code never leaves your browser</p>
 
-  <!-- TERMINAL -->
-  <div class="terminal-wrap">
+  <!-- DUAL TERMINAL -->
+  <div class="terminal-wrap" style="max-width:980px">
     <div class="terminal">
       <div class="terminal-bar">
         <div class="dot r"></div>
         <div class="dot y"></div>
         <div class="dot g"></div>
-        <span class="terminal-title">RPGLENS ANALYSER &nbsp;—&nbsp; QSALES001.RPGLE</span>
+        <span class="terminal-title">RPGLENS &nbsp;—&nbsp; TWO TOOLS IN ONE</span>
       </div>
-      <div class="terminal-body">
-        <div class="t-pane">
-          <div class="t-label">// Input — RPG ILE source</div>
-<pre style="font-family:var(--mono);font-size:11.5px;line-height:1.8;white-space:pre-wrap"><span class="t-kw">DCLINFILE</span>  CUSTMAST  <span class="t-kw">DISK</span>
-<span class="t-kw">DCL-S</span>  TotalAmt  <span class="t-kw">PACKED</span>(<span class="t-num">11:2</span>);
-<span class="t-kw">DCL-S</span>  CustId    <span class="t-kw">CHAR</span>(<span class="t-num">10</span>);
-<span class="t-kw">DCL-S</span>  Discount  <span class="t-kw">PACKED</span>(<span class="t-num">5:2</span>);
-
-<span class="t-kw">DOW</span>  NOT %EOF(CUSTMAST);
-  <span class="t-kw">CHAIN</span>  CustId  CUSTMAST;
-  <span class="t-kw">IF</span>  %FOUND(CUSTMAST);
-    <span class="t-kw">IF</span>  CRTYPE = <span class="t-str">'G'</span>;
-      Discount = <span class="t-num">0.15</span>;
-    <span class="t-kw">ELSE</span>;
-      Discount = <span class="t-num">0.05</span>;
-    <span class="t-kw">ENDIF</span>;
-  <span class="t-kw">ENDIF</span>;
-  <span class="t-kw">EXSR</span>  CalcTotal;
-  <span class="t-kw">READ</span>  CUSTMAST;
-<span class="t-kw">ENDDO</span>; <span class="t-cmt">// end loop</span></pre>
+      <div class="terminal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <!-- LEFT: Analyser -->
+        <div class="t-pane" style="border-right:1px solid var(--border)">
+          <div class="t-label" style="color:var(--amber)">&#9113; Analyser — explain, document, risk, modernise</div>
+<pre style="font-family:var(--mono);font-size:11px;line-height:1.8;white-space:pre-wrap"><span class="t-kw">C</span>     CustId        CHAIN     CUSTMAST
+<span class="t-kw">C</span>                   IF        %FOUND
+<span class="t-kw">C</span>     CRTYPE        IFEQ      <span class="t-str">'G'</span>
+<span class="t-kw">C</span>                   EVAL      Disc = <span class="t-num">0.15</span>
+<span class="t-kw">C</span>                   ELSE
+<span class="t-kw">C</span>                   EVAL      Disc = <span class="t-num">0.05</span>
+<span class="t-kw">C</span>                   ENDIF
+<span class="t-kw">C</span>                   ENDIF</pre>
+          <div class="output-block" style="margin-top:8px">
+            <div class="output-key">Risk</div>
+            <div class="output-val" style="color:#e85050">⚑ Hardcoded literal 'G' — no constant defined. Change risk: HIGH</div>
+          </div>
         </div>
+        <!-- RIGHT: Converter -->
         <div class="t-pane t-output">
-          <div class="t-label">// RPGLens output — plain English</div>
-          <div class="output-block">
-            <div class="output-key">Purpose</div>
-            <div class="output-val">Reads all customer records, looks up each by ID, applies a tiered discount (15% for Gold, 5% for Standard), then runs the total calculation subroutine.</div>
-          </div>
-          <div class="output-block">
-            <div class="output-key">Risk flags</div>
-            <div class="output-val" style="color:#e85050">⚑ CRTYPE comparison uses hardcoded literal 'G' — no constant defined. Change risk: HIGH.</div>
-          </div>
-          <div class="output-block">
-            <div class="output-key">Modernisation</div>
-            <div class="output-val" style="color:var(--green)">CalcTotal subroutine is a candidate for extraction as a standalone ILE service program.<span class="cursor"></span></div>
+          <div class="t-label" style="color:var(--green)">&#8644; Converter — fixed format → free format ILE RPG</div>
+<pre style="font-family:var(--mono);font-size:11px;line-height:1.8;white-space:pre-wrap"><span class="t-kw">**FREE</span>
+<span class="t-kw">CHAIN</span> CustId CUSTMAST;
+<span class="t-kw">IF</span> %FOUND(CUSTMAST);
+  <span class="t-kw">IF</span> CRTYPE = <span class="t-str">'G'</span>;
+    Disc = <span class="t-num">0.15</span>;
+  <span class="t-kw">ELSE</span>;
+    Disc = <span class="t-num">0.05</span>;
+  <span class="t-kw">ENDIF</span>;
+<span class="t-kw">ENDIF</span>;</pre>
+          <div class="output-block" style="margin-top:8px">
+            <div class="output-key" style="color:var(--green)">Converted</div>
+            <div class="output-val" style="color:var(--green)">✓ Fixed C-specs → free format &nbsp;·&nbsp; IFEQ → IF &nbsp;·&nbsp; EVAL removed<span class="cursor"></span></div>
           </div>
         </div>
       </div>
@@ -1294,8 +1293,8 @@
     <div class="stat-label">avg. analysis time</div>
   </div>
   <div class="stat-item">
-    <div class="stat-num">4</div>
-    <div class="stat-label">output types per analysis</div>
+    <div class="stat-num">2</div>
+    <div class="stat-label">tools — analyser + converter</div>
   </div>
   <div class="stat-item">
     <div class="stat-num">100k+</div>
@@ -1310,35 +1309,79 @@
 <!-- FEATURES -->
 <section id="features">
   <div class="section-tag reveal">Core capabilities</div>
-  <h2 class="section-title reveal">Everything your IBM&nbsp;i team needs.<br/>Nothing it doesn't.</h2>
-  <p class="section-sub reveal">Four tools built into one. Each one solves a problem that currently costs your organisation hours of manual work.</p>
+  <h2 class="section-title reveal">Two powerful tools.<br/>Every IBM&nbsp;i modernisation need covered.</h2>
+  <p class="section-sub reveal">Built specifically for IBM i professionals — not generic AI wrappers. Every feature solves a real problem that currently costs your team hours of manual work.</p>
+
+  <!-- CONVERTER HIGHLIGHT -->
+  <div class="reveal" style="background:rgba(46,194,126,0.04);border:1px solid rgba(46,194,126,0.2);padding:32px 40px;margin-bottom:24px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:var(--green)"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center">
+      <div>
+        <div style="font-size:11px;letter-spacing:0.15em;color:var(--green);margin-bottom:12px;font-family:var(--mono)">★ FLAGSHIP FEATURE</div>
+        <div style="font-size:22px;font-weight:700;font-family:var(--display);color:var(--text);margin-bottom:12px">Fixed → Free Format Converter</div>
+        <p style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:20px">The most requested feature in IBM i modernisation. Paste your legacy fixed-format RPG III or RPG IV and get clean, modern free-format ILE RPG output — with modernised op-codes (<code style="font-size:12px;background:var(--bg3);padding:1px 5px">MOVE→EVAL</code>, <code style="font-size:12px;background:var(--bg3);padding:1px 5px">COMP→IF</code>), built-in functions, and a full review of anything that needs manual attention. What used to take a developer 2–3 days now takes minutes.</p>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+          <span style="font-size:12px;color:var(--green);background:rgba(46,194,126,0.08);border:1px solid rgba(46,194,126,0.2);padding:4px 12px">RPG III → ILE RPG</span>
+          <span style="font-size:12px;color:var(--green);background:rgba(46,194,126,0.08);border:1px solid rgba(46,194,126,0.2);padding:4px 12px">Fixed → Free format</span>
+          <span style="font-size:12px;color:var(--green);background:rgba(46,194,126,0.08);border:1px solid rgba(46,194,126,0.2);padding:4px 12px">Op-code modernisation</span>
+          <span style="font-size:12px;color:var(--green);background:rgba(46,194,126,0.08);border:1px solid rgba(46,194,126,0.2);padding:4px 12px">BIF introduction</span>
+          <span style="font-size:12px;color:var(--green);background:rgba(46,194,126,0.08);border:1px solid rgba(46,194,126,0.2);padding:4px 12px">Manual review flagging</span>
+          <span style="font-size:12px;color:var(--green);background:rgba(46,194,126,0.08);border:1px solid rgba(46,194,126,0.2);padding:4px 12px">PDF / SEU file upload</span>
+        </div>
+        <a href="/converter" style="display:inline-block;padding:10px 24px;background:var(--green);color:var(--bg);font-family:var(--display);font-weight:700;font-size:13px;text-decoration:none;letter-spacing:0.04em;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">&#8644; Try the converter free</a>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);padding:20px;font-family:var(--mono);font-size:11.5px;line-height:1.9">
+        <div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;margin-bottom:12px">BEFORE &nbsp;·&nbsp; Fixed-format RPG IV</div>
+<pre style="white-space:pre-wrap;color:#7ab8e8"><span class="t-kw">C</span>     CustId   CHAIN    CUSTMAST
+<span class="t-kw">C</span>              IF       %FOUND
+<span class="t-kw">C</span>     CRTYPE   IFEQ     <span class="t-str">'G'</span>
+<span class="t-kw">C</span>              Z-ADD    <span class="t-num">15</span>    Disc
+<span class="t-kw">C</span>              ELSE
+<span class="t-kw">C</span>              Z-ADD    <span class="t-num">5</span>     Disc
+<span class="t-kw">C</span>              END
+<span class="t-kw">C</span>              END</pre>
+        <div style="font-size:10px;color:var(--green);letter-spacing:0.1em;margin:14px 0 12px;border-top:1px solid var(--border);padding-top:14px">AFTER &nbsp;·&nbsp; Free-format ILE RPG</div>
+<pre style="white-space:pre-wrap;color:#9fd89a"><span class="t-kw">**FREE</span>
+<span class="t-kw">CHAIN</span> CustId CUSTMAST;
+<span class="t-kw">IF</span> %FOUND(CUSTMAST);
+  <span class="t-kw">IF</span> CRTYPE = <span class="t-str">'G'</span>;
+    Disc = <span class="t-num">15</span>;
+  <span class="t-kw">ELSE</span>;
+    Disc = <span class="t-num">5</span>;
+  <span class="t-kw">ENDIF</span>;
+<span class="t-kw">ENDIF</span>;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYSER FEATURES GRID -->
   <div class="features-grid reveal">
     <div class="feat-card">
       <div class="feat-num">01</div>
       <div class="feat-icon">⟨/⟩</div>
       <div class="feat-title">Code explainer</div>
-      <div class="feat-desc">Paste code or upload a file (.rpgle, .txt, .docx, .pdf) — fixed format, free format, ILE, OPM. Get a plain-English walkthrough of what it does: inputs, outputs, business logic, and data flow. No prompting required.</div>
+      <div class="feat-desc">Paste code or upload a file — fixed format, free format, ILE, OPM, PDF spool file. Get a plain-English walkthrough: inputs, outputs, business logic, and data flow. No prompting required.</div>
       <span class="feat-tag">All users</span>
     </div>
     <div class="feat-card">
       <div class="feat-num">02</div>
       <div class="feat-icon">&#9783;</div>
       <div class="feat-title">Documentation generator</div>
-      <div class="feat-desc">One click to export a structured Word (.docx) or PDF document: program overview, field descriptions, logic walkthrough, assumptions, and metadata. Audit-ready out of the box.</div>
+      <div class="feat-desc">One click to export a structured Word (.docx) or PDF document: program overview, file declarations, field descriptions, logic walkthrough, and metadata. Audit-ready out of the box.</div>
       <span class="feat-tag">Managers &amp; auditors</span>
     </div>
     <div class="feat-card">
       <div class="feat-num">03</div>
       <div class="feat-icon">&#9651;</div>
       <div class="feat-title">Risk analyser</div>
-      <div class="feat-desc">Identifies dead code, hardcoded literals, deprecated op-codes, undocumented subroutines, and data integrity risks — each flagged by severity with a clear explanation of why it matters.</div>
+      <div class="feat-desc">Identifies dead code, hardcoded literals, deprecated op-codes, undocumented subroutines, and data integrity risks — each flagged HIGH / MEDIUM / LOW with a clear explanation of why it matters.</div>
       <span class="feat-tag">Developers &amp; auditors</span>
     </div>
     <div class="feat-card">
       <div class="feat-num">04</div>
       <div class="feat-icon">&#8594;</div>
       <div class="feat-title">Modernisation advisor</div>
-      <div class="feat-desc">Get a phased roadmap: what can be converted to free-format RPG, what could become a REST API, what can be retired. Includes complexity scores and estimated effort — ready to present to leadership.</div>
+      <div class="feat-desc">A phased roadmap: what to convert to free-format, what could become a REST API, what can be retired. Includes effort estimates and complexity scores — ready to present to leadership.</div>
       <span class="feat-tag">Managers &amp; developers</span>
     </div>
   </div>
@@ -1347,27 +1390,27 @@
 <!-- HOW IT WORKS -->
 <div class="how-section" id="how">
   <div class="section-tag reveal">Process</div>
-  <h2 class="section-title reveal">From source code to insight<br/>in four steps.</h2>
+  <h2 class="section-title reveal">Simple to use.<br/>Powerful results.</h2>
   <div class="steps reveal">
     <div class="step">
       <div class="step-num">01</div>
       <div class="step-title">Paste or upload</div>
-      <div class="step-desc">Paste code directly, or upload a .rpgle, .txt, .docx, or .pdf file. Works with RDi exports, VS Code files, or anything copied from the IFS.</div>
+      <div class="step-desc">Paste code directly, or upload a .rpgle, .txt, .docx, or .pdf file — including IBM i SEU spool file PDFs. Supports fixed-format RPG III/IV, free-format ILE, CL, and SQLRPGLE.</div>
     </div>
     <div class="step">
       <div class="step-num">02</div>
-      <div class="step-title">Choose analysis type</div>
-      <div class="step-desc">Select one or all four: Explain, Document, Risk Analysis, or Modernisation Plan.</div>
+      <div class="step-title">Choose your tool</div>
+      <div class="step-desc">Use the Analyser for explanation, documentation, risk, and modernisation advice. Use the Converter to turn legacy fixed-format RPG directly into modern free-format ILE RPG.</div>
     </div>
     <div class="step">
       <div class="step-num">03</div>
       <div class="step-title">Review results</div>
-      <div class="step-desc">Results appear in 15–30 seconds, structured across tabbed output panels. No noise, no filler.</div>
+      <div class="step-desc">Analysis results appear in 15–30 seconds across tabbed panels. Conversion output is clean, compilable free-format RPG with a full review log of every change made.</div>
     </div>
     <div class="step">
       <div class="step-num">04</div>
       <div class="step-title">Export &amp; share</div>
-      <div class="step-desc">Download a clean Word or PDF document. Share with your manager, auditor, or client instantly.</div>
+      <div class="step-desc">Download analysis as a branded Word or PDF document. Download converted code as a .rpgle file ready to open in RDi or VS Code for IBM i. Share with your team instantly.</div>
     </div>
   </div>
 </div>
