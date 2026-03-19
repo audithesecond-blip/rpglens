@@ -650,6 +650,8 @@ async function exportPDF(){
 
     const progName=getProgramName(), generated=new Date().toLocaleString();
     const safeFilename=getSafeFilename();
+    const pdfFilename=`RPGLens_${safeFilename}_${dateStamp()}.pdf`;
+    console.log('PDF filename will be:', pdfFilename, '| Program name:', getProgramName());
 
     const sectionHtml=Object.entries(state.results).filter(([,v])=>v).map(([key,val])=>{
       let html=val
@@ -714,12 +716,12 @@ async function exportPDF(){
 
     await html2pdf().set({
       margin:     [15, 15, 15, 15],
-      filename:   `RPGLens_${safeFilename}_${dateStamp()}.pdf`,
+      filename:   pdfFilename,
       image:      { type:'jpeg', quality:0.95 },
       html2canvas:{ scale:2, useCORS:true, letterRendering:true },
       jsPDF:      { unit:'mm', format:'a4', orientation:'portrait' },
       pagebreak:  { mode:['avoid-all','css'] }
-    }).from(el).save();
+    }).from(el).save(pdfFilename);
 
     document.body.removeChild(el);
 
