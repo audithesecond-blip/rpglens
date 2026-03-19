@@ -135,6 +135,26 @@
     transform: translateY(-1px);
   }
 
+  .nav-sign-in {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 18px;
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .nav-sign-in:hover {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
   /* ── HERO ── */
   .hero {
     min-height: 100vh;
@@ -1140,11 +1160,32 @@
   <ul class="nav-links">
     <li><a href="#features">Features</a></li>
     <li><a href="#how">How it works</a></li>
-    <li><a href="#privacy">Privacy</a></li>
     <li><a href="#pricing">Pricing</a></li>
   </ul>
-  <a href="/analyser" class="nav-cta">Launch analyser</a>
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="/login"    class="nav-sign-in" id="nav-login">Sign in</a>
+    <a href="/dashboard" class="nav-sign-in" id="nav-dashboard" style="display:none">Dashboard</a>
+    <a href="/analyser" class="nav-cta">Launch analyser</a>
+  </div>
 </nav>
+
+<script>
+// Show Dashboard instead of Sign in if already logged in
+(function() {
+  try {
+    const keys = Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('sb-'));
+    if (keys.length > 0) {
+      const hasSession = keys.some(k => {
+        try { const v = JSON.parse(localStorage.getItem(k)); return v?.access_token || v?.user; } catch(e) { return false; }
+      });
+      if (hasSession) {
+        document.getElementById('nav-login').style.display = 'none';
+        document.getElementById('nav-dashboard').style.display = '';
+      }
+    }
+  } catch(e) {}
+})();
+</script>
 
 <!-- HERO -->
 <div class="hero">
