@@ -2647,3 +2647,195 @@ if (restoreId) {
 </script>
 </body>
 </html>
+// ── EXPORT ────────────────────────────────────────────────────────────
+const EXPORT_LABELS = {
+  explain: 'EXPLANATION',
+  docs:    'DOCUMENTATION',
+  risk:    'RISK ANALYSIS',
+  modern:  'MODERNISATION PLAN'
+};
+
+const EC = {
+  blue:'1A3C6E', midBlue:'2E75B6', gray:'5F5E5A',
+  red:'A32D2D', amber:'B8750A', green:'0F6E56',
+  lightRed:'FCEBEB', lightAmb:'FAEEDA', lightGrn:'E1F5EE', lightBlue:'E6F1FB'
+};
+
+function getProgramName() {
+  return document.getElementById('program-name').textContent.trim() || 'RPGLens_Report';
+}
+
+function getAllResultsText() {
+  const parts = [];
+  Object.entries(state.results).forEach(([key, val]) => {
+    if (val) parts.push(`\n${'='.repeat(60)}\n${EXPORT_LABELS[key]}\n${'='.repeat(60)}\n\n${val}`);
+  });
+  return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${getProgramName()}\n${parts.join('\n\n')}`;
+}
+
+function copyResults() {
+  navigator.clipboard.writeText(getAllResultsText());
+  const btn = document.getElementById('export-copy');
+  const orig = btn.innerHTML;
+  btn.innerHTML = btn.innerHTML.replace('Copy text','Copied!');
+  setTimeout(() => { btn.innerHTML = orig; }, 2000);
+}
+
+function exportText() {
+  triggerDownload(new Blob([getAllResultsText()],{type:'text/plain;charset=utf-8'}),`RPGLens_${getProgramName()}_${dateStamp()}.txt`);
+}
+
+async function exportWord() {
+  const btn = document.getElementById('export-word');
+  btn.innerHTML = btn.innerHTML.replace('Word (.docx)','Building...');
+  btn.disabled = true;
+  try {
+    if (!window.docx) await loadScript('https://cdn.jsdelivr.net/npm/docx@9.5.3/build/index.umd.js');
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            HeadingLevel, BorderStyle, WidthType, ShadingType,
+            PageNumber, TabStopType, TabStopPosition, PageBreak, Header, Footer } = window.docx;
+
+    const progName = getProgramName();
+    const generated = new Date().toLocaleString();
+    const b = {style:BorderStyle.SINGLE,size:1,color:'CCCCCC'};
+    const borders = {top:b,bottom:b,left:b,right:b};
+    const nb = {style:BorderStyle.NONE,size:0,color:'FFFFFF'};
+    const nob = {top:nb,bottom:nb,left:nb,right:nb};
+    const gap = (sz=80) => new Paragraph({spacing:{before:sz,after:0},children:[new TextRun('')]});
+
+    const parseInline = (line) => {
+      const runs = [];
+      line.split(/(\*\*[^*]+\*\*)/g).forEach(p => {
+        if (p.startsWith('**')&&p.endsWith('**')) runs.push(new TextRun({text:p.slice(2,-2),bold:true,size:22,font:'Arial'}));
+        else if (p) runs.push(new TextRun({text:p,size:22,font:'Arial'}));
+      });
+      return runs;
+    };
+
+    const buildTable = (rows) => {
+      const dataRows = rows.filter(r => !r.match(/^[\s\|:\-]+$/));
+      if (dataRows.length < 2) return null;
+      const allCells = dataRows.map(r => r.split('|').map(c=>c.trim()).filter((_,i,a)=>i>0&&i<a.length-1));
+      const colCount = Math.max(...allCells.map(r=>r.length));
+      const colWidth = Math.floor(9360/colCount);
+      return new Table({
+        width:{size:9360,type:WidthType.DXA},
+        columnWidths:Array(colCount).fill(colWidth),
+        rows:allCells.map((cells,ri)=>new TableRow({children:cells.map(cell=>new TableCell({
+          borders,
+          shading:{fill:ri===0?EC.blue:(ri%2===0?'FFFFFF':'F5F5F3'),type:ShadingType.CLEAR},
+          margins:{top:80,bottom:80,left:120,right:120},
+          children:[new Paragraph({children:[new TextRun({text:cell,size:20,font:'Arial',bold:ri===0,color:ri===0?'FFFFFF':'000000'})]})]
+        }))}))
+      });
+    };
+
+    const riskBadge = (sev,title) => {
+      const cols={HIGH:{bg:EC.lightRed,fg:EC.red},MEDIUM:{bg:EC.lightAmb,fg:EC.amber},LOW:{bg:EC.lightGrn,fg:EC.green},INFO:{bg:EC.lightBlue,fg:EC.midBlue}};
+      const col=cols[sev]||cols.INFO;
+      return new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[9360],rows:[new TableRow({children:[new TableCell({borders:nob,shading:{fill:col.bg,type:ShadingType.CLEAR},margins:{top:100,bottom:100,left:160,right:160},children:[new Paragraph({children:[new TextRun({text:`[${sev}]  `,bold:true,size:22,font:'Arial',color:col.fg}),new TextRun({text:title,bold:true,size:22,font:'Arial',color:col.fg})]})]})]})],});
+    };
+
+    const parseSection = (text, key) => {
+      const els=[]; const lines=text.split('\n'); let tbuf=[]; let i=0;
+      const flush=()=>{if(tbuf.length>=2){const t=buildTable(tbuf);if(t){els.push(t);els.push(gap(80));}else tbuf.forEach(l=>els.push(new Paragraph({spacing:{before:40,after:40},children:parseInline(l)})));} tbuf=[];};
+      while(i<lines.length){
+        const line=lines[i];
+        if(line.trim().startsWith('|')){tbuf.push(line);i++;continue;}else flush();
+        if(!line.trim()){els.push(gap(60));i++;continue;}
+        if(key==='risk'&&line.startsWith('### ')){const m=line.replace(/^###\s+/,'').match(/^(HIGH|MEDIUM|LOW|INFO)\s*[—\-\s]+(.+)$/i);if(m){els.push(gap(80));els.push(riskBadge(m[1].toUpperCase(),m[2].trim()));els.push(gap(40));i++;continue;}}
+        if(line.startsWith('## ')){els.push(new Paragraph({heading:HeadingLevel.HEADING_2,spacing:{before:240,after:80},children:[new TextRun({text:line.replace(/^##\s+/,''),bold:true,size:26,color:EC.midBlue,font:'Arial'})]}));i++;continue;}
+        if(line.startsWith('### ')){els.push(new Paragraph({heading:HeadingLevel.HEADING_3,spacing:{before:160,after:60},children:[new TextRun({text:line.replace(/^###\s+/,''),bold:true,size:22,color:EC.gray,font:'Arial'})]}));i++;continue;}
+        if(line.match(/^[-*]\s/)){els.push(new Paragraph({spacing:{before:30,after:30},children:[new TextRun({text:'  •  '+line.replace(/^[-*]\s/,''),size:22,font:'Arial'})]}));i++;continue;}
+        els.push(new Paragraph({spacing:{before:40,after:40},children:parseInline(line)}));i++;
+      }
+      flush(); return els;
+    };
+
+    const headerEl = new Header({children:[new Paragraph({border:{bottom:{style:BorderStyle.SINGLE,size:4,color:EC.midBlue,space:4}},spacing:{before:0,after:120},tabStops:[{type:TabStopType.RIGHT,position:TabStopPosition.MAX}],children:[new TextRun({text:'RPGLens Analysis Report',size:18,font:'Arial',color:EC.gray}),new TextRun({text:`\t${progName}`,size:18,font:'Arial',color:'BBBBBB'})]})]});
+    const footerEl = new Footer({children:[new Paragraph({border:{top:{style:BorderStyle.SINGLE,size:4,color:EC.midBlue,space:4}},spacing:{before:120,after:0},tabStops:[{type:TabStopType.RIGHT,position:TabStopPosition.MAX}],children:[new TextRun({text:'Generated by RPGLens · rpglens.vercel.app',size:18,font:'Arial',color:'BBBBBB'}),new TextRun({text:'\tPage ',size:18,font:'Arial',color:EC.gray}),new TextRun({children:[PageNumber.CURRENT],size:18,font:'Arial',color:EC.gray}),new TextRun({text:' of ',size:18,font:'Arial',color:EC.gray}),new TextRun({children:[PageNumber.TOTAL_PAGES],size:18,font:'Arial',color:EC.gray})]})]});
+
+    const children=[];
+    // Cover
+    children.push(new Paragraph({spacing:{before:400,after:80},children:[new TextRun({text:'RPGLens',bold:true,size:72,font:'Arial',color:EC.blue})]}));
+    children.push(new Paragraph({spacing:{before:0,after:60},children:[new TextRun({text:'IBM i Code Intelligence Report',size:30,font:'Arial',color:EC.midBlue})]}));
+    children.push(gap(40));
+    children.push(new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[2800,6560],rows:[['Program',progName],['Generated',generated],['Platform','IBM i / AS400 · RPG · ILE · CL'],['Source','rpglens.vercel.app']].map((r,i)=>new TableRow({children:[new TableCell({borders,width:{size:2800,type:WidthType.DXA},shading:{fill:i%2===0?'F5F5F3':'FFFFFF',type:ShadingType.CLEAR},margins:{top:80,bottom:80,left:120,right:120},children:[new Paragraph({children:[new TextRun({text:r[0],bold:true,size:20,font:'Arial',color:EC.gray})]})]}),new TableCell({borders,width:{size:6560,type:WidthType.DXA},shading:{fill:i%2===0?'F5F5F3':'FFFFFF',type:ShadingType.CLEAR},margins:{top:80,bottom:80,left:120,right:120},children:[new Paragraph({children:[new TextRun({text:r[1],size:20,font:'Arial'})]})]})]})))}));
+
+    ['explain','docs','risk','modern'].forEach(key=>{
+      const val=state.results[key]; if(!val) return;
+      children.push(new Paragraph({children:[new PageBreak()]}));
+      children.push(new Paragraph({heading:HeadingLevel.HEADING_1,spacing:{before:0,after:160},border:{bottom:{style:BorderStyle.SINGLE,size:8,color:EC.midBlue,space:6}},children:[new TextRun({text:EXPORT_LABELS[key],bold:true,size:32,font:'Arial',color:EC.blue})]}));
+      children.push(gap(80));
+      parseSection(val,key).forEach(el=>children.push(el));
+    });
+
+    const doc=new Document({styles:{default:{document:{run:{font:'Arial',size:22}}}},sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1440,right:1440,bottom:1440,left:1440}}},headers:{default:headerEl},footers:{default:footerEl},children}]});
+    const buffer=await Packer.toBuffer(doc);
+    triggerDownload(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),`RPGLens_${progName}_${dateStamp()}.docx`);
+  } catch(e) {
+    console.error('Word export failed:',e);
+    alert('Word export failed: '+e.message);
+  } finally {
+    btn.innerHTML = btn.innerHTML.replace('Building...','Word (.docx)');
+    btn.disabled = false;
+  }
+}
+
+function exportPDF() {
+  const progName=getProgramName(), generated=new Date().toLocaleString();
+  const sectionHtml=Object.entries(state.results).filter(([,v])=>v).map(([key,val])=>{
+    let html=val
+      .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+      .replace(/^### (HIGH|MEDIUM|LOW|INFO)\s*[—\-]+\s*(.+)$/gim,(_,sev,title)=>`<div class="rb ${sev.toLowerCase()}"><span class="sv">${sev}</span> ${title}</div>`)
+      .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    html=html.replace(/((?:^\|.+\|$\n?)+)/gm,block=>{
+      const rows=block.trim().split('\n').filter(r=>!r.match(/^\|[\s:\-|]+\|$/));
+      if(rows.length<2) return block;
+      return '<table>'+rows.map((r,i)=>{const cells=r.split('|').map(c=>c.trim()).filter((_,j,a)=>j>0&&j<a.length-1);const tag=i===0?'th':'td';return `<tr>${cells.map(c=>`<${tag}>${c}</${tag}>`).join('')}</tr>`;}).join('')+'</table>';
+    });
+    html=html.replace(/^[-*]\s+(.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,s=>`<ul>${s}</ul>`).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>');
+    return `<div class="sec"><h1>${EXPORT_LABELS[key]}</h1><div class="cnt"><p>${html}</p></div></div>`;
+  }).join('');
+
+  const w=window.open('','_blank','width=900,height=700');
+  if(!w){alert('Please allow popups to export PDF');return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>RPGLens — ${progName}</title><style>
+@page{size:A4;margin:20mm 18mm 22mm 18mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:10.5pt;color:#1a1a1a;line-height:1.65}
+.cover{padding:32px 0 24px;border-bottom:3px solid #2E75B6;margin-bottom:24px}
+.logo{font-size:26pt;font-weight:800;color:#1A3C6E;margin-bottom:4px}
+.logo span{color:#2E75B6}
+.sub{font-size:12pt;color:#2E75B6;margin-bottom:14px}
+.mt{width:100%;border-collapse:collapse;font-size:9.5pt}
+.mt td{padding:5px 10px;border:1px solid #e0ddd6}
+.mt td:first-child{background:#f5f5f3;font-weight:bold;color:#5F5E5A;width:28%}
+.sec{margin-bottom:28px;page-break-before:always}
+h1{font-size:17pt;color:#1A3C6E;border-bottom:2.5px solid #2E75B6;padding-bottom:5px;margin-bottom:16px;page-break-after:avoid}
+h2{font-size:13pt;color:#2E75B6;margin:18px 0 7px;page-break-after:avoid}
+h3{font-size:11pt;color:#5F5E5A;margin:13px 0 5px;page-break-after:avoid}
+p{margin-bottom:7px}
+ul{margin:5px 0 9px 18px}
+li{margin-bottom:2px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:9.5pt;page-break-inside:avoid}
+th{background:#1A3C6E;color:#fff;padding:6px 10px;text-align:left;font-weight:bold}
+td{border:1px solid #d0cdc6;padding:5px 10px}
+tr:nth-child(even) td{background:#f5f5f3}
+.rb{padding:7px 12px;margin:9px 0 5px;border-radius:2px;font-size:10pt;font-weight:500;page-break-inside:avoid}
+.rb .sv{font-weight:800;margin-right:6px}
+.rb.high{background:#FCEBEB;color:#A32D2D;border-left:4px solid #A32D2D}
+.rb.medium{background:#FAEEDA;color:#B8750A;border-left:4px solid #B8750A}
+.rb.low{background:#E1F5EE;color:#0F6E56;border-left:4px solid #0F6E56}
+.rb.info{background:#E6F1FB;color:#185FA5;border-left:4px solid #185FA5}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="cover"><div class="logo">RPG<span>Lens</span></div><div class="sub">IBM i Code Intelligence Report</div>
+<table class="mt"><tr><td>Program</td><td>${progName}</td></tr><tr><td>Generated</td><td>${generated}</td></tr><tr><td>Platform</td><td>IBM i / AS400 · RPG · ILE · CL</td></tr><tr><td>Source</td><td>rpglens.vercel.app</td></tr></table></div>
+${sectionHtml}</body></html>`);
+  w.document.close();
+  w.onload=()=>setTimeout(()=>{w.focus();w.print();},600);
+}
+
+
