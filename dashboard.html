@@ -194,6 +194,64 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
 
+  <!-- UPGRADE SECTION — shown only for free users -->
+  <div id="upgrade-section" style="display:none;margin-bottom:28px">
+    <div class="section-header">
+      <div class="section-title">Upgrade your plan</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="fade-in">
+      <!-- Starter -->
+      <div style="background:var(--bg2);border:1px solid var(--border);padding:20px 24px">
+        <div style="font-size:10px;letter-spacing:0.15em;color:var(--text3);margin-bottom:6px">STARTER</div>
+        <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--text);margin-bottom:2px">₹2,999<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">billed monthly · cancel anytime</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:18px">
+          — 25 analyses per month<br>
+          — 5 conversions per month<br>
+          — Up to 1,000 lines per conversion<br>
+          — Word &amp; PDF export<br>
+          — Email support
+        </div>
+        <button onclick="startUpgrade('starter')" id="btn-starter" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          Upgrade to Starter
+        </button>
+      </div>
+      <!-- Team -->
+      <div style="background:var(--bg2);border:1px solid var(--amber-dim);padding:20px 24px;position:relative">
+        <div style="position:absolute;top:-1px;right:20px;background:var(--amber);color:var(--bg);font-size:10px;font-family:var(--display);font-weight:700;padding:3px 10px;letter-spacing:0.08em">MOST POPULAR</div>
+        <div style="font-size:10px;letter-spacing:0.15em;color:var(--text3);margin-bottom:6px">TEAM</div>
+        <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--text);margin-bottom:2px">₹9,999<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">5 seats · cancel anytime</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:18px">
+          — 150 analyses per month<br>
+          — 20 conversions per month<br>
+          — Up to 2,000 lines per conversion<br>
+          — Word &amp; PDF export<br>
+          — Priority support
+        </div>
+        <button onclick="startUpgrade('team')" id="btn-team" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          Upgrade to Team
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE SUBSCRIPTION — shown for paid users -->
+  <div id="manage-section" style="display:none;margin-bottom:28px" class="fade-in">
+    <div class="section-header">
+      <div class="section-title">Subscription</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:12px;color:var(--text2)" id="sub-status-text">Active subscription</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px" id="sub-detail-text"></div>
+      </div>
+      <button onclick="cancelSubscription()" style="padding:7px 16px;background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
+        Cancel subscription
+      </button>
+    </div>
+  </div>
+
   <!-- QUICK ACTIONS -->
   <div class="section-header">
     <div class="section-title">Quick actions</div>
@@ -304,6 +362,7 @@ async function init() {
   document.getElementById('reset-text').textContent  = plan === 'admin' ? '' : resetStr;
 
   if (plan !== 'free') document.getElementById('upgrade-link').style.display = 'none';
+  updateUpgradeSection(plan);
 
   // ── Conversion usage ─────────────────────────────────────────────
   const convKey       = `rpglens_conv_${user.id}_${periodKey}`;
@@ -392,8 +451,130 @@ function renderConvHistory(history) {
   container.appendChild(list);
 }
 
-function showUpgradeMsg() {
-  alert('Stripe payments coming soon! This will connect to the Starter plan checkout.');
+// ── UPGRADE SECTION VISIBILITY ────────────────────────────────────
+function updateUpgradeSection(plan) {
+  const upgradeSection = document.getElementById('upgrade-section');
+  const manageSection  = document.getElementById('manage-section');
+  if (plan === 'free') {
+    upgradeSection.style.display = 'block';
+    manageSection.style.display  = 'none';
+  } else if (plan === 'admin') {
+    upgradeSection.style.display = 'none';
+    manageSection.style.display  = 'none';
+  } else {
+    upgradeSection.style.display = 'none';
+    manageSection.style.display  = 'block';
+    document.getElementById('sub-status-text').textContent = `Active ${plan.charAt(0).toUpperCase()+plan.slice(1)} subscription`;
+    document.getElementById('sub-detail-text').textContent = 'Cancel anytime — access continues until end of current billing period';
+  }
+}
+
+// ── RAZORPAY CHECKOUT ─────────────────────────────────────────────
+async function startUpgrade(plan) {
+  const btn = document.getElementById(`btn-${plan}`);
+  const orig = btn.textContent;
+  btn.textContent = 'Loading...';
+  btn.disabled = true;
+
+  try {
+    // Load Razorpay checkout script
+    if (!window.Razorpay) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    // Get session token
+    const { data } = await sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) { window.location.href = '/login'; return; }
+
+    // Create subscription on backend
+    const resp = await fetch('/api/create-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ plan })
+    });
+    const sub = await resp.json();
+    if (!resp.ok) { alert(sub.error || 'Failed to start checkout'); return; }
+
+    const PLAN_DESC = {
+      starter: 'Starter Plan — ₹2,999/month',
+      team:    'Team Plan — ₹9,999/month'
+    };
+
+    // Open Razorpay checkout
+    const rzp = new window.Razorpay({
+      key:             sub.key_id,
+      subscription_id: sub.subscription_id,
+      name:            'RPGLens',
+      description:     PLAN_DESC[plan],
+      image:           'https://rpglens.vercel.app/favicon.ico',
+      prefill:         { email: sub.email, name: sub.name },
+      theme:           { color: '#e8a020' },
+      modal:           { ondismiss: () => { btn.textContent = orig; btn.disabled = false; } },
+      handler: async function(response) {
+        btn.textContent = 'Verifying...';
+
+        const vResp = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            razorpay_payment_id:      response.razorpay_payment_id,
+            razorpay_subscription_id: response.razorpay_subscription_id,
+            razorpay_signature:       response.razorpay_signature,
+            plan
+          })
+        });
+        const vData = await vResp.json();
+
+        if (vResp.ok && vData.success) {
+          // Refresh session so new plan is loaded
+          await sb.auth.refreshSession();
+          alert(`Welcome to RPGLens ${plan.charAt(0).toUpperCase()+plan.slice(1)}! Your plan is now active.`);
+          window.location.reload();
+        } else {
+          alert('Payment received but verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
+          btn.textContent = orig; btn.disabled = false;
+        }
+      }
+    });
+
+    rzp.open();
+
+  } catch(e) {
+    console.error('startUpgrade error:', e);
+    alert('Something went wrong. Please try again.');
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
+
+// ── CANCEL SUBSCRIPTION ───────────────────────────────────────────
+async function cancelSubscription() {
+  if (!confirm('Cancel your subscription? You will keep access until the end of your current billing period.')) return;
+
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+
+    const resp = await fetch('/api/cancel-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    });
+    const result = await resp.json();
+
+    if (resp.ok) {
+      alert(result.message || 'Subscription cancelled successfully.');
+    } else {
+      alert(result.error || 'Failed to cancel. Please try again or contact support.');
+    }
+  } catch(e) {
+    alert('Something went wrong. Please contact support.');
+  }
 }
 
 async function signOut() {
