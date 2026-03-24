@@ -1220,12 +1220,12 @@
         <div class="dot r"></div>
         <div class="dot y"></div>
         <div class="dot g"></div>
-        <span class="terminal-title">RPGLENS &nbsp;—&nbsp; TWO TOOLS IN ONE</span>
+        <span class="terminal-title">RPGLENS &nbsp;—&nbsp; IBM i CODE INTELLIGENCE PLATFORM</span>
       </div>
       <div class="terminal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:0">
         <!-- LEFT: Analyser -->
         <div class="t-pane" style="border-right:1px solid var(--border)">
-          <div class="t-label" style="color:var(--amber)">&#9113; Analyser — explain, document, risk, modernise</div>
+          <div class="t-label" style="color:var(--amber)">&#9113; Analyser — 5 tabs: explain · document · risk · modernise · dependencies</div>
 <pre style="font-family:var(--mono);font-size:11px;line-height:1.8;white-space:pre-wrap"><span class="t-kw">C</span>     CustId        CHAIN     CUSTMAST
 <span class="t-kw">C</span>                   IF        %FOUND
 <span class="t-kw">C</span>     CRTYPE        IFEQ      <span class="t-str">'G'</span>
@@ -1235,8 +1235,9 @@
 <span class="t-kw">C</span>                   ENDIF
 <span class="t-kw">C</span>                   ENDIF</pre>
           <div class="output-block" style="margin-top:8px">
-            <div class="output-key">Risk</div>
-            <div class="output-val" style="color:#e85050">⚑ Hardcoded literal 'G' — no constant defined. Change risk: HIGH</div>
+            <div class="output-key" style="color:var(--amber)">Risk (1 of 3 found)</div>
+            <div class="output-val" style="color:#e85050;font-size:11px">⚑ Hardcoded literal <code style="background:var(--bg3);padding:1px 4px">'G'</code> — use named constant. Risk: HIGH</div>
+            <div class="output-val" style="color:var(--text3);font-size:10px;margin-top:4px">→ Flagged for manual review · Not auto-fixed (business logic)</div>
           </div>
         </div>
         <!-- RIGHT: Converter -->
