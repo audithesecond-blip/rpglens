@@ -207,6 +207,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div id="user-av" style="width:20px;height:20px;border-radius:50%;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:9px;color:var(--amber)">?</div>
       <span id="user-name">...</span>
     </div>
+    <a href="/connect" class="btn-sm" id="ibmi-btn" style="display:none;background:#0f4a2e;border-color:#0f4a2e;color:var(--green)">&#9906; IBM i</a>
     <a href="/converter" class="btn-sm" style="background:var(--green);border-color:var(--green)">&#8644; Converter</a>
     <a href="/dashboard" class="btn-sm">Dashboard</a>
     <a href="/" class="btn-sm ghost">&#8592; Home</a>
@@ -544,6 +545,7 @@ async function initSession(){
       const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
       dot.style.background='var(--green)';txt.textContent='SIGNED IN';pill.style.display='flex';
       document.getElementById('user-av').textContent=initials;document.getElementById('user-name').textContent=name.split(' ')[0];
+      if(['team','admin'].includes(user.user_metadata?.plan||'free')){const b=document.getElementById('ibmi-btn');if(b)b.style.display='inline-block';}
     }else{dot.style.background='var(--amber)';txt.textContent='NOT SIGNED IN';}
   }catch(e){document.getElementById('api-status-text').textContent='SESSION ERROR';}
 }
@@ -879,6 +881,21 @@ function restoreFromHistory(id){
 const urlParams=new URLSearchParams(window.location.search);
 const restoreId=urlParams.get('restore');
 if(restoreId)setTimeout(()=>restoreFromHistory(restoreId),800);
+
+// Auto-load source from IBM i Connect
+if(urlParams.get('from_ibmi')==='1'){
+  try{
+    const ibmiData=JSON.parse(sessionStorage.getItem('rpglens_ibmi_source')||'{}');
+    if(ibmiData.source){
+      const mbr=ibmiData.name||urlParams.get('mbr')||'';
+      document.getElementById('code-input').value=ibmiData.source;
+      if(mbr) document.getElementById('program-name').textContent=mbr;
+      switchMode('paste');
+      onCodeInput();
+      sessionStorage.removeItem('rpglens_ibmi_source');
+    }
+  }catch(e){console.warn('IBM i source load failed:',e);}
+}
 </script>
 </body>
 </html>

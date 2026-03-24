@@ -123,6 +123,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <span id="user-email">Loading...</span>
     </div>
     <span class="plan-badge" id="plan-badge">Free</span>
+    <a href="/connect" class="btn-sm" id="ibmi-topbar-btn" style="display:none;background:var(--green);border-color:var(--green)">&#9906; IBM i Connect</a>
     <a href="/analyser"  class="btn-sm">+ New analysis</a>
     <a href="/converter" class="btn-sm" style="background:var(--green);border-color:var(--green)">&#8644; New conversion</a>
     <button class="btn-ghost" onclick="signOut()">Sign out</button>
@@ -267,6 +268,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="action-title">Fixed → Free format converter</div>
       <div class="action-desc">Convert fixed-format RPG III / RPG IV to modern free-format ILE RPG. The fastest path to modernisation.</div>
     </a>
+    <a href="/connect" class="action-card" id="ibmi-connect-card" style="display:none;border-color:rgba(46,194,126,0.2);background:rgba(46,194,126,0.03)">
+      <div class="action-icon" style="color:var(--green)">&#9906;</div>
+      <div class="action-title" style="color:var(--green)">IBM i Live Connect</div>
+      <div class="action-desc">Connect directly to your IBM i. Browse source members, monitor jobs, and analyse programs with one click.</div>
+    </a>
   </div>
 
   <!-- RECENT ANALYSES -->
@@ -363,6 +369,12 @@ async function init() {
 
   if (plan !== 'free') document.getElementById('upgrade-link').style.display = 'none';
   updateUpgradeSection(plan);
+  if(['team','admin'].includes(plan)){
+    const card=document.getElementById('ibmi-connect-card');
+    if(card) card.style.display='';
+    const topbtn=document.getElementById('ibmi-topbar-btn');
+    if(topbtn) topbtn.style.display='';
+  }
 
   // ── Conversion usage ─────────────────────────────────────────────
   const convKey       = `rpglens_conv_${user.id}_${periodKey}`;
