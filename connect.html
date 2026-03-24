@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens — IBM i Connect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0e0f0f;--bg2:#141516;--bg3:#1a1c1d;--bg4:#1f2122;
+  --border:#2a2d2e;--border2:#363a3b;
+  --amber:#e8a020;--amber2:#f5c060;--amber-dim:#7a5010;
+  --green:#2ec27e;--green-dim:#0f4a2e;
+  --red:#e85050;--red-dim:#4a1515;
+  --blue:#5b9bd5;--text:#e8e4dc;--text2:#9a9690;--text3:#5a5855;
+  --mono:'DM Mono',monospace;--display:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;height:52px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 20px;gap:0}
+.topbar-logo{display:flex;align-items:center;gap:9px;text-decoration:none;padding-right:20px;border-right:1px solid var(--border);margin-right:20px}
+.logo-text{font-family:var(--display);font-weight:800;font-size:17px;color:var(--text);letter-spacing:-0.02em}
+.logo-text span{color:var(--amber)}
+.topbar-title{font-size:11px;color:var(--text3);letter-spacing:0.1em;display:flex;align-items:center;gap:6px}
+.topbar-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:1px solid transparent;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block;white-space:nowrap;border-radius:2px}
+.btn-sm:hover{opacity:0.88}
+.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
+.status-pill{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0.1em;color:var(--text3);padding:4px 10px;border:1px solid var(--border)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--border2)}
+
+/* ── LAYOUT ── */
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:52px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px}
+.side-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:4px;cursor:pointer;color:var(--text3);font-size:16px;transition:all 0.2s;position:relative}
+.side-btn:hover{background:var(--bg3);color:var(--text2)}
+.side-btn.active{background:rgba(232,160,32,0.12);color:var(--amber)}
+.side-btn .tooltip{position:absolute;left:44px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 10px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:100;letter-spacing:0.06em}
+.side-btn:hover .tooltip{opacity:1}
+
+/* ── PANELS ── */
+.panel{display:none;flex:1;flex-direction:column;overflow:hidden}
+.panel.active{display:flex}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.panel-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.panel-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--amber)}
+.panel-body{flex:1;overflow-y:auto;padding:16px}
+
+/* ── SOURCE BROWSER ── */
+.source-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.source-select{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:11px;padding:6px 10px;flex:1;min-width:120px}
+.source-select:focus{outline:none;border-color:var(--amber-dim)}
+.icon-btn{background:none;border:1px solid var(--border);color:var(--text3);font-size:11px;padding:5px 12px;cursor:pointer;font-family:var(--mono);letter-spacing:0.06em;transition:all 0.2s}
+.icon-btn:hover{border-color:var(--border2);color:var(--text2)}
+.member-list{display:flex;flex-direction:column;gap:1px}
+.member-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);cursor:pointer;transition:border-color 0.15s}
+.member-item:hover{border-color:var(--amber-dim);background:rgba(232,160,32,0.03)}
+.member-type{font-size:9px;padding:2px 7px;font-family:var(--display);font-weight:700;letter-spacing:0.08em;flex-shrink:0}
+.member-type.rpgle{background:rgba(91,155,213,0.12);color:var(--blue);border:1px solid rgba(91,155,213,0.3)}
+.member-type.clle{background:rgba(46,194,126,0.1);color:var(--green);border:1px solid rgba(46,194,126,0.25)}
+.member-type.dspf{background:rgba(232,160,32,0.1);color:var(--amber);border:1px solid var(--amber-dim)}
+.member-type.prtf{background:rgba(232,80,80,0.1);color:var(--red);border:1px solid rgba(232,80,80,0.3)}
+.member-type.other{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.member-name{font-size:12px;color:var(--text);font-weight:500;flex:1}
+.member-text{font-size:10px;color:var(--text3);flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.member-changed{font-size:10px;color:var(--text3);flex-shrink:0}
+.analyse-member-btn{font-size:10px;padding:3px 10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;cursor:pointer;letter-spacing:0.05em;opacity:0;transition:opacity 0.15s;flex-shrink:0}
+.member-item:hover .analyse-member-btn{opacity:1}
+
+/* ── JOB MONITOR ── */
+.job-filters{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.filter-btn{font-size:10px;padding:4px 12px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);cursor:pointer;font-family:var(--mono);letter-spacing:0.06em;transition:all 0.2s}
+.filter-btn.active{border-color:var(--amber-dim);color:var(--amber);background:rgba(232,160,32,0.06)}
+.job-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:1px solid var(--border);margin-bottom:1px}
+.job-status{font-size:9px;padding:2px 7px;font-family:var(--display);font-weight:700;letter-spacing:0.08em;flex-shrink:0;min-width:48px;text-align:center}
+.job-status.msgw{background:rgba(232,80,80,0.12);color:var(--red);border:1px solid rgba(232,80,80,0.3)}
+.job-status.active{background:rgba(46,194,126,0.1);color:var(--green);border:1px solid rgba(46,194,126,0.25)}
+.job-status.jobq{background:rgba(91,155,213,0.1);color:var(--blue);border:1px solid rgba(91,155,213,0.25)}
+.job-status.other{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.job-name{font-size:12px;color:var(--text);font-family:var(--mono);flex:2}
+.job-user{font-size:11px;color:var(--text2);flex:1}
+.job-func{font-size:10px;color:var(--text3);flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.job-cpu{font-size:10px;color:var(--text3);flex-shrink:0;min-width:60px;text-align:right}
+.refresh-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.refresh-info{font-size:10px;color:var(--text3);letter-spacing:0.05em}
+.auto-refresh-toggle{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3);cursor:pointer;user-select:none}
+.auto-refresh-toggle input{accent-color:var(--green)}
+
+/* ── OBJECT EXPLORER ── */
+.obj-item{display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--bg2);border:1px solid var(--border);margin-bottom:1px}
+.obj-type{font-size:9px;padding:2px 7px;background:var(--bg3);color:var(--text3);border:1px solid var(--border);font-family:var(--display);font-weight:700;letter-spacing:0.06em;flex-shrink:0;min-width:52px;text-align:center}
+.obj-name{font-size:12px;color:var(--text);flex:2}
+.obj-text{font-size:10px;color:var(--text3);flex:3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── SETUP PANEL ── */
+.setup-section{background:var(--bg2);border:1px solid var(--border);padding:16px 20px;margin-bottom:12px}
+.setup-section-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--amber);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.setup-section-title::before{content:'';width:3px;height:10px;background:var(--amber);display:inline-block}
+.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.mode-card{border:1px solid var(--border);padding:14px;cursor:pointer;transition:border-color 0.2s;position:relative}
+.mode-card.selected{border-color:var(--amber-dim);background:rgba(232,160,32,0.03)}
+.mode-card-title{font-family:var(--display);font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px}
+.mode-card-desc{font-size:11px;color:var(--text3);line-height:1.6}
+.mode-card-badge{position:absolute;top:8px;right:8px;font-size:9px;padding:2px 8px;background:var(--bg3);color:var(--text3);border:1px solid var(--border);font-family:var(--display);font-weight:700;letter-spacing:0.08em}
+.form-group{margin-bottom:12px}
+.form-label{display:block;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;outline:none;transition:border-color 0.2s}
+.form-input:focus{border-color:var(--amber-dim)}
+.form-input::placeholder{color:var(--text3)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-hint{font-size:10px;color:var(--text3);margin-top:4px;line-height:1.5}
+.btn-primary{padding:10px 24px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s}
+.btn-primary:hover{opacity:0.88}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.btn-danger{padding:8px 16px;background:transparent;color:var(--red);border:1px solid rgba(232,80,80,0.3);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.2s}
+.btn-danger:hover{background:rgba(232,80,80,0.08)}
+.source-location-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);margin-bottom:4px}
+.source-location-name{font-size:12px;color:var(--text);flex:1}
+.source-location-path{font-size:10px;color:var(--text3)}
+.test-result{padding:10px 14px;border:1px solid var(--border);margin-top:10px;font-size:12px;display:none}
+.test-result.success{border-color:rgba(46,194,126,0.4);background:rgba(46,194,126,0.06);color:var(--green)}
+.test-result.error{border-color:rgba(232,80,80,0.4);background:rgba(232,80,80,0.06);color:var(--red)}
+.tunnel-id-box{background:var(--bg3);border:1px solid var(--border2);padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:0.04em;word-break:break-all;margin-top:8px}
+
+/* ── EMPTY / LOADING / ERROR STATES ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3);padding:60px 20px;text-align:center;flex:1}
+.empty-icon{font-size:28px;opacity:0.4}
+.empty-title{font-family:var(--display);font-weight:700;font-size:15px;color:var(--text3)}
+.empty-sub{font-size:11px;max-width:300px;line-height:1.6}
+.loading-row{display:flex;align-items:center;gap:8px;padding:12px 0;font-size:11px;color:var(--text3)}
+.spinner{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--amber);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+.conn-status-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--bg3);font-size:10px;color:var(--text3);flex-shrink:0}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.conn-dot.connected{background:var(--green);animation:pulse 2s ease-in-out infinite}
+.conn-dot.error{background:var(--red)}
+
+/* ── UPGRADE GATE ── */
+.upgrade-gate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;flex:1;padding:60px;text-align:center}
+.upgrade-gate-icon{font-size:36px;opacity:0.5}
+.upgrade-gate-title{font-family:var(--display);font-weight:800;font-size:20px;color:var(--text)}
+.upgrade-gate-sub{font-size:13px;color:var(--text2);max-width:400px;line-height:1.7}
+.upgrade-gate-badge{font-size:10px;letter-spacing:0.15em;padding:4px 14px;border:1px solid var(--amber-dim);color:var(--amber);margin-top:4px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn 0.25s ease both}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <svg viewBox="0 0 32 32" fill="none" width="24" height="24">
+      <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+      <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+      <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+      <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+      <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+    </svg>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <div class="topbar-title">&#9906; IBM i Live Connect</div>
+  <div class="topbar-right">
+    <div class="status-pill">
+      <div class="status-dot" id="conn-dot"></div>
+      <span id="conn-label">NOT CONNECTED</span>
+    </div>
+    <a href="/analyser" class="btn-sm">+ Analyser</a>
+    <a href="/dashboard" class="btn-sm">Dashboard</a>
+    <a href="/" class="btn-sm ghost">&#8592; Home</a>
+  </div>
+</div>
+
+<!-- APP BODY -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <button class="side-btn active" id="sb-source" onclick="switchPanel('source')" title="Source Browser">
+      &#9113;
+      <span class="tooltip">Source browser</span>
+    </button>
+    <button class="side-btn" id="sb-jobs" onclick="switchPanel('jobs')" title="Job Monitor">
+      &#9654;
+      <span class="tooltip">Job monitor</span>
+    </button>
+    <button class="side-btn" id="sb-objects" onclick="switchPanel('objects')" title="Object Explorer">
+      &#9783;
+      <span class="tooltip">Object explorer</span>
+    </button>
+    <div style="flex:1"></div>
+    <button class="side-btn" id="sb-setup" onclick="switchPanel('setup')" title="Connection Setup">
+      &#9881;
+      <span class="tooltip">Connection setup</span>
+    </button>
+  </div>
+
+  <!-- UPGRADE GATE (shown for non-Team users) -->
+  <div id="upgrade-gate" style="display:none;flex:1;flex-direction:column">
+    <div class="upgrade-gate">
+      <div class="upgrade-gate-icon">&#9906;</div>
+      <div class="upgrade-gate-title">IBM i Live Connect</div>
+      <div class="upgrade-gate-badge">TEAM PLAN FEATURE</div>
+      <div class="upgrade-gate-sub">Connect RPGLens directly to your IBM i system. Browse source members, monitor active jobs, explore objects — and analyse any program with one click. Available on the Team plan (₹9,999/month).</div>
+      <a href="/dashboard" class="btn-primary" style="margin-top:8px;text-decoration:none;display:inline-block">Upgrade to Team →</a>
+    </div>
+  </div>
+
+  <!-- SOURCE BROWSER -->
+  <div class="panel active" id="panel-source">
+    <div class="conn-status-bar">
+      <div class="conn-dot" id="src-dot"></div>
+      <span id="src-status">Configure your IBM i connection to browse source members</span>
+    </div>
+    <div class="panel-body">
+      <div class="source-toolbar">
+        <select class="source-select" id="source-location-select" onchange="onLocationChange()">
+          <option value="">— Select source location —</option>
+        </select>
+        <button class="icon-btn" onclick="loadMembers()">&#8635; Refresh</button>
+        <input class="source-select" id="member-filter" placeholder="Filter members..." oninput="filterMembers()" style="max-width:160px"/>
+      </div>
+      <div id="member-list-wrap">
+        <div class="empty-state">
+          <div class="empty-icon">&#9113;</div>
+          <div class="empty-title">No source location selected</div>
+          <div class="empty-sub">Select a library/source file above, or add source locations in Connection Setup.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOB MONITOR -->
+  <div class="panel" id="panel-jobs">
+    <div class="conn-status-bar">
+      <div class="conn-dot" id="job-dot"></div>
+      <span id="job-status">Connect to IBM i to monitor jobs</span>
+    </div>
+    <div class="panel-body">
+      <div class="refresh-bar">
+        <div class="job-filters" style="flex:1">
+          <button class="filter-btn active" onclick="setJobFilter('ALL', this)">All</button>
+          <button class="filter-btn" style="color:var(--red)" onclick="setJobFilter('MSGW', this)">MSGW</button>
+          <button class="filter-btn" onclick="setJobFilter('ACTIVE', this)">Active</button>
+          <button class="filter-btn" onclick="setJobFilter('JOBQ', this)">Job queue</button>
+        </div>
+        <label class="auto-refresh-toggle">
+          <input type="checkbox" id="auto-refresh-chk" onchange="toggleAutoRefresh(this.checked)" checked/>
+          Auto-refresh 30s
+        </label>
+        <button class="icon-btn" onclick="loadJobs()">&#8635; Refresh</button>
+      </div>
+      <div id="job-list-wrap">
+        <div class="empty-state">
+          <div class="empty-icon">&#9654;</div>
+          <div class="empty-title">No job data</div>
+          <div class="empty-sub">Connect to your IBM i system to monitor active jobs.</div>
+        </div>
+      </div>
+      <div id="job-refresh-info" style="font-size:10px;color:var(--text3);margin-top:8px;text-align:right"></div>
+    </div>
+  </div>
+
+  <!-- OBJECT EXPLORER -->
+  <div class="panel" id="panel-objects">
+    <div class="conn-status-bar">
+      <div class="conn-dot" id="obj-dot"></div>
+      <span id="obj-status">Connect to IBM i to explore objects</span>
+    </div>
+    <div class="panel-body">
+      <div class="source-toolbar">
+        <input class="source-select" id="obj-lib" placeholder="Library (e.g. QGPL)" style="max-width:160px"/>
+        <select class="source-select" id="obj-type" style="max-width:140px">
+          <option value="*ALL">All types</option>
+          <option value="*PGM">*PGM — Programs</option>
+          <option value="*FILE">*FILE — Files</option>
+          <option value="*DTAARA">*DTAARA — Data areas</option>
+          <option value="*SRVPGM">*SRVPGM — Service programs</option>
+          <option value="*MODULE">*MODULE — Modules</option>
+          <option value="*CMD">*CMD — Commands</option>
+          <option value="*JOBD">*JOBD — Job descriptions</option>
+        </select>
+        <button class="icon-btn" onclick="loadObjects()">&#8635; Browse</button>
+      </div>
+      <div id="obj-list-wrap">
+        <div class="empty-state">
+          <div class="empty-icon">&#9783;</div>
+          <div class="empty-title">Enter a library name</div>
+          <div class="empty-sub">Type a library name and click Browse to explore objects.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETUP PANEL -->
+  <div class="panel" id="panel-setup">
+    <div class="panel-header">
+      <div class="panel-title">Connection Setup</div>
+    </div>
+    <div class="panel-body">
+
+      <!-- Mode selection -->
+      <div class="setup-section">
+        <div class="setup-section-title">Connection mode</div>
+        <div class="mode-cards">
+          <div class="mode-card selected" id="mode-direct" onclick="selectMode('direct')">
+            <div class="mode-card-badge">DIRECT</div>
+            <div class="mode-card-title">&#9654; Direct connection</div>
+            <div class="mode-card-desc">Your IBM i has a public IP or you can open a port. RPGLens connects directly to the agent.</div>
+          </div>
+          <div class="mode-card" id="mode-tunnel" onclick="selectMode('tunnel')">
+            <div class="mode-card-badge">TUNNEL</div>
+            <div class="mode-card-title">&#8644; Tunnel mode</div>
+            <div class="mode-card-desc">IBM i is behind a firewall. The agent connects OUT to RPGLens — no inbound port needed.</div>
+          </div>
+        </div>
+
+        <!-- Direct mode fields -->
+        <div id="direct-fields">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">IBM i hostname or IP</label>
+              <input class="form-input" id="inp-hostname" placeholder="192.168.1.100 or myibmi.company.com"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Agent port</label>
+              <input class="form-input" id="inp-port" placeholder="3001" value="3001" type="number"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tunnel mode fields -->
+        <div id="tunnel-fields" style="display:none">
+          <div style="background:rgba(91,155,213,0.06);border:1px solid rgba(91,155,213,0.2);padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.7">
+            In tunnel mode, the agent on your IBM i connects OUT to RPGLens. No inbound ports needed.<br>
+            Your tunnel ID is generated below — paste it when starting the agent.
+          </div>
+          <div class="form-group">
+            <label class="form-label">Your tunnel ID</label>
+            <div class="tunnel-id-box" id="tunnel-id-display">Will be generated when you save</div>
+          </div>
+        </div>
+
+        <!-- Credentials (both modes) -->
+        <div class="form-row" style="margin-top:12px">
+          <div class="form-group">
+            <label class="form-label">IBM i user profile</label>
+            <input class="form-input" id="inp-user" placeholder="MYUSER" style="text-transform:uppercase"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="form-input" id="inp-pass" type="password" placeholder="••••••••"/>
+            <div class="form-hint">Password is used only for authentication — never stored</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Connection name</label>
+          <input class="form-input" id="inp-name" placeholder="My IBM i" value="My IBM i"/>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <button class="btn-primary" onclick="saveConnection()">Save connection</button>
+          <button class="icon-btn" onclick="testConnection()">&#10003; Test connection</button>
+          <button class="btn-danger" onclick="deleteConnection()" id="btn-delete" style="display:none">Remove connection</button>
+        </div>
+        <div class="test-result" id="test-result"></div>
+      </div>
+
+      <!-- Source locations -->
+      <div class="setup-section">
+        <div class="setup-section-title">Source locations</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.6">Add the library/source file combinations you want to browse. Each organisation may have different naming conventions.</div>
+        <div id="source-locations-list" style="margin-bottom:12px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Name</label>
+            <input class="form-input" id="new-loc-name" placeholder="Dev RPG"/>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Library</label>
+            <input class="form-input" id="new-loc-lib" placeholder="DEVLIB" style="text-transform:uppercase"/>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Source file</label>
+            <input class="form-input" id="new-loc-spf" placeholder="QRPGLESRC" style="text-transform:uppercase"/>
+          </div>
+          <button class="icon-btn" onclick="addSourceLocation()" style="height:33px;margin-top:auto">+ Add</button>
+        </div>
+      </div>
+
+      <!-- Agent install instructions -->
+      <div class="setup-section">
+        <div class="setup-section-title">Agent setup on IBM i</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:12px">Run these commands in QSH or SSH on your IBM i (PASE environment). Node.js must be installed (V7R3+).</div>
+        <div id="agent-instructions"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const{createClient}=supabase;
+const sb=createClient(window.RPGLENS_CONFIG.SUPABASE_URL,window.RPGLENS_CONFIG.SUPABASE_ANON);
+
+let session=null, connection=null, allMembers=[], currentJobFilter='ALL', autoRefreshTimer=null;
+
+// ── INIT ─────────────────────────────────────────────────────────────
+async function init(){
+  const{data}=await sb.auth.getSession();
+  session=data.session;
+
+  if(!session){window.location.href='/login';return;}
+
+  const plan=session.user?.user_metadata?.plan||'free';
+  if(!['team','admin'].includes(plan)){
+    document.getElementById('upgrade-gate').style.display='flex';
+    document.querySelector('.sidebar').style.display='none';
+    document.getElementById('panel-source').style.display='none';
+    return;
+  }
+
+  await loadConnection();
+  updateConnectionStatus();
+  switchPanel('source');
+  if(connection) startAutoRefresh();
+}
+
+// ── PANEL SWITCHING ───────────────────────────────────────────────────
+function switchPanel(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.side-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  document.getElementById(`sb-${name}`).classList.add('active');
+  if(name==='jobs'&&connection) loadJobs();
+}
+
+// ── CONNECTION STATUS ─────────────────────────────────────────────────
+function updateConnectionStatus(){
+  const dot=document.getElementById('conn-dot');
+  const lbl=document.getElementById('conn-label');
+  if(connection&&connection.is_active){
+    dot.style.background='var(--green)';
+    lbl.textContent=`CONNECTED — ${connection.name||'My IBM i'} (${connection.username})`;
+  } else if(connection){
+    dot.style.background='var(--amber)';
+    lbl.textContent=`${connection.name||'My IBM i'} — not tested`;
+  } else {
+    dot.style.background='var(--border2)';
+    lbl.textContent='NOT CONNECTED';
+  }
+  ['src','job','obj'].forEach(prefix=>{
+    const d=document.getElementById(`${prefix}-dot`);
+    if(d){
+      d.className='conn-dot'+(connection&&connection.is_active?' connected':'');
+    }
+  });
+}
+
+// ── LOAD SAVED CONNECTION ─────────────────────────────────────────────
+async function loadConnection(){
+  const token=session?.access_token;
+  if(!token) return;
+  try{
+    const resp=await fetch('/api/ibmi-connect',{headers:{Authorization:`Bearer ${token}`}});
+    const data=await resp.json();
+    connection=data.connection;
+    if(connection) populateSetupForm();
+    renderSourceLocations();
+    renderAgentInstructions();
+  }catch(e){console.error('loadConnection:',e);}
+}
+
+// ── POPULATE SETUP FORM ───────────────────────────────────────────────
+function populateSetupForm(){
+  if(!connection) return;
+  document.getElementById('inp-hostname').value=connection.hostname||'';
+  document.getElementById('inp-port').value=connection.port||3001;
+  document.getElementById('inp-user').value=connection.username||'';
+  document.getElementById('inp-name').value=connection.name||'My IBM i';
+  document.getElementById('btn-delete').style.display='inline-block';
+  selectMode(connection.mode||'direct');
+  if(connection.tunnel_id){
+    document.getElementById('tunnel-id-display').textContent=connection.tunnel_id;
+  }
+}
+
+// ── MODE SELECTION ────────────────────────────────────────────────────
+function selectMode(mode){
+  document.getElementById('mode-direct').classList.toggle('selected',mode==='direct');
+  document.getElementById('mode-tunnel').classList.toggle('selected',mode==='tunnel');
+  document.getElementById('direct-fields').style.display=mode==='direct'?'':'none';
+  document.getElementById('tunnel-fields').style.display=mode==='tunnel'?'':'none';
+  renderAgentInstructions();
+}
+function getSelectedMode(){return document.getElementById('mode-tunnel').classList.contains('selected')?'tunnel':'direct';}
+
+// ── SAVE CONNECTION ───────────────────────────────────────────────────
+async function saveConnection(){
+  const mode=getSelectedMode();
+  const hostname=document.getElementById('inp-hostname').value.trim();
+  const port=document.getElementById('inp-port').value||3001;
+  const username=document.getElementById('inp-user').value.trim().toUpperCase();
+  const password=document.getElementById('inp-pass').value;
+  const name=document.getElementById('inp-name').value.trim()||'My IBM i';
+
+  if(!username){alert('IBM i user profile required.');return;}
+  if(mode==='direct'&&!hostname){alert('Hostname required for direct mode.');return;}
+
+  const token=session?.access_token;
+  try{
+    const resp=await fetch('/api/ibmi-connect',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({action:'save',connection:{mode,hostname,port,username,password,name,tunnel_id:connection?.tunnel_id,source_locations:connection?.source_locations||[]}})
+    });
+    const data=await resp.json();
+    if(!resp.ok){alert(data.error||'Failed to save.');return;}
+    if(data.tunnel_id) document.getElementById('tunnel-id-display').textContent=data.tunnel_id;
+    await loadConnection();
+    updateConnectionStatus();
+    renderAgentInstructions();
+    alert('Connection saved. Click "Test connection" to verify.');
+  }catch(e){alert('Save failed: '+e.message);}
+}
+
+// ── TEST CONNECTION ───────────────────────────────────────────────────
+async function testConnection(){
+  const mode=getSelectedMode();
+  const hostname=document.getElementById('inp-hostname').value.trim();
+  const port=document.getElementById('inp-port').value||3001;
+  const username=document.getElementById('inp-user').value.trim().toUpperCase();
+  const password=document.getElementById('inp-pass').value;
+
+  const resultEl=document.getElementById('test-result');
+  resultEl.style.display='block';
+  resultEl.className='test-result';
+  resultEl.textContent='Testing connection...';
+
+  const token=session?.access_token;
+  try{
+    const resp=await fetch('/api/ibmi-connect',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({action:'test',connection:{mode,hostname,port,username,password,tunnel_id:connection?.tunnel_id}})
+    });
+    const data=await resp.json();
+    if(data.ok){
+      resultEl.className='test-result success';
+      resultEl.textContent=`✓ Connected to ${data.system||'IBM i'} — agent v${data.version||'?'}`;
+      if(connection) connection.is_active=true;
+      updateConnectionStatus();
+    }else{
+      resultEl.className='test-result error';
+      resultEl.textContent='✗ '+( data.error||'Connection failed');
+    }
+  }catch(e){
+    resultEl.className='test-result error';
+    resultEl.textContent='✗ '+e.message;
+  }
+}
+
+// ── DELETE CONNECTION ─────────────────────────────────────────────────
+async function deleteConnection(){
+  if(!confirm('Remove IBM i connection?')) return;
+  const token=session?.access_token;
+  await fetch('/api/ibmi-connect',{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});
+  connection=null;
+  updateConnectionStatus();
+  renderSourceLocations();
+  renderAgentInstructions();
+  document.getElementById('btn-delete').style.display='none';
+  alert('Connection removed.');
+}
+
+// ── SOURCE LOCATIONS ─────────────────────────────────────────────────
+function renderSourceLocations(){
+  const locs=connection?.source_locations||[];
+  const sel=document.getElementById('source-location-select');
+  const list=document.getElementById('source-locations-list');
+
+  sel.innerHTML='<option value="">— Select source location —</option>';
+  locs.forEach((loc,i)=>{
+    const opt=document.createElement('option');
+    opt.value=i; opt.textContent=`${loc.name} (${loc.library}/${loc.srcpf})`;
+    sel.appendChild(opt);
+  });
+
+  list.innerHTML='';
+  if(!locs.length){list.innerHTML='<div style="font-size:11px;color:var(--text3)">No source locations added yet.</div>';return;}
+  locs.forEach((loc,i)=>{
+    const div=document.createElement('div');
+    div.className='source-location-item';
+    div.innerHTML=`<span class="source-location-name">${loc.name}</span><span class="source-location-path">${loc.library}/${loc.srcpf}</span><button onclick="removeSourceLocation(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 4px">&#10005;</button>`;
+    list.appendChild(div);
+  });
+}
+
+async function addSourceLocation(){
+  const name=document.getElementById('new-loc-name').value.trim();
+  const lib=document.getElementById('new-loc-lib').value.trim().toUpperCase();
+  const spf=document.getElementById('new-loc-spf').value.trim().toUpperCase();
+  if(!name||!lib||!spf){alert('Name, library and source file required.');return;}
+  if(!connection){alert('Save your connection first.');return;}
+  const locs=[...(connection.source_locations||[]),{name,library:lib,srcpf:spf}];
+  await saveSourceLocations(locs);
+  document.getElementById('new-loc-name').value='';
+  document.getElementById('new-loc-lib').value='';
+  document.getElementById('new-loc-spf').value='';
+}
+
+async function removeSourceLocation(idx){
+  if(!connection) return;
+  const locs=(connection.source_locations||[]).filter((_,i)=>i!==idx);
+  await saveSourceLocations(locs);
+}
+
+async function saveSourceLocations(locs){
+  const token=session?.access_token;
+  await fetch('/api/ibmi-connect',{
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body:JSON.stringify({action:'update_sources',connection:{source_locations:locs}})
+  });
+  connection.source_locations=locs;
+  renderSourceLocations();
+}
+
+// ── LOAD MEMBERS ──────────────────────────────────────────────────────
+async function onLocationChange(){
+  const sel=document.getElementById('source-location-select');
+  if(sel.value==='') return;
+  await loadMembers();
+}
+
+async function loadMembers(){
+  if(!connection||!connection.is_active){
+    showMemberEmpty('Connect and test your IBM i connection first.');return;
+  }
+  const sel=document.getElementById('source-location-select');
+  const idx=parseInt(sel.value);
+  if(isNaN(idx)) return;
+  const loc=connection.source_locations[idx];
+  if(!loc) return;
+
+  document.getElementById('member-list-wrap').innerHTML='<div class="loading-row"><div class="spinner"></div> Loading members from '+loc.library+'/'+loc.srcpf+'...</div>';
+
+  try{
+    const data=await callProxy('members',{lib:loc.library,spf:loc.srcpf});
+    allMembers=data.members||[];
+    renderMembers(allMembers);
+  }catch(e){
+    document.getElementById('member-list-wrap').innerHTML=`<div class="empty-state"><div class="empty-title" style="color:var(--red)">${e.message}</div></div>`;
+  }
+}
+
+function renderMembers(members){
+  const wrap=document.getElementById('member-list-wrap');
+  if(!members.length){wrap.innerHTML='<div class="empty-state"><div class="empty-icon">&#9113;</div><div class="empty-title">No members found</div></div>';return;}
+  wrap.innerHTML='';
+  const list=document.createElement('div');list.className='member-list fade-in';
+  members.forEach(m=>{
+    const type=(m.TYPE||m.SOURCE_TYPE||'').trim().toUpperCase();
+    const typeClass=type.includes('RPG')||type.includes('SQLRPG')?'rpgle':type.includes('CL')?'clle':type.includes('DSP')?'dspf':type.includes('PRT')?'prtf':'other';
+    const name=m.MBR||m.SOURCE_FILE_MEMBER||'';
+    const text=m.TEXT||m.SOURCE_MEMBER_TEXT||'';
+    const changed=(m.CHANGED||m.LAST_SOURCE_CHANGE_TIMESTAMP||'').slice(0,10);
+    const div=document.createElement('div');
+    div.className='member-item';
+    div.innerHTML=`<span class="member-type ${typeClass}">${type||'?'}</span><span class="member-name">${name}</span><span class="member-text">${text}</span><span class="member-changed">${changed}</span><button class="analyse-member-btn" onclick="analyseMember('${name}')">Analyse &#8594;</button>`;
+    list.appendChild(div);
+  });
+  wrap.appendChild(list);
+}
+
+function filterMembers(){
+  const q=document.getElementById('member-filter').value.trim().toLowerCase();
+  if(!q){renderMembers(allMembers);return;}
+  renderMembers(allMembers.filter(m=>(m.MBR||m.SOURCE_FILE_MEMBER||'').toLowerCase().includes(q)||(m.TEXT||m.SOURCE_MEMBER_TEXT||'').toLowerCase().includes(q)));
+}
+
+async function analyseMember(mbr){
+  const sel=document.getElementById('source-location-select');
+  const idx=parseInt(sel.value);
+  const loc=connection.source_locations[idx];
+  if(!loc) return;
+
+  const loadingDiv=document.createElement('div');
+  loadingDiv.className='loading-row';
+  loadingDiv.innerHTML=`<div class="spinner"></div> Loading ${mbr}...`;
+  document.getElementById('member-list-wrap').prepend(loadingDiv);
+
+  try{
+    const data=await callProxy('source',{lib:loc.library,spf:loc.srcpf,mbr});
+    // Store source and redirect to analyser
+    sessionStorage.setItem('rpglens_ibmi_source',JSON.stringify({source:data.source,name:mbr,lib:loc.library,spf:loc.srcpf}));
+    window.location.href=`/analyser?from_ibmi=1&mbr=${encodeURIComponent(mbr)}`;
+  }catch(e){
+    loadingDiv.remove();
+    alert('Failed to load source: '+e.message);
+  }
+}
+
+function showMemberEmpty(msg){document.getElementById('member-list-wrap').innerHTML=`<div class="empty-state"><div class="empty-icon">&#9113;</div><div class="empty-title">${msg}</div></div>`;}
+
+// ── LOAD JOBS ─────────────────────────────────────────────────────────
+async function loadJobs(){
+  if(!connection||!connection.is_active){
+    document.getElementById('job-list-wrap').innerHTML='<div class="empty-state"><div class="empty-icon">&#9654;</div><div class="empty-title">Not connected</div><div class="empty-sub">Test your connection in setup first.</div></div>';return;
+  }
+  document.getElementById('job-list-wrap').innerHTML='<div class="loading-row"><div class="spinner"></div> Loading active jobs...</div>';
+  try{
+    const data=await callProxy('jobs',{status:'ALL'});
+    renderJobs(data.jobs||[]);
+    document.getElementById('job-refresh-info').textContent='Last refreshed: '+new Date().toLocaleTimeString();
+  }catch(e){
+    document.getElementById('job-list-wrap').innerHTML=`<div class="empty-state"><div class="empty-title" style="color:var(--red)">${e.message}</div></div>`;
+  }
+}
+
+function renderJobs(jobs){
+  const filtered=currentJobFilter==='ALL'?jobs:jobs.filter(j=>(j.JOB_STATUS||'').toUpperCase()===currentJobFilter);
+  const wrap=document.getElementById('job-list-wrap');
+  if(!filtered.length){wrap.innerHTML='<div class="empty-state"><div class="empty-icon">&#9654;</div><div class="empty-title">No jobs found</div></div>';return;}
+  wrap.innerHTML='';
+  const list=document.createElement('div');list.className='fade-in';
+  filtered.forEach(j=>{
+    const status=(j.JOB_STATUS||'').toUpperCase();
+    const sc=status==='MSGW'?'msgw':status==='ACTIVE'?'active':status==='JOBQ'?'jobq':'other';
+    const div=document.createElement('div');div.className='job-item';
+    div.innerHTML=`<span class="job-status ${sc}">${status}</span><span class="job-name">${j.JOB_NAME||''}</span><span class="job-user">${j.JOB_USER||''}</span><span class="job-func">${j.FUNCTION||''}</span><span class="job-cpu">${j.CPU_TIME||''}</span>`;
+    list.appendChild(div);
+  });
+  wrap.appendChild(list);
+}
+
+function setJobFilter(f,btn){
+  currentJobFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadJobs();
+}
+
+function startAutoRefresh(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer=setInterval(()=>{
+    if(document.getElementById('auto-refresh-chk').checked&&document.getElementById('panel-jobs').classList.contains('active')) loadJobs();
+  },30000);
+}
+
+function toggleAutoRefresh(on){if(!on&&autoRefreshTimer){clearInterval(autoRefreshTimer);autoRefreshTimer=null;}else if(on) startAutoRefresh();}
+
+// ── LOAD OBJECTS ──────────────────────────────────────────────────────
+async function loadObjects(){
+  const lib=document.getElementById('obj-lib').value.trim().toUpperCase();
+  const type=document.getElementById('obj-type').value;
+  if(!lib){alert('Enter a library name.');return;}
+  if(!connection||!connection.is_active){alert('Not connected. Test your connection in setup first.');return;}
+  document.getElementById('obj-list-wrap').innerHTML='<div class="loading-row"><div class="spinner"></div> Loading objects from '+lib+'...</div>';
+  try{
+    const data=await callProxy('objects',{lib,type});
+    renderObjects(data.objects||[]);
+  }catch(e){
+    document.getElementById('obj-list-wrap').innerHTML=`<div class="empty-state"><div class="empty-title" style="color:var(--red)">${e.message}</div></div>`;
+  }
+}
+
+function renderObjects(objects){
+  const wrap=document.getElementById('obj-list-wrap');
+  if(!objects.length){wrap.innerHTML='<div class="empty-state"><div class="empty-icon">&#9783;</div><div class="empty-title">No objects found</div></div>';return;}
+  wrap.innerHTML='';
+  const list=document.createElement('div');list.className='fade-in';
+  objects.forEach(o=>{
+    const div=document.createElement('div');div.className='obj-item';
+    div.innerHTML=`<span class="obj-type">${(o.OBJTYPE||'').replace('*','')}</span><span class="obj-name">${o.OBJNAME||''}</span><span class="obj-text">${o.OBJTEXT||''}</span>`;
+    list.appendChild(div);
+  });
+  wrap.appendChild(list);
+}
+
+// ── PROXY CALL ────────────────────────────────────────────────────────
+async function callProxy(endpoint,params){
+  const token=session?.access_token;
+  const password=document.getElementById('inp-pass')?.value||'';
+  const resp=await fetch('/api/ibmi-proxy',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body:JSON.stringify({endpoint,params,password})
+  });
+  const data=await resp.json();
+  if(!resp.ok||!data.ok) throw new Error(data.error||'Request failed');
+  return data.data;
+}
+
+// ── AGENT INSTRUCTIONS ────────────────────────────────────────────────
+function renderAgentInstructions(){
+  const mode=getSelectedMode();
+  const tunnelId=connection?.tunnel_id||document.getElementById('tunnel-id-display')?.textContent||'YOUR_TUNNEL_ID';
+  const port=document.getElementById('inp-port')?.value||3001;
+  const user=document.getElementById('inp-user')?.value||'MYUSER';
+
+  let html='';
+  if(mode==='direct'){
+    html=`<div style="background:var(--bg3);border:1px solid var(--border);padding:14px 16px;font-family:var(--mono);font-size:11px;color:#7ab8e8;line-height:2;white-space:pre-wrap"># 1. Install Node.js on IBM i (if not already installed)
+# Visit: https://ibm.biz/ibmi-oss or use ACS Package Manager
+
+# 2. Download the agent
+curl -o rpglens-agent.js https://rpglens.vercel.app/rpglens-agent.js
+
+# 3. Start the agent (run in PASE / QSH / SSH)
+node rpglens-agent.js --mode direct --port ${port} --user ${user} --password YOUR_PASSWORD
+
+# 4. Make sure port ${port} is accessible from the internet
+# Then enter your IBM i hostname in the connection form above</div>`;
+  } else {
+    html=`<div style="background:var(--bg3);border:1px solid var(--border);padding:14px 16px;font-family:var(--mono);font-size:11px;color:#7ab8e8;line-height:2;white-space:pre-wrap"># 1. Install Node.js and ws library on IBM i
+# Visit: https://ibm.biz/ibmi-oss or use ACS Package Manager
+npm install -g ws
+
+# 2. Download the agent
+curl -o rpglens-agent.js https://rpglens.vercel.app/rpglens-agent.js
+
+# 3. Start the agent (outbound connection — no inbound port needed)
+node rpglens-agent.js --mode tunnel \\
+  --tunnel-id ${tunnelId} \\
+  --user ${user} \\
+  --password YOUR_PASSWORD \\
+  --relay wss://relay.rpglens.app
+
+# The agent will connect OUT to RPGLens — no firewall changes needed</div>`;
+  }
+  const el=document.getElementById('agent-instructions');
+  if(el) el.innerHTML=html;
+}
+
+init();
+</script>
+</body>
+</html>
