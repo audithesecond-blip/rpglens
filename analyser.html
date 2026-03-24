@@ -276,6 +276,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <label class="opt-check active" id="opt-docs"><input type="checkbox" checked onchange="toggleOpt(this,'opt-docs')"/><div class="opt-box"></div><span class="opt-label">Documentation</span></label>
         <label class="opt-check active" id="opt-risk"><input type="checkbox" checked onchange="toggleOpt(this,'opt-risk')"/><div class="opt-box"></div><span class="opt-label">Risk analysis</span></label>
         <label class="opt-check active" id="opt-modern"><input type="checkbox" checked onchange="toggleOpt(this,'opt-modern')"/><div class="opt-box"></div><span class="opt-label">Modernisation</span></label>
+        <label class="opt-check active" id="opt-depend"><input type="checkbox" checked onchange="toggleOpt(this,'opt-depend')"/><div class="opt-box"></div><span class="opt-label">Dependencies</span></label>
       </div>
       <button class="analyse-btn" id="analyse-btn" onclick="runAnalysis()" disabled>
         <div class="spinner"></div><span class="btn-label">Analyse Code</span>
@@ -297,11 +298,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <button class="tab" id="tab-docs" onclick="switchTab('docs')"><div class="tab-dot"></div><span>Documentation</span></button>
       <button class="tab" id="tab-risk" onclick="switchTab('risk')"><div class="tab-dot"></div><span>Risk analysis</span></button>
       <button class="tab" id="tab-modern" onclick="switchTab('modern')"><div class="tab-dot"></div><span>Modernisation</span></button>
+      <button class="tab" id="tab-depend" onclick="switchTab('depend')"><div class="tab-dot"></div><span>Dependencies</span></button>
     </div>
     <div class="tab-content active" id="content-explain"><div class="empty-state" id="empty-explain"><div class="empty-icon">&#10216;/&#10217;</div><div class="empty-title">No analysis yet</div><div class="empty-sub">Paste your RPG source code on the left and click Analyse Code.</div></div></div>
     <div class="tab-content" id="content-docs"><div class="empty-state" id="empty-docs"><div class="empty-icon">&#9783;</div><div class="empty-title">No documentation yet</div><div class="empty-sub">Run an analysis to generate structured documentation.</div></div></div>
     <div class="tab-content" id="content-risk"><div class="empty-state" id="empty-risk"><div class="empty-icon">&#9651;</div><div class="empty-title">No risk report yet</div><div class="empty-sub">Run an analysis to identify risks and code quality issues.</div></div></div>
     <div class="tab-content" id="content-modern"><div class="empty-state" id="empty-modern"><div class="empty-icon">&#8594;</div><div class="empty-title">No modernisation plan yet</div><div class="empty-sub">Run an analysis to get a phased modernisation roadmap.</div></div></div>
+    <div class="tab-content" id="content-depend"><div class="empty-state" id="empty-depend"><div class="empty-icon">&#9906;</div><div class="empty-title">No dependency map yet</div><div class="empty-sub">Run an analysis to see all programs, files, data areas and subroutines this program depends on.</div></div></div>
     <div class="export-bar">
       <span class="export-label">Download:</span>
       <button class="export-btn" id="export-word" onclick="exportWord()" disabled><svg viewBox="0 0 16 16"><path d="M2 2h9l3 3v9H2V2z"/><path d="M11 2v3h3"/><path d="M5 8l1.5 4L8 8l1.5 4L11 8"/></svg>Word (.docx)</button>
@@ -314,7 +317,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 </div>
 <script>
-const state={results:{explain:null,docs:null,risk:null,modern:null},activeTab:'explain',loading:false};
+const state={results:{explain:null,docs:null,risk:null,modern:null,depend:null},activeTab:'explain',loading:false};
 let currentMode='paste',uploadedCode=null,supabaseSession=null;
 
 const SAMPLES={
@@ -462,6 +465,49 @@ const PROMPTS={
 
   risk:(code)=>`You are a senior IBM i code auditor and risk analyst.\n\nAnalyse this RPG source code for risks, issues, and code quality problems.\n\nFor each issue found, classify it as: HIGH / MEDIUM / LOW / INFO\n\nStructure your response as:\n\n## RISK SUMMARY\n[Overall risk assessment in 2 sentences]\n\n## RISK FINDINGS\n\nFor each finding use this exact format:\n### [SEVERITY] \u2014 [SHORT TITLE]\n**Location:** [line or subroutine if identifiable]\n**Description:** [What the issue is]\n**Impact:** [What could go wrong]\n**Recommendation:** [What to do about it]\n\n## OVERALL ASSESSMENT\n[Rate overall code quality: POOR / FAIR / GOOD / EXCELLENT and explain why]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
 
+  depend:(code)=>`You are an expert IBM i systems analyst specialising in program dependency analysis and impact assessment.
+
+Analyse the following RPG source code and produce a complete dependency map.
+
+## PROGRAM SUMMARY
+Program name, type (RPG III/IV/ILE), format (fixed/free), and one-line purpose.
+
+## FILES & DATABASE OBJECTS
+Create a table with columns: Object Name | Type | Access Mode | Key Fields | Purpose
+- Type: Physical File, Logical File, SQL Table, Printer File, Display File, ICF File
+- Access Mode: Input / Output / Update / Delete / Read-Write
+- Key Fields: fields used in CHAIN/SETLL/SETGT operations
+List ALL F-spec files and any SQL table references.
+
+## CALLED PROGRAMS & SERVICE PROGRAMS
+Create a table with columns: Program Name | Call Type | Parameters Passed | Purpose
+- Call Type: CALL, CALLP, CALLB, dynamic CALL
+- List every program this code calls — even conditional calls
+
+## DATA AREAS & DATA QUEUES
+List any IN/OUT/DTAARA operations with the data area name and what data is read/written.
+
+## SUBROUTINES & PROCEDURES
+Create a table with columns: Name | Type | Called By | Calls | Purpose
+- Type: BEGSR/ENDSR subroutine, DCL-PROC procedure, exported procedure
+- Map the internal call chain
+
+## ENTRY PARAMETERS
+List all *ENTRY PLIST parameters or DCL-PARM entries with name, type, length and direction (input/output/both).
+
+## SYSTEM APIs & BUILT-IN FUNCTIONS
+List any QSYS API calls (QUSRJOBI, QCMDEXC, etc.) and significant BIFs used.
+
+## IMPACT ANALYSIS SUMMARY
+In plain English: if this program needed to be changed or retired, what else would be affected? What programs call it (inferred from context)? What files would be left without a writer/reader?
+
+RPG Source Code:
+\`\`\`
+\${code}
+\`\`\`
+
+Important: Be exhaustive. Every file, every CALL, every data area matters for impact analysis.`,
+
   modern:(code)=>`You are an IBM i modernisation architect.\n\nAnalyse this RPG code and produce a practical modernisation roadmap.\n\n## MODERNISATION OVERVIEW\n[Current state assessment in 3 sentences]\n\n## QUICK WINS (Phase 1 \u2014 Low effort, high value)\n### [Item name]\n**What:** [What to change]\n**How:** [Specific steps]\n**Effort:** [Hours estimate]\n**Benefit:** [Why this matters]\n\n## STRUCTURAL IMPROVEMENTS (Phase 2 \u2014 Medium effort)\nSame format.\n\n## MODERNISATION (Phase 3 \u2014 Higher effort)\nSame format.\n\n## WHAT TO KEEP\n[Logic or patterns that are well-written and should be preserved]\n\n## ESTIMATED TOTAL EFFORT\n[Realistic estimate in developer-days for each phase]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``
 };
 
@@ -543,14 +589,15 @@ async function runAnalysis(){
   if(!supabaseSession){window.location.href='/login';return;}
   state.loading=true;
   const btn=document.getElementById('analyse-btn');btn.disabled=true;btn.classList.add('loading');btn.querySelector('.btn-label').textContent='Analysing...';
-  ['explain','docs','risk','modern'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
+  ['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
-  const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked};
+  const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
   const tasks=[];
   if(checks.explain)tasks.push(callClaude(PROMPTS.explain(code),'explain').then(r=>{state.results.explain=r;renderExplain(r);setTabDone('explain');}).catch(err=>setTabError('explain',err)));
   if(checks.docs)tasks.push(callClaude(PROMPTS.docs(code),'docs').then(r=>{state.results.docs=r;renderDocs(r);setTabDone('docs');}).catch(err=>setTabError('docs',err)));
   if(checks.risk)tasks.push(callClaude(PROMPTS.risk(code),'risk').then(r=>{state.results.risk=r;renderRisk(r);setTabDone('risk');}).catch(err=>setTabError('risk',err)));
   if(checks.modern)tasks.push(callClaude(PROMPTS.modern(code),'modern').then(r=>{state.results.modern=r;renderModern(r);setTabDone('modern');}).catch(err=>setTabError('modern',err)));
+  if(checks.depend)tasks.push(callClaude(PROMPTS.depend(code),'depend').then(r=>{state.results.depend=r;renderDepend(r);setTabDone('depend');}).catch(err=>setTabError('depend',err)));
   await Promise.allSettled(tasks);
   state.loading=false;btn.disabled=false;btn.classList.remove('loading');btn.querySelector('.btn-label').textContent='Re-analyse';
   const hasResults=Object.values(state.results).some(r=>r!==null);
@@ -589,7 +636,7 @@ function setTabError(tab,err){
 }
 
 // ── EXPORT ──────────────────────────────────────────────────────────
-const EXPORT_LABELS={explain:'EXPLANATION',docs:'DOCUMENTATION',risk:'RISK ANALYSIS',modern:'MODERNISATION PLAN'};
+const EXPORT_LABELS={explain:'EXPLANATION',docs:'DOCUMENTATION',risk:'RISK ANALYSIS',modern:'MODERNISATION PLAN',depend:'DEPENDENCY MAP'};
 function getProgramName(){return document.getElementById('program-name').textContent.trim()||'RPGLens_Report';}
 function getSafeFilename(){return getProgramName().replace(/[^a-zA-Z0-9_\-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')||'RPGLens_Report';}
 function getAllResultsText(){const parts=[];Object.entries(state.results).forEach(([key,val])=>{if(val)parts.push(`\n${'='.repeat(60)}\n${EXPORT_LABELS[key]}\n${'='.repeat(60)}\n\n${val}`);});return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${getProgramName()}\n${parts.join('\n\n')}`;}
@@ -719,6 +766,20 @@ tr:nth-child(even) td{background:#f5f5f3}
   win.document.close();
 }
 
+
+function renderDepend(text) {
+  const c=document.getElementById('content-depend');
+  document.getElementById('empty-depend').style.display='none';
+  c.innerHTML='';
+  parseMarkdownSections(text).forEach(({heading,body})=>{
+    const isTable=body.includes('|');
+    const block=document.createElement('div');
+    block.className='result-section fade-in';
+    block.innerHTML=`<div class="result-section-header"><div class="result-section-title">${heading}</div></div><div class="result-body">${isTable?renderTable(body):formatBody(body)}</div>`;
+    c.appendChild(block);
+  });
+}
+
 function triggerDownload(blob,filename){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
 function dateStamp(){const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;}
 
@@ -734,6 +795,7 @@ function restoreFromHistory(id){
     if(results.docs){renderDocs(results.docs);setTabDone('docs');}
     if(results.risk){renderRisk(results.risk);setTabDone('risk');}
     if(results.modern){renderModern(results.modern);setTabDone('modern');}
+    if(results.depend){renderDepend(results.depend);setTabDone('depend');}
     const first=['explain','docs','risk','modern'].find(t=>results[t]);
     if(first)switchTab(first);
     ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=false;});
