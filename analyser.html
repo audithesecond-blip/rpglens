@@ -461,52 +461,73 @@ function switchTab(tab){document.querySelectorAll('.tab').forEach(t=>t.classList
 const PROMPTS={
   explain:(code)=>`You are an expert IBM i / AS400 RPG developer and analyst with 20+ years of experience in production IBM i systems.\n\nAnalyse the following RPG source code thoroughly and provide a DETAILED plain-English explanation. Be specific — name actual field names, file names, subroutine names, and values from the code.\n\nStructure your response using these exact headings:\n\n## PROGRAM OVERVIEW\n3-4 sentences covering: what this program does, what business process it serves, when it would typically run, and what system it likely belongs to.\n\n## PURPOSE & BUSINESS LOGIC\nExplain in detail the business problem this program solves. What triggers it? Who uses the output? What business rules does it enforce? Be specific to THIS program.\n\n## INPUT & OUTPUT\nList every file used with its access mode. List any entry parameters. Describe what data comes in and what goes out. Include key fields used for lookups.\n\n## KEY LOGIC WALKTHROUGH\nWalk through the COMPLETE program logic step by step. Cover every loop, conditional block, and subroutine.\n\n## BUSINESS RULES IDENTIFIED\nList specific business rules. Quote actual field names and values.\n\n## NOTABLE PATTERNS & CONCERNS\nFlag hardcoded values, complex logic, performance considerations.\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\`\n\nImportant: Be specific and detailed. Name actual fields, files, values and subroutines from the code. A superficial response is not acceptable.`,
 
-  docs:(code)=>`You are a technical documentation specialist for IBM i systems.\n\nGenerate structured technical documentation for the following RPG program.\n\nUse these exact sections:\n## PROGRAM METADATA\nProgram name, language, format (fixed/free), estimated lines of code, primary function\n\n## EXECUTIVE SUMMARY\n[Non-technical 3-4 sentence summary suitable for a manager or auditor]\n\n## FILES USED\nCreate a table with columns: File Name | Access | Usage | Description\nDo NOT include a Length column for files.\n\n## DATA STRUCTURES & KEY FIELDS\nCreate a table with columns: Field/DS Name | Type | Length | Description | Used For\nOnly D-spec data structures and key fields here, not files.\n\n## SUBROUTINES & PROCEDURES\nList each: Name | Purpose | Called From | Returns\n\n## ERROR HANDLING\nDescribe how errors are handled, what error codes or messages are used\n\n## DEPENDENCIES\nList all files, programs, data areas, and external resources\n\n## CHANGE HISTORY NOTES\nNote any version indicators, author comments, or modification markers found\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
+  docs:(code)=>`You are a technical documentation specialist for IBM i systems.\n\nGenerate structured technical documentation for the following RPG program.\n\nUse these exact sections:\n## PROGRAM METADATA\nProgram name, language, format (fixed/free), estimated lines of code, primary function\n\n## EXECUTIVE SUMMARY\n[Non-technical 3-4 sentence summary suitable for a manager or auditor]\n\n## FILES USED\nCreate a table with columns: File Name | Access | Usage | Description\nDo NOT include a Length column for files.\n\n## DATA STRUCTURES & KEY FIELDS\nCreate a table with columns: Field/DS Name | Type | Length | Description | Used For\nOnly D-spec data structures and key fields here, not files.\n\n## SUBROUTINES & PROCEDURES\nList each: Name | Purpose | Called From | Returns\n\n## ERROR HANDLING\nDescribe how errors are handled, what error codes or messages are used\n\n## CHANGE HISTORY NOTES\nNote any version indicators, author comments, or modification markers found\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
 
   risk:(code)=>`You are a senior IBM i code auditor and risk analyst.\n\nAnalyse this RPG source code for risks, issues, and code quality problems.\n\nFor each issue found, classify it as: HIGH / MEDIUM / LOW / INFO\n\nStructure your response as:\n\n## RISK SUMMARY\n[Overall risk assessment in 2 sentences]\n\n## RISK FINDINGS\n\nFor each finding use this exact format:\n### [SEVERITY] \u2014 [SHORT TITLE]\n**Location:** [line or subroutine if identifiable]\n**Description:** [What the issue is]\n**Impact:** [What could go wrong]\n**Recommendation:** [What to do about it]\n\n## OVERALL ASSESSMENT\n[Rate overall code quality: POOR / FAIR / GOOD / EXCELLENT and explain why]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
 
-  depend:(code)=>`You are an expert IBM i systems analyst specialising in program dependency analysis and impact assessment.
-
-Analyse the following RPG source code and produce a complete dependency map.
+  depend:(code)=>`You are an expert IBM i systems analyst. Analyse the RPG source code below and extract every dependency. Do not use placeholder text — extract real names directly from the code.
 
 ## PROGRAM SUMMARY
-Program name, type (RPG III/IV/ILE), format (fixed/free), and one-line purpose.
+State the actual program name (from H-spec or filename), RPG version, format (fixed/free/mixed), and what this program does in one sentence.
 
 ## FILES & DATABASE OBJECTS
-Create a table with columns: Object Name | Type | Access Mode | Key Fields | Purpose
-- Type: Physical File, Logical File, SQL Table, Printer File, Display File, ICF File
-- Access Mode: Input / Output / Update / Delete / Read-Write
-- Key Fields: fields used in CHAIN/SETLL/SETGT operations
-List ALL F-spec files and any SQL table references.
+List every file declared in F-specs or referenced via SQL. For each one state the actual filename, how it is opened (Input/Output/Update/Delete), whether it is keyed or sequential, and which fields are used as keys in CHAIN/SETLL/SETGT operations.
+Use this table format: File Name | Type | Access | Key Fields Used | Purpose
 
 ## CALLED PROGRAMS & SERVICE PROGRAMS
-Create a table with columns: Program Name | Call Type | Parameters Passed | Purpose
-- Call Type: CALL, CALLP, CALLB, dynamic CALL
-- List every program this code calls — even conditional calls
+List every external program this code calls using CALL, CALLP, CALLB or dynamic string CALL. State the actual program name, call type, and what parameters are passed. If no external programs are called, state that explicitly.
+Use this table format: Program Name | Call Type | Parameters | Purpose
 
 ## DATA AREAS & DATA QUEUES
-List any IN/OUT/DTAARA operations with the data area name and what data is read/written.
+List every data area accessed via IN/OUT/DTAARA keywords or *DTAARA DEFINE. State the actual name and whether it is read, written or both. If none exist, state that explicitly.
 
 ## SUBROUTINES & PROCEDURES
-Create a table with columns: Name | Type | Called By | Calls | Purpose
-- Type: BEGSR/ENDSR subroutine, DCL-PROC procedure, exported procedure
-- Map the internal call chain
+List every internal subroutine (BEGSR) and procedure (DCL-PROC) defined in this program. For each one state its name, what it does, which subroutines/procedures it calls, and which ones call it.
+Use this table format: Name | Type | Called By | Calls | Purpose
 
 ## ENTRY PARAMETERS
-List all *ENTRY PLIST parameters or DCL-PARM entries with name, type, length and direction (input/output/both).
+List every parameter from *ENTRY PLIST or DCL-PARM with actual field name, data type, length, and whether it is input, output or both. If the program takes no parameters, state that explicitly.
 
-## SYSTEM APIs & BUILT-IN FUNCTIONS
-List any QSYS API calls (QUSRJOBI, QCMDEXC, etc.) and significant BIFs used.
+## SYSTEM APIs & SPECIAL OPERATIONS
+List any IBM i system API calls (QCMDEXC, QUSRJOBI, QUSCHGPA etc.) and any special operations like SNDPGMMSG, DSPLY, DUMP. If none, state that explicitly.
 
 ## IMPACT ANALYSIS SUMMARY
-In plain English: if this program needed to be changed or retired, what else would be affected? What programs call it (inferred from context)? What files would be left without a writer/reader?
+Write 3-5 sentences explaining: what other programs likely depend on this one, what database files would be affected if this program were changed or retired, and what the overall risk of modifying this program is.
 
 RPG Source Code:
 \`\`\`
-\${code}
+${code}
 \`\`\`
 
-Important: Be exhaustive. Every file, every CALL, every data area matters for impact analysis.`,
+Critical: Extract actual names from the code. Never write placeholder text. If a section has no applicable content, write "None found in this program."
+
+## PROGRAM FLOW DIAGRAM
+Generate a Mermaid flowchart showing the functional flow of this program.
+
+Rules:
+- Start with a Start node, end with a Stop node
+- Show every major decision point (IF, SELECT/WHEN, DOW, DOU) as a diamond
+- Show every subroutine call as a rounded rectangle
+- Show every file operation (READ, CHAIN, WRITE, UPDATE, DELETE) as a parallelogram
+- Use short labels (max 5 words per node)
+- Keep it readable — max 25 nodes total, merge minor steps
+- Output ONLY valid Mermaid flowchart syntax inside a mermaid code fence
+
+Example format:
+\`\`\`mermaid
+flowchart TD
+    A([Start]) --> B[Read CUSTFILE]
+    B --> C{EOF?}
+    C -->|Yes| Z([Stop])
+    C -->|No| D{CUST_TYPE = G?}
+    D -->|Yes| E[Discount = 15%]
+    D -->|No| F[Discount = 5%]
+    E --> G[[EXSR CalcTotal]]
+    F --> G
+    G --> B
+\`\`\`
+
+Generate the actual flowchart for THIS program based on the source code above.`,
 
   modern:(code)=>`You are an IBM i modernisation architect.\n\nAnalyse this RPG code and produce a practical modernisation roadmap.\n\n## MODERNISATION OVERVIEW\n[Current state assessment in 3 sentences]\n\n## QUICK WINS (Phase 1 \u2014 Low effort, high value)\n### [Item name]\n**What:** [What to change]\n**How:** [Specific steps]\n**Effort:** [Hours estimate]\n**Benefit:** [Why this matters]\n\n## STRUCTURAL IMPROVEMENTS (Phase 2 \u2014 Medium effort)\nSame format.\n\n## MODERNISATION (Phase 3 \u2014 Higher effort)\nSame format.\n\n## WHAT TO KEEP\n[Logic or patterns that are well-written and should be preserved]\n\n## ESTIMATED TOTAL EFFORT\n[Realistic estimate in developer-days for each phase]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``
 };
@@ -768,15 +789,68 @@ tr:nth-child(even) td{background:#f5f5f3}
 
 
 function renderDepend(text) {
-  const c=document.getElementById('content-depend');
+  const container=document.getElementById('content-depend');
   document.getElementById('empty-depend').style.display='none';
-  c.innerHTML='';
-  parseMarkdownSections(text).forEach(({heading,body})=>{
-    const isTable=body.includes('|');
-    const block=document.createElement('div');
-    block.className='result-section fade-in';
-    block.innerHTML=`<div class="result-section-header"><div class="result-section-title">${heading}</div></div><div class="result-body">${isTable?renderTable(body):formatBody(body)}</div>`;
-    c.appendChild(block);
+  container.innerHTML='';
+
+  // Extract mermaid block before section parsing
+  const mermaidMatch = text.match(/```mermaid\n([\s\S]*?)```/);
+  // Remove mermaid block from text for normal section rendering
+  const cleanText = text.replace(/```mermaid[\s\S]*?```/, '').trim();
+
+  // Render flowchart first if present
+  if (mermaidMatch) {
+    const chartDef = mermaidMatch[1].trim();
+    const chartBlock = document.createElement('div');
+    chartBlock.className = 'result-section fade-in';
+    chartBlock.innerHTML = '<div class="result-section-header"><div class="result-section-title">Program flow diagram</div></div><div class="result-body" id="depend-chart-wrap" style="overflow-x:auto;text-align:center;padding:20px 16px"></div>';
+    container.appendChild(chartBlock);
+
+    // Load mermaid and render
+    const renderChart = async () => {
+      try {
+        if (!window.mermaid) {
+          await loadScript('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js');
+          window.mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+              primaryColor: '#1a1c1d',
+              primaryTextColor: '#e8e4dc',
+              primaryBorderColor: '#363a3b',
+              lineColor: '#e8a020',
+              secondaryColor: '#141516',
+              tertiaryColor: '#0e0f0f',
+              fontFamily: 'DM Mono, monospace',
+              fontSize: '13px'
+            }
+          });
+        }
+        const id = 'depend-chart-' + Date.now();
+        const { svg } = await window.mermaid.render(id, chartDef);
+        const wrap = document.getElementById('depend-chart-wrap');
+        if (wrap) {
+          wrap.innerHTML = svg;
+          // Make SVG responsive
+          const svgEl = wrap.querySelector('svg');
+          if (svgEl) { svgEl.style.maxWidth='100%'; svgEl.style.height='auto'; }
+        }
+      } catch(e) {
+        const wrap = document.getElementById('depend-chart-wrap');
+        if (wrap) wrap.innerHTML = '<div style="color:var(--red);font-size:12px">Flowchart could not be rendered: ' + e.message + '</div>';
+      }
+    };
+    renderChart();
+  }
+
+  // Render the rest of the sections normally
+  parseMarkdownSections(cleanText).forEach(({heading, body}) => {
+    if (heading.toLowerCase().includes('program flow')) return; // skip if leftover
+    const isTable = body.includes('|');
+    const block = document.createElement('div');
+    block.className = 'result-section fade-in';
+    block.innerHTML = `<div class="result-section-header"><div class="result-section-title">${heading}</div></div><div class="result-body">${isTable ? renderTable(body) : formatBody(body)}</div>`;
+    container.appendChild(block);
   });
 }
 
