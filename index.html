@@ -1161,6 +1161,8 @@
     <li><a href="#features">Features</a></li>
     <li><a href="#how">How it works</a></li>
     <li><a href="#pricing">Pricing</a></li>
+    <li><a href="/brd-tdd" style="color:var(--amber)">BRD → TDD</a></li>
+    <li><a href="/tdd-code">TDD → Code</a></li>
   </ul>
   <div style="display:flex;align-items:center;gap:10px">
     <a href="/login"     class="nav-sign-in" id="nav-login">Sign in</a>
@@ -1196,14 +1198,20 @@
     <span class="accent">understood and modernised.</span>
   </h1>
   <p class="hero-sub">
-    Explain, document, and risk-analyse any RPG program in seconds — or convert legacy fixed-format RPG directly to modern free-format ILE RPG. The fastest path to IBM i modernisation.
+    Explain, document, risk-analyse and modernise RPG programs. Convert legacy fixed-format to free-format ILE RPG. Generate TDDs from BRDs, produce code skeletons from TDDs, and connect directly to your IBM i system. Everything an IBM i team needs — in one tool.
   </p>
   <div class="hero-actions">
-    <a href="/analyser" class="btn-primary">Analyse code — free</a>
-    <a href="/converter" class="btn-primary" style="background:var(--green);border-color:var(--green)">&#8644; Convert to free format</a>
-    <a href="#how" class="btn-ghost">See how it works</a>
+    <a href="/signup" class="btn-primary">Get started free</a>
+    <a href="#features" class="btn-ghost">See all features</a>
   </div>
-  <p class="hero-note">No installation &nbsp;·&nbsp; Supports .rpgle, .txt, .docx, .pdf &nbsp;·&nbsp; Your code never leaves your browser</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px;position:relative;z-index:1;animation:fadeUp 0.6s 0.4s ease both">
+    <a href="/analyser" style="font-size:11px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:4px 12px;letter-spacing:0.06em;transition:color 0.2s" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text3)'">&#9113; Analyser</a>
+    <a href="/converter" style="font-size:11px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:4px 12px;letter-spacing:0.06em;transition:color 0.2s" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text3)'">&#8644; Converter</a>
+    <a href="/brd-tdd" style="font-size:11px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:4px 12px;letter-spacing:0.06em;transition:color 0.2s" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text3)'">&#9889; BRD → TDD</a>
+    <a href="/tdd-code" style="font-size:11px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:4px 12px;letter-spacing:0.06em;transition:color 0.2s" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text3)'">&#10021; TDD → Code</a>
+    <a href="/connect" style="font-size:11px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:4px 12px;letter-spacing:0.06em;transition:color 0.2s" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text3)'">&#9906; IBM i Connect</a>
+  </div>
+  <p class="hero-note" style="margin-top:12px">No installation &nbsp;·&nbsp; Free plan available &nbsp;·&nbsp; Your code never leaves your browser</p>
 
   <!-- DUAL TERMINAL -->
   <div class="terminal-wrap" style="max-width:980px">
@@ -1293,8 +1301,8 @@
     <div class="stat-label">avg. analysis time</div>
   </div>
   <div class="stat-item">
-    <div class="stat-num">2</div>
-    <div class="stat-label">tools — analyser + converter</div>
+    <div class="stat-num">5</div>
+    <div class="stat-label">tools built for IBM i teams</div>
   </div>
   <div class="stat-item">
     <div class="stat-num">100k+</div>
@@ -1309,8 +1317,8 @@
 <!-- FEATURES -->
 <section id="features">
   <div class="section-tag reveal">Core capabilities</div>
-  <h2 class="section-title reveal">Two powerful tools.<br/>Every IBM&nbsp;i modernisation need covered.</h2>
-  <p class="section-sub reveal">Built specifically for IBM i professionals — not generic AI wrappers. Every feature solves a real problem that currently costs your team hours of manual work.</p>
+  <h2 class="section-title reveal">Five tools built for<br/>IBM&nbsp;i professionals.</h2>
+  <p class="section-sub reveal">Not a generic AI wrapper — every feature is built specifically for RPG, CL, DDS, and IBM i workflows. Each tool solves a real problem that currently costs your team hours of manual work.</p>
 
   <!-- CONVERTER HIGHLIGHT -->
   <div class="reveal" style="background:rgba(46,194,126,0.04);border:1px solid rgba(46,194,126,0.2);padding:32px 40px;margin-bottom:24px;position:relative;overflow:hidden">
@@ -1448,6 +1456,13 @@
       <div class="feat-desc">A phased roadmap: what to convert to free-format, what could become a REST API, what can be retired. Includes effort estimates and complexity scores — ready to present to leadership.</div>
       <span class="feat-tag">Managers &amp; developers</span>
     </div>
+    <div class="feat-card">
+      <div class="feat-num">05</div>
+      <div class="feat-icon">&#9906;</div>
+      <div class="feat-title">Dependency mapper</div>
+      <div class="feat-desc">Complete dependency analysis — every file, called program, data area, subroutine, and entry parameter. Includes an impact analysis summary and a visual program flow diagram. Essential before any change request.</div>
+      <span class="feat-tag">Developers &amp; architects</span>
+    </div>
   </div>
 </section>
 
@@ -1464,7 +1479,7 @@
     <div class="step">
       <div class="step-num">02</div>
       <div class="step-title">Choose your tool</div>
-      <div class="step-desc">Use the Analyser for explanation, documentation, risk, and modernisation advice. Use the Converter to turn legacy fixed-format RPG directly into modern free-format ILE RPG.</div>
+      <div class="step-desc">Analyser for 5-tab code intelligence. Converter for fixed→free format. BRD→TDD for design documents. TDD→Code for skeletons. IBM i Connect for live system access.</div>
     </div>
     <div class="step">
       <div class="step-num">03</div>
@@ -1474,7 +1489,7 @@
     <div class="step">
       <div class="step-num">04</div>
       <div class="step-title">Export &amp; share</div>
-      <div class="step-desc">Download analysis as a branded Word or PDF document. Download converted code as a .rpgle file ready to open in RDi or VS Code for IBM i. Share with your team instantly.</div>
+      <div class="step-desc">Download analysis or TDD as Word/PDF. Download generated code as .rpgle, .clle, .pf files ready for RDi. On Team plan, push source directly to your IBM i via Live Connect.</div>
     </div>
   </div>
 </div>
@@ -1601,9 +1616,10 @@
         <li>25 analyses per month</li>
         <li>5 conversions per month</li>
         <li>Up to 1,000 lines per conversion</li>
-        <li>All 4 analysis types</li>
+        <li>All 5 analysis tabs incl. dependency map</li>
+        <li>BRD → TDD generator</li>
+        <li>TDD → Code generator</li>
         <li>Word &amp; PDF export</li>
-        <li>Project history</li>
         <li>Email support</li>
       </ul>
       <button class="price-btn fill" onclick="location.href='/analyser'">Start free trial</button>
@@ -1618,6 +1634,7 @@
         <li>20 conversions per month</li>
         <li>Up to 2,000 lines per conversion</li>
         <li>5 user seats</li>
+        <li>BRD → TDD &amp; TDD → Code</li>
         <li><strong style="color:#2ec27e">&#9906; IBM i Live Connect</strong></li>
         <li>Custom branding on docs</li>
         <li>Priority support</li>
@@ -1646,12 +1663,12 @@
 <div class="cta-banner reveal">
   <div class="cta-label">Get started today</div>
   <h2 class="cta-title">Stop rewriting code manually.<br/>Let RPGLens do it.</h2>
-  <p class="cta-sub">Join the IBM i teams already saving hours every week. Analyse, document, risk-check, and convert fixed-format RPG to free-format ILE — all in one place. No installation. No prompting. No expertise required.</p>
+  <p class="cta-sub">Join IBM i teams already saving hours every week. Analyse, convert, design, and generate code — all in one platform built specifically for RPG, CL, and IBM i. Free to start, no installation required.</p>
   <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
-    <a href="/analyser" class="btn-primary" style="font-size:15px;padding:16px 40px">Open analyser — free</a>
-    <a href="/converter" class="btn-primary" style="font-size:15px;padding:16px 40px;background:var(--green);border-color:var(--green)">&#8644; Try the converter</a>
+    <a href="/signup" class="btn-primary" style="font-size:15px;padding:16px 40px">Get started free</a>
+    <a href="/dashboard" class="btn-primary" style="font-size:15px;padding:16px 40px;background:var(--green);border-color:var(--green)">Go to dashboard →</a>
   </div>
-  <p class="hero-note" style="margin-top:16px">Supports .rpgle · .txt · .docx · .pdf · IBM i SEU spool PDFs &nbsp;·&nbsp; Your code never leaves your browser</p>
+  <p class="hero-note" style="margin-top:16px">5 tools &nbsp;·&nbsp; Free plan available &nbsp;·&nbsp; Your code never leaves your browser</p>
 </div>
 
 <!-- FOOTER -->
@@ -1712,7 +1729,7 @@
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const nums = entry.target.querySelectorAll('.stat-num');
-        const data = [null, 4, null, 0];
+        const data = [null, 5, null, 0];
         nums.forEach((n, i) => {
           if (data[i] !== null) animateCounter(n, data[i]);
         });
