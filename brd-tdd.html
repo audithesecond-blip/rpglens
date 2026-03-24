@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens — BRD to TDD Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/docx@8.2.2/build/index.js"></script>
+<style>
+:root{
+  --bg:#0e0f0f;--bg2:#141516;--bg3:#1a1c1d;
+  --border:#2a2d2e;--border2:#363a3b;
+  --amber:#e8a020;--amber2:#f5c060;--amber-dim:#7a5010;
+  --green:#2ec27e;--red:#e85050;
+  --text:#e8e4dc;--text2:#9a9690;--text3:#5a5855;
+  --mono:'DM Mono',monospace;--display:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;display:flex;flex-direction:column;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;height:52px;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;gap:0;flex-shrink:0}
+.topbar-logo{display:flex;align-items:center;gap:9px;text-decoration:none;padding-right:20px;border-right:1px solid var(--border);margin-right:20px}
+.logo-text{font-family:var(--display);font-weight:800;font-size:17px;color:var(--text);letter-spacing:-0.02em}
+.logo-text span{color:var(--amber)}
+.topbar-title{font-size:11px;color:var(--text3);letter-spacing:0.1em}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 14px;background:var(--amber);color:var(--bg);border:none;cursor:pointer;letter-spacing:0.04em;transition:opacity 0.2s;text-decoration:none;display:inline-block;border-radius:2px}
+.btn-sm:hover{opacity:0.88}
+.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
+.btn-sm.green{background:var(--green);color:var(--bg)}
+
+/* MAIN LAYOUT */
+.main{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;height:calc(100vh - 52px)}
+.pane{display:flex;flex-direction:column;overflow:hidden}
+.pane-left{border-right:1px solid var(--border)}
+.pane-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.pane-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.pane-title::before{content:'';width:3px;height:12px;background:var(--amber);display:inline-block}
+.pane-body{flex:1;overflow-y:auto;padding:16px}
+
+/* INPUT AREA */
+.input-section{margin-bottom:16px}
+.input-label{display:block;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.input-field{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;outline:none;transition:border-color 0.2s;resize:none}
+.input-field:focus{border-color:var(--amber-dim)}
+.input-field::placeholder{color:var(--text3)}
+.textarea-brd{min-height:200px;max-height:300px}
+
+/* FILE UPLOAD */
+.upload-zone{border:1px dashed var(--border2);padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--bg3);margin-bottom:12px}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--amber-dim);background:rgba(232,160,32,0.03)}
+.upload-zone-text{font-size:11px;color:var(--text3)}
+.upload-zone-text strong{color:var(--amber)}
+.upload-info{font-size:10px;color:var(--text3);margin-top:4px}
+.file-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--green);background:rgba(46,194,126,0.08);border:1px solid rgba(46,194,126,0.2);padding:4px 10px;margin-top:6px}
+
+/* GENERATE BUTTON */
+.generate-btn{width:100%;padding:12px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.generate-btn:hover{opacity:0.88}
+.generate-btn:disabled{opacity:0.4;cursor:not-allowed}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+
+/* OUTPUT AREA */
+.output-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;color:var(--text3);text-align:center;padding:40px}
+.output-empty-icon{font-size:32px;opacity:0.3}
+.output-empty-title{font-family:var(--display);font-weight:700;font-size:16px}
+.output-empty-sub{font-size:11px;max-width:280px;line-height:1.6}
+.result-section{background:var(--bg2);border:1px solid var(--border);margin-bottom:10px}
+.result-section-hdr{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.result-section-title{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--amber)}
+.result-body{padding:12px 14px;font-size:12px;color:var(--text2);line-height:1.7}
+.result-body strong{color:var(--text)}
+.result-body h3{font-size:12px;color:var(--amber2);font-family:var(--display);margin:10px 0 6px}
+.result-body table{width:100%;border-collapse:collapse;margin:8px 0;font-size:11px}
+.result-body th{background:var(--bg3);color:var(--text2);padding:4px 8px;text-align:left;border:1px solid var(--border);font-weight:500}
+.result-body td{border:1px solid var(--border);padding:4px 8px;color:var(--text2)}
+.result-body code,.code-block{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;font-family:var(--mono);font-size:11px;color:#7ab8e8}
+.code-block{display:block;padding:10px 12px;white-space:pre;overflow-x:auto;line-height:1.6;margin:6px 0}
+.export-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg3);flex-shrink:0;flex-wrap:wrap}
+.export-btn{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;padding:5px 12px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all 0.15s;letter-spacing:0.04em}
+.export-btn:hover{border-color:var(--amber-dim);color:var(--amber)}
+.export-btn:disabled{opacity:0.3;cursor:not-allowed}
+.tdd-to-code-btn{margin-left:auto;background:var(--green);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:11px;padding:6px 16px;cursor:pointer;letter-spacing:0.05em;transition:opacity 0.2s;text-decoration:none;display:inline-block}
+.tdd-to-code-btn:hover{opacity:0.88}
+.progress-bar{height:2px;background:var(--border);flex-shrink:0;overflow:hidden}
+.progress-fill{height:100%;background:var(--amber);width:0;transition:width 0.3s}
+
+/* LOADING SKELETON */
+.skeleton{background:linear-gradient(90deg,var(--bg2) 25%,var(--bg3) 50%,var(--bg2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;height:12px;border-radius:2px;margin-bottom:8px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn 0.3s ease both}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <svg viewBox="0 0 32 32" fill="none" width="24" height="24">
+      <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+      <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+      <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+      <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+      <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+    </svg>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <div class="topbar-title">&#9889; BRD → TDD Generator</div>
+  <div class="topbar-right">
+    <a href="/tdd-code" class="btn-sm green">TDD → Code &#8594;</a>
+    <a href="/analyser" class="btn-sm">Analyser</a>
+    <a href="/dashboard" class="btn-sm ghost">Dashboard</a>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: INPUT -->
+  <div class="pane pane-left">
+    <div class="pane-header">
+      <div class="pane-title">Business Requirements Document</div>
+    </div>
+    <div class="pane-body">
+
+      <div class="input-section">
+        <label class="input-label">Project name</label>
+        <input class="input-field" id="project-name" placeholder="e.g. Customer Billing Automation"/>
+      </div>
+
+      <div class="input-section">
+        <label class="input-label">Upload BRD (optional)</label>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('brd-file').click()" ondragover="handleDrag(event,true)" ondragleave="handleDrag(event,false)" ondrop="handleDrop(event)">
+          <div class="upload-zone-text">&#8593; <strong>Click to upload</strong> or drag and drop</div>
+          <div class="upload-info">Supported: .txt, .md, .docx (text extracted) · Max 2MB</div>
+          <div id="file-badge" style="display:none"></div>
+        </div>
+        <input type="file" id="brd-file" accept=".txt,.md,.docx" style="display:none" onchange="handleFileSelect(this)"/>
+      </div>
+
+      <div class="input-section">
+        <label class="input-label">Or paste BRD text directly</label>
+        <textarea class="input-field textarea-brd" id="brd-text" placeholder="Paste your Business Requirements Document here...
+
+Example:
+The system needs to process daily bank transactions from multiple branches. Each transaction includes an account number, amount, transaction type (debit/credit), and timestamp. The system must validate account balances before processing debits, generate a daily reconciliation report, and send alerts for failed transactions..."></textarea>
+      </div>
+
+      <div style="margin-bottom:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);font-size:11px;color:var(--text3);line-height:1.7">
+        &#9432; The BRD will be analysed and converted into a full IBM i Technical Design Document including program specs, DDS file layouts, CL job flow, data structures, and test scenarios.
+      </div>
+
+      <button class="generate-btn" id="generate-btn" onclick="generateTDD()">
+        &#9889; Generate IBM i TDD
+      </button>
+
+      <div class="progress-bar" style="margin-top:8px">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div id="status-msg" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;min-height:16px"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div class="pane">
+    <div class="pane-header">
+      <div class="pane-title">Technical Design Document</div>
+      <div id="tdd-meta" style="font-size:10px;color:var(--text3)"></div>
+    </div>
+
+    <div id="output-body" class="pane-body">
+      <div class="output-empty">
+        <div class="output-empty-icon">&#9889;</div>
+        <div class="output-empty-title">No TDD generated yet</div>
+        <div class="output-empty-sub">Paste your BRD on the left and click Generate. The output will be a complete IBM i Technical Design Document ready for development.</div>
+      </div>
+    </div>
+
+    <div class="export-bar" id="export-bar" style="display:none">
+      <button class="export-btn" id="btn-word" onclick="exportWord()" disabled>
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 2h9l3 3v9H2V2z"/><path d="M11 2v3h3"/><path d="M5 8l1.5 4L8 8l1.5 4L11 8"/></svg>
+        Word (.docx)
+      </button>
+      <button class="export-btn" id="btn-txt" onclick="exportText()" disabled>
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12"/><path d="M5 6h6M5 9h6M5 12h4"/></svg>
+        Text (.txt)
+      </button>
+      <button class="export-btn" id="btn-copy" onclick="copyTDD()" disabled>
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="5" y="5" width="9" height="10"/><path d="M3 3H11V5H3z"/></svg>
+        Copy
+      </button>
+      <a href="/tdd-code" class="tdd-to-code-btn" id="btn-to-code" onclick="passToCodeGen(event)">
+        Generate Code &#8594;
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+const{createClient}=supabase;
+const sb=createClient(window.RPGLENS_CONFIG.SUPABASE_URL,window.RPGLENS_CONFIG.SUPABASE_ANON);
+let tddResult=null, progressTimer=null;
+
+// ── FILE HANDLING ─────────────────────────────────────────────────────
+function handleDrag(e,over){e.preventDefault();document.getElementById('upload-zone').classList.toggle('drag',over);}
+function handleDrop(e){e.preventDefault();document.getElementById('upload-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)processFile(f);}
+function handleFileSelect(input){if(input.files[0])processFile(input.files[0]);}
+
+async function processFile(file){
+  if(file.size>2*1024*1024){alert('File too large. Max 2MB.');return;}
+  const badge=document.getElementById('file-badge');
+  badge.style.display='inline-flex';
+  badge.textContent='✓ '+file.name;
+
+  if(file.name.endsWith('.txt')||file.name.endsWith('.md')){
+    const text=await file.text();
+    document.getElementById('brd-text').value=text;
+  } else if(file.name.endsWith('.docx')){
+    // For docx we send the filename and let user know we'll use text area content
+    badge.textContent='✓ '+file.name+' — please also paste text content below';
+  }
+}
+
+// ── GENERATE TDD ──────────────────────────────────────────────────────
+async function generateTDD(){
+  const brdText=document.getElementById('brd-text').value.trim();
+  const projectName=document.getElementById('project-name').value.trim();
+
+  if(brdText.length<50){alert('Please provide a more detailed BRD (at least 50 characters).');return;}
+
+  const btn=document.getElementById('generate-btn');
+  btn.disabled=true;
+  btn.innerHTML='<div class="spinner"></div> Generating TDD...';
+  setStatus('Analysing business requirements...');
+  startProgress();
+
+  const{data}=await sb.auth.getSession();
+  const token=data.session?.access_token;
+  if(!token){window.location.href='/login';return;}
+
+  try{
+    setStatus('Building program specifications...');
+    const resp=await fetch('/api/brd-tdd',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({brdText,projectName})
+    });
+    const result=await resp.json();
+
+    if(!resp.ok){
+      if(result.upgrade){
+        showUpgradeMessage(result.error);
+      } else {
+        alert(result.error||'Generation failed.');
+      }
+      return;
+    }
+
+    tddResult=result;
+    renderTDD(result.tdd, result.projectName);
+    setStatus('');
+
+  }catch(e){
+    alert('Something went wrong: '+e.message);
+    setStatus('');
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML='&#9889; Generate IBM i TDD';
+    stopProgress();
+  }
+}
+
+// ── RENDER TDD ────────────────────────────────────────────────────────
+function renderTDD(tdd, projectName){
+  const body=document.getElementById('output-body');
+  body.innerHTML='';
+
+  document.getElementById('tdd-meta').textContent=projectName+' — '+new Date().toLocaleDateString();
+
+  // Split into sections by ## headings
+  const sections=tdd.split(/^## /m).filter(s=>s.trim());
+  sections.forEach(section=>{
+    const lines=section.split('\n');
+    const title=lines[0].trim().replace(/^\d+\.\s*/,'');
+    const content=lines.slice(1).join('\n').trim();
+
+    const div=document.createElement('div');
+    div.className='result-section fade-in';
+
+    const html=formatTDDSection(content);
+    div.innerHTML=`<div class="result-section-hdr"><div class="result-section-title">${title}</div></div><div class="result-body">${html}</div>`;
+    body.appendChild(div);
+  });
+
+  // Show export bar
+  document.getElementById('export-bar').style.display='flex';
+  ['btn-word','btn-txt','btn-copy'].forEach(id=>document.getElementById(id).disabled=false);
+}
+
+function formatTDDSection(text){
+  return text
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^```[\w]*\n([\s\S]*?)```$/gm,'<div class="code-block">$1</div>')
+    .replace(/((?:^\|.+\|$\n?)+)/gm,block=>{
+      const rows=block.trim().split('\n').filter(r=>!r.match(/^\|[-:\s|]+\|$/));
+      if(rows.length<2) return block;
+      return '<table>'+rows.map((r,i)=>{
+        const cells=r.split('|').map(c=>c.trim()).filter((_,j,a)=>j>0&&j<a.length-1);
+        const tag=i===0?'th':'td';
+        return `<tr>${cells.map(c=>`<${tag}>${c}</${tag}>`).join('')}</tr>`;
+      }).join('')+'</table>';
+    })
+    .replace(/^[-*]\s+(.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/gs,s=>`<ul style="padding-left:16px;margin:6px 0">${s}</ul>`)
+    .replace(/\n{2,}/g,'</p><p>')
+    .replace(/\n/g,'<br>');
+}
+
+// ── EXPORTS ───────────────────────────────────────────────────────────
+function getSafeProjectName(){
+  return (document.getElementById('project-name').value.trim()||'TDD').replace(/[^a-zA-Z0-9_\-]/g,'_').replace(/_+/g,'_');
+}
+
+function dateStamp(){const d=new Date();return`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;}
+
+function exportText(){
+  if(!tddResult) return;
+  const blob=new Blob([tddResult.tdd],{type:'text/plain;charset=utf-8'});
+  triggerDownload(blob,`RPGLens_TDD_${getSafeProjectName()}_${dateStamp()}.txt`);
+}
+
+function copyTDD(){
+  if(!tddResult) return;
+  navigator.clipboard.writeText(tddResult.tdd).then(()=>{
+    const btn=document.getElementById('btn-copy');
+    btn.textContent='✓ Copied';
+    setTimeout(()=>{btn.innerHTML='<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="5" y="5" width="9" height="10"/><path d="M3 3H11V5H3z"/></svg> Copy';},2000);
+  });
+}
+
+async function exportWord(){
+  if(!tddResult||!window.docx) return;
+  const btn=document.getElementById('btn-word');
+  btn.textContent='Building...';btn.disabled=true;
+
+  try{
+    const{Document,Packer,Paragraph,TextRun,HeadingLevel,Table,TableRow,TableCell,WidthType,BorderStyle}=window.docx;
+    const children=[];
+    const projectName=tddResult.projectName||'IBM i Project';
+    const generated=new Date().toLocaleString();
+
+    children.push(new Paragraph({text:'Technical Design Document',heading:HeadingLevel.TITLE}));
+    children.push(new Paragraph({text:`Project: ${projectName}`,heading:HeadingLevel.HEADING_2}));
+    children.push(new Paragraph({text:`Generated by RPGLens — ${generated}`}));
+    children.push(new Paragraph({text:''}));
+
+    const lines=tddResult.tdd.split('\n');
+    lines.forEach(line=>{
+      if(line.startsWith('## ')){
+        children.push(new Paragraph({text:line.slice(3),heading:HeadingLevel.HEADING_1}));
+      } else if(line.startsWith('### ')){
+        children.push(new Paragraph({text:line.slice(4),heading:HeadingLevel.HEADING_2}));
+      } else if(line.startsWith('- ')||line.startsWith('* ')){
+        children.push(new Paragraph({text:line.slice(2),bullet:{level:0}}));
+      } else if(line.trim()){
+        children.push(new Paragraph({text:line.replace(/\*\*([^*]+)\*\*/g,'$1')}));
+      } else {
+        children.push(new Paragraph({text:''}));
+      }
+    });
+
+    const doc=new Document({sections:[{properties:{},children}]});
+    const blob=await Packer.toBlob(doc);
+    triggerDownload(blob,`RPGLens_TDD_${getSafeProjectName()}_${dateStamp()}.docx`);
+  }catch(e){alert('Word export failed: '+e.message);}
+  finally{btn.textContent='Word (.docx)';btn.disabled=false;}
+}
+
+function passToCodeGen(e){
+  if(!tddResult){e.preventDefault();alert('Generate a TDD first.');return;}
+  sessionStorage.setItem('rpglens_tdd',JSON.stringify({tdd:tddResult.tdd,projectName:tddResult.projectName}));
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function triggerDownload(blob,filename){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+
+function setStatus(msg){document.getElementById('status-msg').textContent=msg;}
+
+function startProgress(){
+  let w=0;
+  document.getElementById('progress-fill').style.width='0%';
+  progressTimer=setInterval(()=>{
+    w=Math.min(w+(100-w)*0.04,92);
+    document.getElementById('progress-fill').style.width=w+'%';
+  },500);
+}
+
+function stopProgress(){
+  clearInterval(progressTimer);
+  document.getElementById('progress-fill').style.width='100%';
+  setTimeout(()=>{document.getElementById('progress-fill').style.width='0%';},1000);
+}
+
+function showUpgradeMessage(msg){
+  document.getElementById('output-body').innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:40px;text-align:center">
+      <div style="font-size:32px;opacity:0.4">&#9650;</div>
+      <div style="font-family:var(--display);font-weight:700;font-size:16px;color:var(--text)">${msg}</div>
+      <a href="/dashboard" style="padding:10px 24px;background:var(--amber);color:var(--bg);text-decoration:none;font-family:var(--display);font-weight:700;font-size:12px">Upgrade Plan →</a>
+    </div>`;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+async function init(){
+  const{data}=await sb.auth.getSession();
+  if(!data.session){window.location.href='/login';return;}
+}
+init();
+</script>
+</body>
+</html>

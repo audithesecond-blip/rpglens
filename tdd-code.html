@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens — TDD to Code Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0e0f0f;--bg2:#141516;--bg3:#1a1c1d;
+  --border:#2a2d2e;--border2:#363a3b;
+  --amber:#e8a020;--amber2:#f5c060;--amber-dim:#7a5010;
+  --green:#2ec27e;--green-dim:#0f4a2e;
+  --blue:#5b9bd5;--red:#e85050;
+  --text:#e8e4dc;--text2:#9a9690;--text3:#5a5855;
+  --mono:'DM Mono',monospace;--display:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;display:flex;flex-direction:column;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999}
+.topbar{display:flex;align-items:center;height:52px;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;gap:0;flex-shrink:0}
+.topbar-logo{display:flex;align-items:center;gap:9px;text-decoration:none;padding-right:20px;border-right:1px solid var(--border);margin-right:20px}
+.logo-text{font-family:var(--display);font-weight:800;font-size:17px;color:var(--text);letter-spacing:-0.02em}
+.logo-text span{color:var(--amber)}
+.topbar-title{font-size:11px;color:var(--text3);letter-spacing:0.1em}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 14px;background:var(--amber);color:var(--bg);border:none;cursor:pointer;letter-spacing:0.04em;transition:opacity 0.2s;text-decoration:none;display:inline-block;border-radius:2px}
+.btn-sm:hover{opacity:0.88}
+.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
+.main{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;height:calc(100vh - 52px)}
+.pane{display:flex;flex-direction:column;overflow:hidden}
+.pane-left{border-right:1px solid var(--border)}
+.pane-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.pane-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.pane-title::before{content:'';width:3px;height:12px;background:var(--green);display:inline-block}
+.pane-body{flex:1;overflow-y:auto;padding:16px}
+.input-label{display:block;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.input-field{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;outline:none;transition:border-color 0.2s;resize:none}
+.input-field:focus{border-color:var(--green-dim)}
+.input-field::placeholder{color:var(--text3)}
+.input-section{margin-bottom:14px}
+.upload-zone{border:1px dashed var(--border2);padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--bg3);margin-bottom:10px}
+.upload-zone:hover{border-color:rgba(46,194,126,0.4);background:rgba(46,194,126,0.03)}
+.upload-zone-text{font-size:11px;color:var(--text3)}
+.upload-zone-text strong{color:var(--green)}
+.generate-btn{width:100%;padding:12px;background:var(--green);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.generate-btn:hover{opacity:0.88}
+.generate-btn:disabled{opacity:0.4;cursor:not-allowed}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+.progress-bar{height:2px;background:var(--border);flex-shrink:0;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:var(--green);width:0;transition:width 0.3s}
+
+/* COMPONENT TABS */
+.comp-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;background:var(--bg2)}
+.comp-tab{padding:10px 16px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;transition:color 0.15s;font-family:var(--mono)}
+.comp-tab:hover{color:var(--text2)}
+.comp-tab.active{color:var(--green);border-bottom-color:var(--green)}
+.comp-type-badge{font-size:9px;padding:1px 5px;margin-left:4px;font-family:var(--display);font-weight:700;letter-spacing:0.06em}
+.comp-type-badge.rpgle{background:rgba(91,155,213,0.12);color:var(--blue);border:1px solid rgba(91,155,213,0.3)}
+.comp-type-badge.clle{background:rgba(46,194,126,0.1);color:var(--green);border:1px solid rgba(46,194,126,0.25)}
+.comp-type-badge.pf,.comp-type-badge.lf{background:rgba(232,160,32,0.1);color:var(--amber);border:1px solid var(--amber-dim)}
+.comp-type-badge.other{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+
+/* CODE VIEWER */
+.code-viewer{flex:1;overflow:auto;background:var(--bg);padding:16px;font-family:var(--mono);font-size:12px;color:#abb2bf;line-height:1.7;white-space:pre}
+.code-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text3);text-align:center;padding:40px}
+.code-empty-icon{font-size:32px;opacity:0.3}
+.code-empty-title{font-family:var(--display);font-weight:700;font-size:16px}
+.code-empty-sub{font-size:11px;max-width:300px;line-height:1.6}
+.export-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg3);flex-shrink:0;flex-wrap:wrap}
+.export-btn{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;padding:5px 12px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all 0.15s;letter-spacing:0.04em}
+.export-btn:hover{border-color:rgba(46,194,126,0.4);color:var(--green)}
+.export-btn:disabled{opacity:0.3;cursor:not-allowed}
+.export-btn.download-all{background:var(--green);color:var(--bg);border-color:var(--green);font-family:var(--display);font-weight:700}
+.export-btn.download-all:hover{opacity:0.88}
+
+/* SYNTAX HIGHLIGHTING (simple) */
+.kw{color:#c678dd}
+.str{color:#98c379}
+.cm{color:#5c6370;font-style:italic}
+.num{color:#d19a66}
+.op{color:#e8a020}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.fade-in{animation:fadeIn 0.3s ease both}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <svg viewBox="0 0 32 32" fill="none" width="24" height="24">
+      <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+      <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+      <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+      <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+      <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+    </svg>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <div class="topbar-title">&#10021; TDD → Code Generator</div>
+  <div class="topbar-right">
+    <a href="/brd-tdd" class="btn-sm ghost">&#8592; BRD → TDD</a>
+    <a href="/analyser" class="btn-sm">Analyser</a>
+    <a href="/dashboard" class="btn-sm ghost">Dashboard</a>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT: INPUT -->
+  <div class="pane pane-left">
+    <div class="pane-header">
+      <div class="pane-title">Technical Design Document</div>
+    </div>
+    <div class="pane-body">
+
+      <div id="tdd-from-generator" style="display:none;padding:8px 12px;background:rgba(46,194,126,0.06);border:1px solid rgba(46,194,126,0.2);font-size:11px;color:var(--green);margin-bottom:12px">
+        ✓ TDD loaded from BRD generator
+      </div>
+
+      <div class="input-section">
+        <label class="input-label">Project name</label>
+        <input class="input-field" id="project-name" placeholder="e.g. Customer Billing Automation"/>
+      </div>
+
+      <div class="input-section">
+        <label class="input-label">Upload TDD (optional)</label>
+        <div class="upload-zone" onclick="document.getElementById('tdd-file').click()">
+          <div class="upload-zone-text">&#8593; <strong>Click to upload</strong> or drag and drop</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">Supported: .txt, .md · Max 2MB</div>
+          <div id="file-badge" style="display:none;font-size:11px;color:var(--green);margin-top:6px"></div>
+        </div>
+        <input type="file" id="tdd-file" accept=".txt,.md" style="display:none" onchange="handleFileSelect(this)"/>
+      </div>
+
+      <div class="input-section">
+        <label class="input-label">Or paste TDD text directly</label>
+        <textarea class="input-field" id="tdd-text" style="min-height:180px;max-height:260px" placeholder="Paste your Technical Design Document here..."></textarea>
+      </div>
+
+      <div class="input-section">
+        <label class="input-label">Components to generate</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" checked id="chk-rpgle" style="accent-color:var(--green)"/> RPG free-format (.RPGLE)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" checked id="chk-clle" style="accent-color:var(--green)"/> CL program (.CLLE)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" checked id="chk-pf" style="accent-color:var(--green)"/> Physical file DDS (.PF)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="chk-lf" style="accent-color:var(--green)"/> Logical file DDS (.LF)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="chk-dspf" style="accent-color:var(--green)"/> Display file DDS (.DSPF)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="chk-prtf" style="accent-color:var(--green)"/> Printer file DDS (.PRTF)</label>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="generate-btn" onclick="generateCode()">
+        &#10021; Generate IBM i Code
+      </button>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div id="status-msg" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;min-height:16px"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div class="pane" id="output-pane">
+    <div class="comp-tabs" id="comp-tabs" style="display:none"></div>
+    <div id="output-body" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+      <div class="code-empty">
+        <div class="code-empty-icon">&#10021;</div>
+        <div class="code-empty-title">No code generated yet</div>
+        <div class="code-empty-sub">Paste your TDD on the left (or carry it over from the BRD→TDD tool) and click Generate. Each component appears as a separate tab you can download individually.</div>
+      </div>
+    </div>
+    <div class="export-bar" id="export-bar" style="display:none">
+      <button class="export-btn" id="btn-download-current" onclick="downloadCurrentComponent()" disabled>
+        &#8595; Download current
+      </button>
+      <button class="export-btn download-all" id="btn-download-all" onclick="downloadAllComponents()" disabled>
+        &#8595; Download all (.zip)
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const{createClient}=supabase;
+const sb=createClient(window.RPGLENS_CONFIG.SUPABASE_URL,window.RPGLENS_CONFIG.SUPABASE_ANON);
+let codeResult=null, activeCompIdx=0, progressTimer=null;
+
+// ── INIT: check for TDD from BRD generator ───────────────────────────
+async function init(){
+  const{data}=await sb.auth.getSession();
+  if(!data.session){window.location.href='/login';return;}
+
+  const saved=sessionStorage.getItem('rpglens_tdd');
+  if(saved){
+    try{
+      const{tdd,projectName}=JSON.parse(saved);
+      document.getElementById('tdd-text').value=tdd;
+      if(projectName) document.getElementById('project-name').value=projectName;
+      document.getElementById('tdd-from-generator').style.display='block';
+      sessionStorage.removeItem('rpglens_tdd');
+    }catch(e){}
+  }
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────────────
+async function handleFileSelect(input){
+  const file=input.files[0];
+  if(!file) return;
+  if(file.size>2*1024*1024){alert('File too large. Max 2MB.');return;}
+  const text=await file.text();
+  document.getElementById('tdd-text').value=text;
+  const badge=document.getElementById('file-badge');
+  badge.style.display='block';
+  badge.textContent='✓ '+file.name;
+}
+
+// ── GENERATE CODE ─────────────────────────────────────────────────────
+async function generateCode(){
+  const tddText=document.getElementById('tdd-text').value.trim();
+  const projectName=document.getElementById('project-name').value.trim();
+  if(tddText.length<50){alert('Please provide a more detailed TDD.');return;}
+
+  const components=[];
+  if(document.getElementById('chk-rpgle').checked) components.push('RPGLE');
+  if(document.getElementById('chk-clle').checked)  components.push('CLLE');
+  if(document.getElementById('chk-pf').checked)    components.push('PF');
+  if(document.getElementById('chk-lf').checked)    components.push('LF');
+  if(document.getElementById('chk-dspf').checked)  components.push('DSPF');
+  if(document.getElementById('chk-prtf').checked)  components.push('PRTF');
+
+  const btn=document.getElementById('generate-btn');
+  btn.disabled=true;
+  btn.innerHTML='<div class="spinner"></div> Generating code...';
+  setStatus('Analysing TDD...');
+  startProgress();
+
+  const{data}=await sb.auth.getSession();
+  const token=data.session?.access_token;
+
+  try{
+    setStatus('Generating IBM i source code...');
+    const resp=await fetch('/api/tdd-code',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({tddText,projectName,components})
+    });
+    const result=await resp.json();
+
+    if(!resp.ok){
+      if(result.upgrade){showUpgradeMessage(result.error);}
+      else alert(result.error||'Generation failed.');
+      return;
+    }
+
+    codeResult=result;
+    renderCode(result);
+    setStatus('');
+
+  }catch(e){
+    alert('Something went wrong: '+e.message);
+    setStatus('');
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML='&#10021; Generate IBM i Code';
+    stopProgress();
+  }
+}
+
+// ── RENDER CODE ───────────────────────────────────────────────────────
+function renderCode(result){
+  const comps=result.components;
+  if(!comps||!comps.length){
+    // Fallback: show raw output
+    document.getElementById('output-body').innerHTML=`<pre class="code-viewer fade-in">${escHtml(result.raw)}</pre>`;
+    return;
+  }
+
+  // Build tabs
+  const tabsEl=document.getElementById('comp-tabs');
+  tabsEl.style.display='flex';
+  tabsEl.innerHTML='';
+  comps.forEach((comp,i)=>{
+    const typeClass=(comp.type||'').toLowerCase().replace(/[^a-z]/g,'');
+    const btn=document.createElement('button');
+    btn.className='comp-tab'+(i===0?' active':'');
+    btn.innerHTML=`${comp.name} <span class="comp-type-badge ${typeClass}">${comp.type}</span>`;
+    btn.onclick=()=>switchComp(i);
+    tabsEl.appendChild(btn);
+  });
+
+  // Show first component
+  activeCompIdx=0;
+  showComponent(0);
+
+  document.getElementById('export-bar').style.display='flex';
+  document.getElementById('btn-download-current').disabled=false;
+  document.getElementById('btn-download-all').disabled=false;
+}
+
+function switchComp(idx){
+  activeCompIdx=idx;
+  document.querySelectorAll('.comp-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  showComponent(idx);
+}
+
+function showComponent(idx){
+  const comp=codeResult.components[idx];
+  const body=document.getElementById('output-body');
+  body.innerHTML=`<pre class="code-viewer fade-in">${highlightRPG(comp.code)}</pre>`;
+}
+
+// ── SIMPLE RPG SYNTAX HIGHLIGHT ───────────────────────────────────────
+function highlightRPG(code){
+  const escaped=escHtml(code);
+  return escaped
+    .replace(/\/\/[^\n]*/g,'<span class="cm">$&</span>')
+    .replace(/\b(DCL-S|DCL-DS|DCL-PR|DCL-PI|DCL-PROC|END-DS|END-PR|END-PI|END-PROC|CTL-OPT|DCL-F|IF|ELSE|ELSEIF|ENDIF|DOW|ENDDO|DOU|FOR|ENDFOR|SELECT|WHEN|OTHER|ENDSL|BEGSR|ENDSR|RETURN|MONITOR|ON-ERROR|ENDMON|CHAIN|READ|READE|READE|WRITE|UPDATE|DELETE|SETLL|SETGT|OPEN|CLOSE|COMMIT|ROLLBACK|CALLP|EVAL|CLEAR|RESET|MOVE|MOVEL|EXSR|LEAVESR|ITER|LEAVE|PGM|ENDPGM|DCL|DCLF|CHGVAR|SNDPGMMSG|MONMSG|SBMJOB|CALL|PARM)\b/g,'<span class="kw">$1</span>')
+    .replace(/'[^']*'/g,'<span class="str">$&</span>')
+    .replace(/\b(\d+)\b/g,'<span class="num">$1</span>');
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── DOWNLOAD ──────────────────────────────────────────────────────────
+function getExt(type){
+  const map={RPGLE:'rpgle',CLLE:'clle',PF:'pf',LF:'lf',DSPF:'dspf',PRTF:'prtf',SQLRPGLE:'sqlrpgle'};
+  return map[(type||'').toUpperCase()]||'txt';
+}
+
+function downloadCurrentComponent(){
+  if(!codeResult) return;
+  const comp=codeResult.components[activeCompIdx];
+  const ext=getExt(comp.type);
+  const blob=new Blob([comp.code],{type:'text/plain;charset=utf-8'});
+  triggerDownload(blob,`${comp.name}.${ext}`);
+}
+
+async function downloadAllComponents(){
+  if(!codeResult||!codeResult.components.length) return;
+
+  // No JSZip available — download each file individually with a small delay
+  const btn=document.getElementById('btn-download-all');
+  btn.textContent='Downloading...';btn.disabled=true;
+
+  for(let i=0;i<codeResult.components.length;i++){
+    const comp=codeResult.components[i];
+    const ext=getExt(comp.type);
+    const blob=new Blob([comp.code],{type:'text/plain;charset=utf-8'});
+    triggerDownload(blob,`${comp.name}.${ext}`);
+    await new Promise(r=>setTimeout(r,400));
+  }
+
+  btn.innerHTML='&#8595; Download all';btn.disabled=false;
+}
+
+function triggerDownload(blob,filename){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function setStatus(msg){document.getElementById('status-msg').textContent=msg;}
+
+function startProgress(){
+  let w=0;
+  document.getElementById('progress-fill').style.width='0%';
+  progressTimer=setInterval(()=>{w=Math.min(w+(100-w)*0.04,92);document.getElementById('progress-fill').style.width=w+'%';},500);
+}
+
+function stopProgress(){
+  clearInterval(progressTimer);
+  document.getElementById('progress-fill').style.width='100%';
+  setTimeout(()=>{document.getElementById('progress-fill').style.width='0%';},1000);
+}
+
+function showUpgradeMessage(msg){
+  document.getElementById('output-body').innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:40px;text-align:center">
+      <div style="font-size:32px;opacity:0.4">&#9650;</div>
+      <div style="font-family:var(--display);font-weight:700;font-size:16px;color:var(--text)">${msg}</div>
+      <a href="/dashboard" style="padding:10px 24px;background:var(--amber);color:var(--bg);text-decoration:none;font-family:var(--display);font-weight:700;font-size:12px">Upgrade Plan →</a>
+    </div>`;
+}
+
+init();
+</script>
+</body>
+</html>

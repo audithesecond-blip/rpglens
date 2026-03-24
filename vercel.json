@@ -9,6 +9,8 @@
     { "src": "/signup",    "dest": "/signup.html" },
     { "src": "/dashboard", "dest": "/dashboard.html" },
     { "src": "/connect",   "dest": "/connect.html" },
+    { "src": "/brd-tdd",   "dest": "/brd-tdd.html" },
+    { "src": "/tdd-code",  "dest": "/tdd-code.html" },
     { "src": "/",          "dest": "/index.html" }
   ],
   "headers": [
