@@ -617,14 +617,29 @@ async function addSourceLocation(){
   const lib=document.getElementById('new-loc-lib').value.trim().toUpperCase();
   const spf=document.getElementById('new-loc-spf').value.trim().toUpperCase();
   if(!name||!lib||!spf){alert('Name, library and source file required.');return;}
-  // Reload connection from server if not in memory
-  if(!connection) await loadConnection();
-  if(!connection){alert('Save your connection first, then try again.');return;}
-  const locs=[...(connection.source_locations||[]),{name,library:lib,srcpf:spf}];
-  await saveSourceLocations(locs);
+
+  // Always reload from server first to get latest state
+  await loadConnection();
+
+  // Build new locations list — even if connection was just saved
+  const existing = connection ? (connection.source_locations||[]) : [];
+  const locs=[...existing,{name,library:lib,srcpf:spf}];
+
+  // Save directly to API — no connection object dependency
+  const token=session?.access_token;
+  const resp=await fetch('/api/ibmi-connect',{
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body:JSON.stringify({action:'update_sources',connection:{source_locations:locs}})
+  });
+  const data=await resp.json();
+  if(!resp.ok){alert(data.error||'Failed to save location.');return;}
+
+  if(connection) connection.source_locations=locs;
   document.getElementById('new-loc-name').value='';
   document.getElementById('new-loc-lib').value='';
   document.getElementById('new-loc-spf').value='';
+  await loadConnection();
+  renderSourceLocations();
 }
 
 async function removeSourceLocation(idx){
