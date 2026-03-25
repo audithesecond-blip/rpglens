@@ -617,7 +617,9 @@ async function addSourceLocation(){
   const lib=document.getElementById('new-loc-lib').value.trim().toUpperCase();
   const spf=document.getElementById('new-loc-spf').value.trim().toUpperCase();
   if(!name||!lib||!spf){alert('Name, library and source file required.');return;}
-  if(!connection){alert('Save your connection first.');return;}
+  // Reload connection from server if not in memory
+  if(!connection) await loadConnection();
+  if(!connection){alert('Save your connection first, then try again.');return;}
   const locs=[...(connection.source_locations||[]),{name,library:lib,srcpf:spf}];
   await saveSourceLocations(locs);
   document.getElementById('new-loc-name').value='';
