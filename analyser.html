@@ -528,11 +528,13 @@ ILE programs (DFTACTGRP(*NO)):
 - *PSSR still works in ILE mainline procedures. INFSR still works at file level.
 
 SEVERITY RULES FOR ERROR HANDLING:
-- Batch program with no (E) extenders but with *PSSR or INFSR defined: LOW risk at most, INFO for non-financial operations. The program has error handling — just legacy style.
-- Batch program with no (E) extenders, no *PSSR, no INFSR, but called from a CL that likely has MONMSG: INFO — job-level handling exists at system level.
-- Interactive program (WORKSTN) with no error handling on UPDATE/WRITE: MEDIUM — user-facing errors without handling can be confusing.
-- Financial UPDATE/DELETE with no (E) extender AND no *PSSR AND no INFSR AND no CL wrapper apparent: HIGH — genuine uncontained failure risk.
+- Batch program with no (E) extenders but with *PSSR or INFSR defined: LOW risk at most, INFO for non-financial operations.
+- Batch program with no (E) extenders, no *PSSR, no INFSR: This is FAIL-FAST behaviour — the job terminates on error. This is NOT silent corruption. Maximum MEDIUM for financial batch operations.
+- Interactive program (WORKSTN) with no error handling on UPDATE/WRITE: MEDIUM — user sees a system error, confusing and unprofessional but not silent corruption.
+- Financial UPDATE/DELETE in a BATCH program with no error handling at any level: MEDIUM — fail-fast protects the data, but failure is not gracefully handled.
+- Financial UPDATE/DELETE in a REAL-TIME or API-called context with no error handling: HIGH — caller may not handle the escape message, partial state possible.
 - NEVER classify absence of (E) extenders alone as HIGH risk in any batch program.
+- NEVER say "data corruption possible" when the failure mode is job termination — job termination IS the safety mechanism.
 
 ── JOURNALING & COMMITMENT CONTROL ──
 - IBM i journaling captures before and after images of every database change to a journal receiver. Recovery to any point-in-time is possible even without application-level rollback logic.
@@ -557,6 +559,55 @@ SEVERITY RULES FOR ERROR HANDLING:
 - UNLOCK opcode: releases without writing.
 - LDA (Local Data Area, *AUTO): automatically locked/unlocked at program start/end. Normal.
 - Not using UNLOCK after IN: risk only if the data area is shared across jobs and lock is held longer than intended. Flag as LOW in that case.
+
+── FAIL-FAST vs SILENT CORRUPTION — critical distinction ──
+This is one of the most important calibrations in IBM i risk analysis. You MUST apply this before assigning severity to any error-handling finding.
+
+FAIL-FAST (job terminates, no data corruption):
+- RPG with no (E) extender, no *PSSR, no INFSR on a failed UPDATE/WRITE/DELETE
+- What actually happens: IBM i throws an escape message (CPF5026, CPF9999 etc.), the job abnormally ends, the operation did NOT complete
+- The database record was NOT partially updated — IBM i's commit boundary at the operation level means the UPDATE either completes or does not happen
+- The job log captures the failure with full context
+- A CL wrapper with MONMSG (even undiscovered) catches the escape at the job level
+- This is FAIL-FAST behaviour — the system fails loudly and stops. This is NOT silent corruption.
+- SEVERITY: MEDIUM for batch, HIGH only for real-time or multi-record transactions
+
+SILENT CORRUPTION (data is wrong but no error is raised):
+- Division by zero with no zero-check and no (E) extender → MCH1211 → job crash (fail-fast, not silent)
+- Numeric overflow on a result field → MCH1210 → job crash (fail-fast, not silent)  
+- HOWEVER: truncation on MOVE/MOVEL to a shorter field → NO exception, data silently truncated → this IS silent corruption → HIGH
+- HOWEVER: wrong calculation result written to DB (logic error, not exception) → silent wrong data → HIGH
+- HOWEVER: UPDATE after failed CHAIN where not-found was not checked → updates wrong record or *BLANK key → HIGH
+
+RULE: If the failure mode is "job terminates with error" → it is FAIL-FAST → maximum MEDIUM for batch
+RULE: If the failure mode is "wrong data written with no error" → it is SILENT CORRUPTION → HIGH
+
+── EXECUTION CONTEXT — severity modifier ──
+The same missing error handling has different real-world impact depending on how the program runs:
+
+BATCH program (SBMJOB, scheduled job, no interactive user):
+- Failed job → operator is notified via job log / QSYSOPR message queue
+- Can be restarted, re-run, or recovered
+- Downstream impact is delayed and recoverable
+- DOWNGRADE severity by one level from the base assessment
+- Example: Financial UPDATE with no (E) extender in a batch job → MEDIUM (not HIGH)
+
+INTERACTIVE program (WORKSTN file, called directly by a user):
+- Failed program → user sees a system error screen
+- Transaction may be partially complete in the user's mind
+- Harder to diagnose and restart
+- KEEP severity at base assessment level
+
+REAL-TIME / API-called program (called from IWS REST API, Java, or another language):
+- Caller may not handle IBM i escape messages correctly
+- Partial failure may leave the calling application in an inconsistent state
+- UPGRADE severity by one level from the base assessment
+
+HOW TO DETECT EXECUTION CONTEXT FROM SOURCE:
+- WORKSTN file in F-specs → interactive program
+- No WORKSTN file, no display file → batch program (most likely)
+- EXTPGM keyword or service program → called program, inherits caller's context
+- When context is ambiguous → assume batch, state the assumption in your finding
 
 ── CL WRAPPER PATTERNS ──
 - Most IBM i batch programs are called from a CL program that handles MONMSG, OVRDBF file overrides, library list management, and job logging.
