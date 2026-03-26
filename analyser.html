@@ -629,6 +629,83 @@ HOW TO DETECT EXECUTION CONTEXT FROM SOURCE:
 - Hardcoded DATE FORMATS with century-year logic (IFGT 95 → prefix 19, else 20): was correct for Y2K era. Now INFO — the pattern works but has a 2095 horizon.
 - Magic numbers driving SELECT/WHEN branches (e.g., transaction type codes): LOW risk, document in recommendation as needing named constants.
 
+── CROSS-FILE TRANSACTIONAL INTEGRITY — critical enterprise pattern ──
+This is one of the most important patterns to detect in financial IBM i programs.
+
+PATTERN TO DETECT:
+When a program writes/updates to 3 or more files in the same logical transaction:
+  WRITE FileA
+  WRITE FileB  
+  WRITE FileC
+  (or any combination of WRITE/UPDATE/DELETE across multiple files)
+
+WITHOUT any of:
+  COMMIT opcode
+  STRCMTCTL in visible CL context
+  ROLLBACK opcode
+
+THIS IS A GENUINE RISK — frame it as:
+"Lack of transactional atomicity across multi-file financial writes"
+
+WHY IT MATTERS:
+- If WRITE FileA succeeds but WRITE FileB fails → FileA has data, FileB does not → data divergence
+- Example: Main transaction file written, DW copy fails → reporting discrepancy
+- Example: Transaction header written, log write fails → audit gap
+- IBM i journaling recovers individual records but does NOT automatically roll back a multi-file logical transaction
+- SEVERITY: HIGH for financial files (CMT*, SAL*, INV*, etc.), MEDIUM for non-financial operational files
+- ALWAYS frame this as "transactional consistency risk" not "error handling missing"
+
+DO NOT flag single-file writes as a transactional integrity issue — it only applies to multi-file sequences.
+
+── PCI / CRYPTOGRAPHY SILENT CORRUPTION — CRITICAL severity ──
+This is the most dangerous pattern in payment processing programs.
+
+PATTERN TO DETECT:
+  pciRC = PCI_FLD_INIT(...)  OR  pciRC = PCI_SHAD_DEC(...)  OR any crypto API call
+  IF pciRC <> 0
+     CALL/CALLP ErrorLogging(...)   ← error is LOGGED
+  ENDIF
+  ← NO STOP, NO LEAVSR, NO GOTO, processing CONTINUES regardless
+
+WHY THIS IS CRITICAL (not just HIGH):
+- This is SILENT CORRUPTION — not fail-fast
+- The program does NOT terminate
+- Decryption failed → CCN_Clear field contains zeros or garbage
+- Garbage value is then written to CMTLP01D, AEENTLGIX, or other downstream files
+- PCI DSS violation: invalid/garbage PAN data in financial files
+- No job crash occurs — the bad data propagates silently through the system
+- This is the exact opposite of fail-fast
+
+SEVERITY: CRITICAL (above HIGH)
+FRAMING: "Decryption failure without processing halt — silent data corruption and PCI compliance risk"
+
+Note: If pciRC <> 0 is followed by LEAVSR / GOTO / SETON LR / RETURN → the risk is handled → downgrade to LOW/INFO
+
+── DIVISION RISK — accuracy rule ──
+ONLY flag division by zero risk if you can actually see one of these in the source:
+  DIV opcode: "DIV divisor result"  
+  Division operator in EVAL: "EVAL result = x / y"
+  SQL division: "result = field1 / field2"
+
+DO NOT flag division risk for:
+  EVAL with multiplication only (e.g. "EVAL CMFSEQ = @INZSEQ * 100000000") — this is multiplication, not division
+  Comparisons involving numeric fields (IF A@_YEAR25 > CUTOFF) — this is comparison, not arithmetic
+  DO loop counters — these use addition/subtraction, not division
+
+If you flag division risk, quote the EXACT line of code containing the division operator. If you cannot quote it, do not flag it.
+
+── DIVISION RISK — accuracy rule ──
+ONLY flag division-by-zero risk if you can see one of these in the source:
+- DIV opcode: C factor1 DIV factor2 result
+- Division in EVAL: EVAL result = x / y
+- SQL division in embedded SQL
+
+DO NOT flag division risk for:
+- EVAL with multiplication only (EVAL CMFSEQ = @INZSEQ * 100000000 is multiplication, NOT division)
+- Comparisons (IF A@_YEAR25 > CUTOFF is comparison, NOT arithmetic risk)
+- DO loop counters
+If you flag division risk, quote the exact line containing the / operator or DIV opcode. No quote = no flag.
+
 ── WHAT IS GENUINELY RISKY (HIGH severity) ──
 Only flag these as HIGH:
 - GOTO that jumps across subroutine boundaries or backward in a way that creates an uncontrolled loop with no exit condition
@@ -683,6 +760,7 @@ CRITICAL RATING RULES — you must follow these before assigning any rating:
 SECTION 3 — SEVERITY THRESHOLDS
 ════════════════════════════════════════════════════════
 
+**CRITICAL** — Silent data corruption that continues without job termination: decryption/crypto failure with processing continuation, security bypass where invalid data is written to PCI-scoped files, or multi-file financial transaction with confirmed partial write and no recovery mechanism.
 **HIGH** — Will cause or is causing: job crash (MCH1210, MCH1211, CPF5026), silent data corruption, financial data loss with no recovery path, or incorrect calculation results written to production files.
 **MEDIUM** — Could cause incorrect behaviour under specific but realistic conditions (record lock, concurrent access, specific data values). Needs attention before next release.
 **LOW** — Technical debt: maintainability problem, missing modernisation, low-probability edge case. Schedule for next development cycle.
@@ -705,9 +783,15 @@ For each finding:
 **Impact:** [What could go wrong in production — include environment caveats like journaling or CL wrapper if relevant]
 **Recommendation:** [Specific, actionable fix using IBM i terminology]
 
+Valid severity levels: CRITICAL / HIGH / MEDIUM / LOW / INFO
+Use CRITICAL only for silent corruption patterns. Use HIGH for fail-fast crash risks.
+
 ## OVERALL ASSESSMENT
 **Rating: [POOR / FAIR / GOOD / EXCELLENT]**
 [2-3 sentences. Justify against the rubric in Section 2 using specific observations from this code. Do not rate based on syntax age alone.]
+
+**Risk Type Summary:**
+[List which risk categories are present in this code: Data Integrity | Transactional Consistency | Operational Stability | Compliance/PCI | Security | Performance. Only list categories where actual findings exist.]
 
 RPG Source Code:
 \`\`\`
