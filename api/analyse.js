@@ -74,9 +74,10 @@ Tightly coupled scaling (large constant multiplier with little headroom) → LOW
 
 ── RECORD LOCK FRAMING ──
 The real risks are:
-1. Lock contention: another job has the record locked → RPG waits indefinitely → batch job hangs
-2. No retry logic: CPF5026 not caught → job terminates
-Frame as: "No lock contention handling — concurrent access could cause job suspension"
+1. Lock contention: another job has the record locked → RPG waits for the duration set by the file's WAITRCD parameter (default ~60s, can be *NOMAX) → batch job delays or fails with CPF5026
+2. No retry logic: CPF5026 not caught → job terminates without graceful recovery
+Frame as: "No lock contention handling — concurrent access causes throughput degradation or batch SLA breach depending on WAITRCD configuration"
+DO NOT say "indefinite wait" — say "wait duration dependent on WAITRCD configuration"
 DO NOT frame as "updating wrong record" unless an indicator is provably reused for conflicting purposes.
 
 ── HARDCODED VALUES ──
@@ -111,7 +112,17 @@ CRITICAL — Silent data corruption that continues without job termination: cryp
 HIGH — Will cause job crash (MCH1210, MCH1211, CPF5026) or silent financial data corruption with no recovery path.
 MEDIUM — Could cause incorrect behaviour under specific but realistic conditions. Needs attention before next release.
 LOW — Technical debt, maintainability problem, low-probability edge case.
-INFO — Normal for this era or coding style. No action required.`;
+INFO — Normal for this era or coding style. No action required.
+
+RISK CLASSIFICATION TABLE — include in every Overall Assessment:
+| Risk Type | Severity if Present |
+|---|---|
+| Silent Corruption | CRITICAL |
+| Data Divergence (multi-file no commit) | HIGH/MEDIUM |
+| Fail-fast / Operational Instability | MEDIUM |
+| Compliance / PCI | CRITICAL/HIGH |
+| Technical Debt | LOW |
+Only include rows where actual findings exist. This table makes the output client-facing and presentation-ready.`;
 
 // ── PLAN LIMITS ───────────────────────────────────────────────────────
 const ANALYSIS_LIMITS        = { free: 3,     starter: 25,     team: 150,    admin: 999999 };
