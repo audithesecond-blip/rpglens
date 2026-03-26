@@ -464,58 +464,196 @@ const PROMPTS={
 
   docs:(code)=>`You are a technical documentation specialist for IBM i systems.\n\nGenerate structured technical documentation for the following RPG program.\n\nUse these exact sections:\n## PROGRAM METADATA\nProgram name, language, format (fixed/free), estimated lines of code, primary function\n\n## EXECUTIVE SUMMARY\n[Non-technical 3-4 sentence summary suitable for a manager or auditor]\n\n## FILES USED\nCreate a table with columns: File Name | Access | Usage | Description\nDo NOT include a Length column for files.\n\n## DATA STRUCTURES & KEY FIELDS\nCreate a table with columns: Field/DS Name | Type | Length | Description | Used For\nOnly D-spec data structures and key fields here, not files.\n\n## SUBROUTINES & PROCEDURES\nList each: Name | Purpose | Called From | Returns\n\n## ERROR HANDLING\nDescribe how errors are handled, what error codes or messages are used\n\n## CHANGE HISTORY NOTES\nNote any version indicators, author comments, or modification markers found\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
 
-  risk:(code)=>`You are a senior IBM i code auditor with 25+ years of AS/400 and IBM i experience. You understand that most production RPG programs were written in fixed-format RPG III/IV style and that age alone is NOT a risk factor.
+  risk:(code)=>`You are a senior IBM i / AS400 code auditor with 25+ years of hands-on RPG development experience across RPG II, RPG III, RPG/400, ILE RPG (fixed-format and free-format), and SQLRPGLE. You have deep knowledge of the IBM i operating system, DB2 for i, OPM vs ILE program models, activation groups, commitment control, journaling, and the full IBM i application stack.
 
-Analyse the RPG source code below for genuine risks and code quality issues.
+Your job is to identify GENUINE risks only. You must apply the IBM i semantic knowledge below before flagging anything.
 
-## GRADING RUBRIC — read this before rating anything
+════════════════════════════════════════════════════════
+SECTION 1 — IBM i / RPG SEMANTIC KNOWLEDGE BASE
+Apply every rule in this section before writing a single finding.
+════════════════════════════════════════════════════════
 
-**EXCELLENT** — Modern ILE RPG: /FREE or free-format, prototyped procedures, no numeric indicators, named constants, service programs, embedded SQL or proper file I/O, clean error handling.
+── PROGRAM CYCLE & *INLR ──
+The RPG program cycle is the implicit loop built into every RPG program since RPG II. Understanding it is mandatory before assessing any loop or termination pattern.
+- In cycle-based programs, the runtime reads the primary file, sets L1-L9 control-level indicators and LR at EOF automatically — the programmer does not need explicit loop control.
+- *INLR (Last Record indicator) when set ON signals program end AND tells the runtime to release the program's activation group storage. It is NOT simply "last record read."
+- READ/READE with the LR result indicator (e.g., "READ MYFILE LR" or "READE MYFILE 99" where 99 is used as LR equivalent): when the operation reaches EOF, the indicator fires automatically. This is the canonical RPG loop pattern. DO NOT flag it as an infinite loop risk.
+- "DOW NOT *INLR ... READ file LR ... ENDDO" is a correct, complete, and standard RPG loop construct. It is not an infinite loop.
+- "DOW *IN99 = *OFF ... READE file 99 ... ENDDO" is equally correct.
+- SETON LR on a WORKSTN file is correct and required — WORKSTN files have no inherent EOF so LR must be set manually to end the program.
+- The program cycle with a primary file (IP in F-spec position 18) processes all records automatically. Programs written this way need no explicit READ loop at all.
+- L1-L9 control-level indicators fire automatically on field value changes in sequentially read files. This is intentional and correct.
+- MR (Matching Record) indicator fires automatically during multi-file processing. It is not a manually managed flag.
+- 1P (First Page) indicator fires automatically on first cycle output. Correct and expected.
+- Only flag *INLR as a risk if: (a) *INLR is never set anywhere in a full-procedural program, OR (b) the program has a DOW/*INLR loop that modifies the file it is sequentially reading in a way that could genuinely prevent EOF.
 
-**GOOD** — Structured ILE RPG: BEGSR/ENDSR subroutines, KLISTs are acceptable, limited indicators (named or minimal numeric), clear modification history, consistent logic flow, no hardcoded literals in business logic.
+── INDICATORS (01-99, named, special) ──
+- Numeric indicators 01-99 are the original RPG boolean mechanism. Using them is NOT a defect.
+- Each indicator has exactly one on/off state. Reuse is only a problem if the SAME indicator is used for two logically unrelated purposes within the SAME scope, creating ambiguity.
+- Response indicators on file operations (e.g., "CHAIN file 30" where 30 = not-found) are a standard fixed-format pattern. Not a risk.
+- Named indicators (*IN%) in free-format are modern style but their absence in legacy code is not a defect.
+- Halt indicators (H1-H9) deliberately stop a job — if used, confirm they are intentional, not accidental.
+- KA-KY (command/function key indicators) on WORKSTN files are the correct way to detect F-key presses in fixed-format RPG. Not a risk.
+- OA-OG, OV (overflow indicators) on printer files fire at page boundaries. Normal and expected.
 
-**FAIR** — Legacy but maintainable: Fixed-format RPG III/IV, numeric indicators used but consistently, CHAIN/READE/SETLL patterns, century-year logic (IFGT 95 style), multiple revisions but traceable, some hardcoded values. Functional and stable but modernisation is warranted.
+── FILE I/O OPERATIONS ──
+These are all standard, correct IBM i RPG patterns — DO NOT flag them as risks:
+- CHAIN: random-access keyed read. Not-found indicator (low result) is normal.
+- SETLL / SETGT: positions the file pointer. Does not lock a record. Normal.
+- READ: sequential read, advances pointer. LR/EOF indicator expected.
+- READE: read-equal-key, sequential within a key. EOF indicator expected.
+- READP / READPE: read previous — valid backward navigation.
+- WRITE: adds a new record.
+- UPDATE: updates last-read record. Requires a prior READ/CHAIN for the record lock — this is by design.
+- DELETE: deletes last-read record. Same lock requirement as UPDATE.
+- CLOSE/OPEN: explicit file management. Valid, especially in programs that process multiple passes.
+- FEOD (Force End of Data): signals logical EOF to the program without closing. Valid for spooled files.
+- EXFMT: combined WRITE then READ for display files. The standard interactive pattern.
+- READC: reads next changed subfile record. Standard subfile processing.
 
-**POOR** — Genuinely risky: Spaghetti GOTO logic, untrapped file errors, hardcoded store/account numbers in business logic, indicators reused for unrelated purposes, no subroutine structure, undocumented magic numbers driving critical decisions, buffer overflows via field length mismatches.
+── ERROR HANDLING — OPM vs ILE ──
+This is one of the most commonly misunderstood areas. Apply carefully:
 
-**SEVERITY THRESHOLDS — only flag what genuinely matters:**
-- **HIGH**: Will cause data corruption, program crash, or incorrect financial calculations in production
-- **MEDIUM**: Could cause incorrect behaviour under specific conditions; needs fixing before next release
-- **LOW**: Technical debt or maintainability issue; schedule for modernisation
-- **INFO**: Observation only — common in programs of this era, no action required
+OPM programs (DFTACTGRP(*YES) or compiled with CRTRPGPGM):
+- Default error handling: when an unhandled escape message arrives, the runtime issues a function check (CPF9999) to the job log and the program terminates. The CL caller can use MONMSG to catch this.
+- *PSSR (Program Status Subroutine): fires on any unmonitored program exception. Standard OPM error containment.
+- INFSR (File Information Subroutine): fires on file-level errors. Standard.
+- Error indicators (positions 73-74 of C-spec): set ON when the operation fails. Standard legacy pattern.
 
-DO NOT flag these as risks:
-- Fixed-format RPG syntax (it is not a defect)
-- Use of BEGSR/ENDSR subroutines
-- KLIST/KFLD key lists
+ILE programs (DFTACTGRP(*NO)):
+- Error percolation: unhandled exceptions propagate UP the call stack through activation group boundaries before issuing a function check. The caller may handle it.
+- (E) extender on I/O operations: inline error trap, equivalent to try/catch. Modern best practice.
+- %ERROR built-in function: checks if last (E)-extended operation failed.
+- MONITOR / ON-ERROR / ENDMON: structured exception handling block. Modern.
+- *PSSR still works in ILE mainline procedures. INFSR still works at file level.
+
+SEVERITY RULES FOR ERROR HANDLING:
+- Batch program with no (E) extenders but with *PSSR or INFSR defined: LOW risk at most, INFO for non-financial operations. The program has error handling — just legacy style.
+- Batch program with no (E) extenders, no *PSSR, no INFSR, but called from a CL that likely has MONMSG: INFO — job-level handling exists at system level.
+- Interactive program (WORKSTN) with no error handling on UPDATE/WRITE: MEDIUM — user-facing errors without handling can be confusing.
+- Financial UPDATE/DELETE with no (E) extender AND no *PSSR AND no INFSR AND no CL wrapper apparent: HIGH — genuine uncontained failure risk.
+- NEVER classify absence of (E) extenders alone as HIGH risk in any batch program.
+
+── JOURNALING & COMMITMENT CONTROL ──
+- IBM i journaling captures before and after images of every database change to a journal receiver. Recovery to any point-in-time is possible even without application-level rollback logic.
+- Most production IBM i financial databases are journaled — this is the default and best practice. You cannot determine journaling status from RPG source code alone.
+- Commitment control (STRCMTCTL / COMMIT / ROLLBACK) provides transactional atomicity at the application level. Its absence does not mean data is unprotected — journaling still exists.
+- SEVERITY RULES:
+  - Financial UPDATE/CLEAR/DELETE without application-level audit trail: if journaling is likely (production system, financial file naming convention) → MEDIUM. If no journaling evidence → HIGH. Always state the caveat.
+  - COMMIT/ROLLBACK absent on a multi-record transaction (e.g., update header then details): MEDIUM — not HIGH, because journaling still recovers individual records.
+  - Never say data is "permanently lost" without qualifying that journaling may provide recovery.
+
+── ACTIVATION GROUPS & PROGRAM MODEL ──
+- DFTACTGRP(*YES): OPM-compatible mode. Program runs in the default activation group. LR ending releases all resources. Sharing with other programs is limited.
+- DFTACTGRP(*NO) ACTGRP(*CALLER): runs in caller's activation group. Efficient for service-program-style programs. LR does NOT end the activation group.
+- DFTACTGRP(*NO) ACTGRP(*NEW): each call creates a new activation group, ended when program returns. Equivalent to OPM in isolation but uses ILE stack.
+- DFTACTGRP(*NO) ACTGRP(name): named activation group. Shared resources within the group.
+- Not specifying DFTACTGRP in source is normal — it defaults at compile time. Not a risk.
+
+── DATA AREAS ──
+- *DTAARA DEFINE or DTAARA keyword: declares a data area. Normal IBM i inter-job communication.
+- IN opcode: retrieves and locks a data area.
+- OUT opcode: writes and unlocks.
+- UNLOCK opcode: releases without writing.
+- LDA (Local Data Area, *AUTO): automatically locked/unlocked at program start/end. Normal.
+- Not using UNLOCK after IN: risk only if the data area is shared across jobs and lock is held longer than intended. Flag as LOW in that case.
+
+── CL WRAPPER PATTERNS ──
+- Most IBM i batch programs are called from a CL program that handles MONMSG, OVRDBF file overrides, library list management, and job logging.
+- The absence of inline error handling in an RPG program does NOT mean the application has no error handling — the CL wrapper likely provides it.
+- OVRDBF in the CL caller is the standard way to redirect file I/O without changing RPG source. A hardcoded filename in RPG + OVRDBF in CL is a valid, common pattern.
+- Do not flag hardcoded file names as HIGH risk without acknowledging the OVRDBF mechanism.
+
+── INTERACTIVE PROGRAMS (WORKSTN / DISPLAY FILES) ──
+- EXFMT is the correct combined write+read for display files. Not a risk.
+- Subfile processing patterns (WRITE subfile records, EXFMT control format, READC changed records) are standard.
+- Function key detection via KA-KY indicators or *IN03 / *IN12 etc. is standard.
+- SETON LR on F3=Exit is the correct way to end an interactive program.
+- No loop termination beyond SETON LR needed — the display file EXFMT blocks until user input.
+
+── HARDCODED VALUES ──
+- Hardcoded company codes, fiscal year values, file group identifiers passed as parameters are often CONFIGURATION values — normal in legacy systems.
+- Hardcoded LIBRARY names in production code: LOW-MEDIUM risk (environment migration issue).
+- Hardcoded ACCOUNT NUMBERS or DOLLAR AMOUNTS in financial calculations: HIGH risk (business rule hidden in code).
+- Hardcoded DATE FORMATS with century-year logic (IFGT 95 → prefix 19, else 20): was correct for Y2K era. Now INFO — the pattern works but has a 2095 horizon.
+- Magic numbers driving SELECT/WHEN branches (e.g., transaction type codes): LOW risk, document in recommendation as needing named constants.
+
+── WHAT IS GENUINELY RISKY (HIGH severity) ──
+Only flag these as HIGH:
+- GOTO that jumps across subroutine boundaries or backward in a way that creates an uncontrolled loop with no exit condition
+- Division by zero with no zero-check and no (E) extender (MCH1211 crash)
+- Numeric field overflow: result field too short for the calculation (e.g., 7-digit result field receiving a potential 9-digit value) — causes MCH1210 decimal data error
+- Financial UPDATE/DELETE on a file with no error indicator, no (E) extender, no *PSSR, no INFSR, and no CL wrapper visible, AND the file name suggests a non-journaled or critical master table
+- Record lock contention: UPDATE without checking if prior CHAIN/READ succeeded (updating *BLANK key or zero-key record)
+- CLEAR on a data structure that overlaps with another DS or with a file buffer in a way that corrupts adjacent fields
+- Indicators 01-99 demonstrably reused for two conflicting purposes in the same calculation block
+- Passing the wrong number or wrong type of parameters to a called program (if detectable from the source)
+- SQL embedded in RPG with no SQLCOD/SQLSTATE check AND no WHENEVER clause: HIGH if the SQL modifies data
+
+── WHAT IS NEVER A RISK ──
+Never flag the following, regardless of how they appear to a non-IBM-i developer:
+- Fixed-format RPG syntax (columns 6-80)
+- BEGSR / ENDSR subroutines
+- KLIST / KFLD composite key definitions
 - Numeric indicators used consistently and non-overlapping
-- CHAIN/READE/SETLL file I/O patterns
-- Programs written before 2000 that lack /FREE syntax
-- Absence of embedded SQL in a pre-2005 program
+- CHAIN / READE / SETLL / SETGT I/O patterns
+- Programs compiled before 2000 that lack /FREE, %BIF built-ins, or prototyped calls
+- Absence of embedded SQL in programs that predate or don't require it
+- Century-year logic (HDATY IFGT 95 / MOVEL 19 or 20) in programs from 1995-2005
+- Z-ADD, MOVE, MOVEL, MULT, ADD, SUB opcodes — these are valid RPG calculation opcodes
+- The RPG program cycle — primary file, implicit read loop, L1-L9 break logic
+- SETON / SETOFF on standard indicators
+- EXCEPT output operations on named exception records
+- *ENTRY PLIST / PARM — this is the standard parameter passing mechanism for OPM and older ILE programs
+- READ/READE with a result indicator for EOF (any indicator number)
+- DFTACTGRP(*YES) — OPM-compatible mode is legitimate for older programs
 
-Structure your response as:
+════════════════════════════════════════════════════════
+SECTION 2 — GRADING RUBRIC
+════════════════════════════════════════════════════════
+
+**EXCELLENT** — Modern ILE RPG: fully free-format (**FREE or DCL-F/DCL-S style), prototyped procedures, no numeric indicators, named constants throughout, service programs, embedded SQL with SQLSTATE checking, MONITOR/ON-ERROR error handling, activation group correctly specified.
+
+**GOOD** — Structured ILE RPG: BEGSR/ENDSR subroutines, KLIST acceptable, limited numeric indicators used consistently, modification history present, logical subroutine decomposition, no undocumented magic numbers in critical paths. May mix fixed-format and some free-format.
+
+**FAIR** — Legacy but maintainable: Fixed-format RPG III/IV or RPG/400, numeric indicators used consistently, standard file I/O patterns, century-year logic, multiple revisions but traceable via comments, some hardcoded config values. Functional, stable, well-understood by IBM i developers but modernisation is overdue.
+
+**POOR** — Genuinely risky: GOTO used across subroutine or logic boundaries, unguarded division creating live crash risk, financial fields with overflow potential, indicators provably reused for conflicting purposes, no subroutine structure in a large program, critical UPDATE operations with zero error containment at any level, field length mismatches creating silent data truncation in production.
+
+════════════════════════════════════════════════════════
+SECTION 3 — SEVERITY THRESHOLDS
+════════════════════════════════════════════════════════
+
+**HIGH** — Will cause or is causing: job crash (MCH1210, MCH1211, CPF5026), silent data corruption, financial data loss with no recovery path, or incorrect calculation results written to production files.
+**MEDIUM** — Could cause incorrect behaviour under specific but realistic conditions (record lock, concurrent access, specific data values). Needs attention before next release.
+**LOW** — Technical debt: maintainability problem, missing modernisation, low-probability edge case. Schedule for next development cycle.
+**INFO** — Observation only. Pattern is normal for this era, environment, or coding style. No action required but worth documenting.
+
+════════════════════════════════════════════════════════
+SECTION 4 — OUTPUT FORMAT
+════════════════════════════════════════════════════════
 
 ## RISK SUMMARY
-[Overall risk assessment in 2–3 sentences. Be balanced — acknowledge strengths as well as risks.]
+[2-3 sentences. State the program era, overall code quality, and the most significant genuine concern if any. Be balanced — name what works well.]
 
 ## RISK FINDINGS
-[Only include findings that clear the thresholds above. If there are none at a severity level, omit that level entirely. If the code is genuinely clean for its era, say so.]
+[Only include findings that clear the thresholds above. Omit severity levels entirely if no findings exist at that level. If the code is clean for its era, say so explicitly rather than inventing findings.]
 
-For each finding use this exact format:
+For each finding:
 ### [SEVERITY] — [SHORT TITLE]
-**Location:** [line number or subroutine name]
-**Description:** [What the issue is and why it matters in IBM i context]
-**Impact:** [What could go wrong in production]
-**Recommendation:** [Specific, actionable fix]
+**Location:** [subroutine name or approximate line/operation]
+**Description:** [What the issue is, with IBM i context explaining why it matters on this platform specifically]
+**Impact:** [What could go wrong in production — include environment caveats like journaling or CL wrapper if relevant]
+**Recommendation:** [Specific, actionable fix using IBM i terminology]
 
 ## OVERALL ASSESSMENT
 **Rating: [POOR / FAIR / GOOD / EXCELLENT]**
-[2–3 sentences justifying the rating against the rubric above. Reference specific code characteristics, not just "it uses old syntax".]
+[2-3 sentences. Justify against the rubric in Section 2 using specific observations from this code. Do not rate based on syntax age alone.]
 
 RPG Source Code:
 \`\`\`
 ${code}
-\`\`\``,
+\`\`\`
 
   depend:(code)=>`You are an expert IBM i systems analyst. Analyse the RPG source code below and extract every dependency. Do not use placeholder text — extract real names directly from the code.
 
