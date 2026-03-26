@@ -506,6 +506,15 @@ These are all standard, correct IBM i RPG patterns — DO NOT flag them as risks
 - WRITE: adds a new record.
 - UPDATE: updates last-read record. Requires a prior READ/CHAIN for the record lock — this is by design.
 - DELETE: deletes last-read record. Same lock requirement as UPDATE.
+
+RECORD LOCK RISK FRAMING — apply this before writing any lock-related finding:
+The real risk in RPG record locking is NOT "wrong record updated" (that requires a genuine indicator bug).
+The real risks are:
+1. Lock contention: if another job has the record locked, RPG waits indefinitely (no timeout by default) → batch job hangs
+2. No retry logic: if CPF5026 (record locked) is thrown and not caught, job terminates
+Frame record lock findings as: "No lock contention handling — concurrent access could cause job suspension or termination"
+Severity: MEDIUM for batch, HIGH for interactive where user is waiting
+DO NOT frame as "updating wrong record" unless you can show an indicator is provably reused for two conflicting purposes.
 - CLOSE/OPEN: explicit file management. Valid, especially in programs that process multiple passes.
 - FEOD (Force End of Data): signals logical EOF to the program without closing. Valid for spooled files.
 - EXFMT: combined WRITE then READ for display files. The standard interactive pattern.
@@ -609,6 +618,25 @@ HOW TO DETECT EXECUTION CONTEXT FROM SOURCE:
 - EXTPGM keyword or service program → called program, inherits caller's context
 - When context is ambiguous → assume batch, state the assumption in your finding
 
+── COMMITMENT CONTROL AWARENESS ──
+You cannot determine from RPG source alone whether commitment control is active. However you can make educated inferences:
+
+SIGNALS THAT COMMITMENT CONTROL MAY BE ACTIVE (lower the risk from HIGH to MEDIUM):
+- The program is compiled with DFTACTGRP(*NO) — ILE programs are more likely to use commitment control
+- The compile comments mention STRCMTCTL or COMMIT
+- The program is part of a named activation group (ACTGRP(name)) — shared resources suggest commit scope
+- Financial file naming conventions suggest a mature system (CMT*, INV*, SAL*) that typically has DBA-level journaling
+
+SIGNALS THAT COMMITMENT CONTROL IS LIKELY ABSENT:
+- DFTACTGRP(*YES) — OPM programs rarely use commitment control
+- No COMMIT or ROLLBACK opcodes anywhere in the source
+- Simple batch file-processing program (reads one file, writes another)
+
+WHEN FLAGGING TRANSACTIONAL INTEGRITY:
+- If signals suggest commitment control may be active: MEDIUM — "No visible application-level commit boundary; confirm STRCMTCTL is issued by CL caller"
+- If signals suggest it is absent: HIGH — "No transactional boundary across multi-file financial writes; partial failure creates data divergence"
+- Always state your assumption: "Assuming commitment control is not active based on [reason]"
+
 ── CL WRAPPER PATTERNS ──
 - Most IBM i batch programs are called from a CL program that handles MONMSG, OVRDBF file overrides, library list management, and job logging.
 - The absence of inline error handling in an RPG program does NOT mean the application has no error handling — the CL wrapper likely provides it.
@@ -710,7 +738,30 @@ If you flag division risk, quote the exact line containing the / operator or DIV
 Only flag these as HIGH:
 - GOTO that jumps across subroutine boundaries or backward in a way that creates an uncontrolled loop with no exit condition
 - Division by zero with no zero-check and no (E) extender (MCH1211 crash)
-- Numeric field overflow: result field too short for the calculation (e.g., 7-digit result field receiving a potential 9-digit value) — causes MCH1210 decimal data error
+- Numeric field overflow: ONLY flag this if you can verify BOTH the result field size AND the maximum possible computation result from the actual D-spec definitions visible in the code.
+
+  HOW TO CHECK (mandatory before flagging):
+  Step 1: Find the D-spec definition of the result field (e.g., "D CMFSEQ S 11 0" = max 11 digits = 99,999,999,999)
+  Step 2: Find the D-spec definitions of ALL operands (e.g., "D @INZSEQ S 3S 0" = max 999)
+  Step 3: Calculate the maximum possible result (e.g., 999 × 100,000,000 = 99,900,000,000)
+  Step 4: Compare max result to result field capacity
+  Step 5: ONLY flag if max result EXCEEDS field capacity
+
+  EXAMPLE — DO NOT flag:
+  D @INZSEQ S 3S 0        ← max value 999
+  D CMFSEQ  S 11  0       ← max capacity 99,999,999,999
+  EVAL CMFSEQ = @INZSEQ * 100000000  ← max result 99,900,000,000 → FITS → no overflow
+
+  EXAMPLE — flag as HIGH:
+  D COUNTER S 7  0        ← max capacity 9,999,999
+  D AMOUNT  S 9  2        ← max value 999,999,999
+  EVAL TOTAL = COUNTER * AMOUNT  ← max result 9,999,999 × 999,999,999 → does NOT fit in any standard field
+
+  If you cannot find the D-spec definition of the result field in the source, do NOT flag overflow — you have insufficient information.
+  If the computation involves a constant multiplier, calculate explicitly: constant × max_field_value vs result_field_capacity.
+  
+  TIGHTLY COUPLED SCALING RISK (INFO/LOW — separate from overflow):
+  If a multiplication uses a large constant (e.g., × 100,000,000) and the result field is sized exactly to accommodate the current operand max with little headroom, flag as LOW/INFO: "Scaling logic is tightly coupled to field size — if [field name] definition changes, overflow risk will emerge." This is NOT an overflow finding, it is a maintainability finding.
 - Financial UPDATE/DELETE on a file with no error indicator, no (E) extender, no *PSSR, no INFSR, and no CL wrapper visible, AND the file name suggests a non-journaled or critical master table
 - Record lock contention: UPDATE without checking if prior CHAIN/READ succeeded (updating *BLANK key or zero-key record)
 - CLEAR on a data structure that overlaps with another DS or with a file buffer in a way that corrupts adjacent fields
@@ -885,7 +936,12 @@ async function initSession(){
 async function callClaude(prompt,analysisType){
   if(!supabaseSession)throw new Error('NOT_SIGNED_IN');
   const code=getActiveCode();
-  const resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},body:JSON.stringify({prompt,analysisType,codeLength:code?code.length:prompt.length})});
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),55000);
+  let resp;
+  try{
+    resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},body:JSON.stringify({prompt,analysisType,codeLength:code?code.length:prompt.length}),signal:controller.signal});
+  }finally{clearTimeout(timeout);}
   const data=await resp.json();
   if(!resp.ok){
     if(resp.status===413){const hint=data.hint?`\n\n${data.hint}`:'';throw new Error(data.error+hint);}
@@ -953,8 +1009,13 @@ async function runAnalysis(){
   if(checks.risk)tasks.push(callClaude(PROMPTS.risk(code),'risk').then(r=>{state.results.risk=r;renderRisk(r);setTabDone('risk');}).catch(err=>setTabError('risk',err)));
   if(checks.modern)tasks.push(callClaude(PROMPTS.modern(code),'modern').then(r=>{state.results.modern=r;renderModern(r);setTabDone('modern');}).catch(err=>setTabError('modern',err)));
   if(checks.depend)tasks.push(callClaude(PROMPTS.depend(code),'depend').then(r=>{state.results.depend=r;renderDepend(r);setTabDone('depend');}).catch(err=>setTabError('depend',err)));
-  await Promise.allSettled(tasks);
-  state.loading=false;btn.disabled=false;btn.classList.remove('loading');btn.querySelector('.btn-label').textContent='Re-analyse';
+  try {
+    await Promise.allSettled(tasks);
+  } finally {
+    state.loading=false;
+    const b=document.getElementById('analyse-btn');
+    if(b){b.disabled=false;b.classList.remove('loading');b.querySelector('.btn-label').textContent='Re-analyse';}
+  }
   const hasResults=Object.values(state.results).some(r=>r!==null);
   if(hasResults){
     ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=false;});
