@@ -464,7 +464,58 @@ const PROMPTS={
 
   docs:(code)=>`You are a technical documentation specialist for IBM i systems.\n\nGenerate structured technical documentation for the following RPG program.\n\nUse these exact sections:\n## PROGRAM METADATA\nProgram name, language, format (fixed/free), estimated lines of code, primary function\n\n## EXECUTIVE SUMMARY\n[Non-technical 3-4 sentence summary suitable for a manager or auditor]\n\n## FILES USED\nCreate a table with columns: File Name | Access | Usage | Description\nDo NOT include a Length column for files.\n\n## DATA STRUCTURES & KEY FIELDS\nCreate a table with columns: Field/DS Name | Type | Length | Description | Used For\nOnly D-spec data structures and key fields here, not files.\n\n## SUBROUTINES & PROCEDURES\nList each: Name | Purpose | Called From | Returns\n\n## ERROR HANDLING\nDescribe how errors are handled, what error codes or messages are used\n\n## CHANGE HISTORY NOTES\nNote any version indicators, author comments, or modification markers found\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
 
-  risk:(code)=>`You are a senior IBM i code auditor and risk analyst.\n\nAnalyse this RPG source code for risks, issues, and code quality problems.\n\nFor each issue found, classify it as: HIGH / MEDIUM / LOW / INFO\n\nStructure your response as:\n\n## RISK SUMMARY\n[Overall risk assessment in 2 sentences]\n\n## RISK FINDINGS\n\nFor each finding use this exact format:\n### [SEVERITY] \u2014 [SHORT TITLE]\n**Location:** [line or subroutine if identifiable]\n**Description:** [What the issue is]\n**Impact:** [What could go wrong]\n**Recommendation:** [What to do about it]\n\n## OVERALL ASSESSMENT\n[Rate overall code quality: POOR / FAIR / GOOD / EXCELLENT and explain why]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
+  risk:(code)=>`You are a senior IBM i code auditor with 25+ years of AS/400 and IBM i experience. You understand that most production RPG programs were written in fixed-format RPG III/IV style and that age alone is NOT a risk factor.
+
+Analyse the RPG source code below for genuine risks and code quality issues.
+
+## GRADING RUBRIC — read this before rating anything
+
+**EXCELLENT** — Modern ILE RPG: /FREE or free-format, prototyped procedures, no numeric indicators, named constants, service programs, embedded SQL or proper file I/O, clean error handling.
+
+**GOOD** — Structured ILE RPG: BEGSR/ENDSR subroutines, KLISTs are acceptable, limited indicators (named or minimal numeric), clear modification history, consistent logic flow, no hardcoded literals in business logic.
+
+**FAIR** — Legacy but maintainable: Fixed-format RPG III/IV, numeric indicators used but consistently, CHAIN/READE/SETLL patterns, century-year logic (IFGT 95 style), multiple revisions but traceable, some hardcoded values. Functional and stable but modernisation is warranted.
+
+**POOR** — Genuinely risky: Spaghetti GOTO logic, untrapped file errors, hardcoded store/account numbers in business logic, indicators reused for unrelated purposes, no subroutine structure, undocumented magic numbers driving critical decisions, buffer overflows via field length mismatches.
+
+**SEVERITY THRESHOLDS — only flag what genuinely matters:**
+- **HIGH**: Will cause data corruption, program crash, or incorrect financial calculations in production
+- **MEDIUM**: Could cause incorrect behaviour under specific conditions; needs fixing before next release
+- **LOW**: Technical debt or maintainability issue; schedule for modernisation
+- **INFO**: Observation only — common in programs of this era, no action required
+
+DO NOT flag these as risks:
+- Fixed-format RPG syntax (it is not a defect)
+- Use of BEGSR/ENDSR subroutines
+- KLIST/KFLD key lists
+- Numeric indicators used consistently and non-overlapping
+- CHAIN/READE/SETLL file I/O patterns
+- Programs written before 2000 that lack /FREE syntax
+- Absence of embedded SQL in a pre-2005 program
+
+Structure your response as:
+
+## RISK SUMMARY
+[Overall risk assessment in 2–3 sentences. Be balanced — acknowledge strengths as well as risks.]
+
+## RISK FINDINGS
+[Only include findings that clear the thresholds above. If there are none at a severity level, omit that level entirely. If the code is genuinely clean for its era, say so.]
+
+For each finding use this exact format:
+### [SEVERITY] — [SHORT TITLE]
+**Location:** [line number or subroutine name]
+**Description:** [What the issue is and why it matters in IBM i context]
+**Impact:** [What could go wrong in production]
+**Recommendation:** [Specific, actionable fix]
+
+## OVERALL ASSESSMENT
+**Rating: [POOR / FAIR / GOOD / EXCELLENT]**
+[2–3 sentences justifying the rating against the rubric above. Reference specific code characteristics, not just "it uses old syntax".]
+
+RPG Source Code:
+\`\`\`
+${code}
+\`\`\``,
 
   depend:(code)=>`You are an expert IBM i systems analyst. Analyse the RPG source code below and extract every dependency. Do not use placeholder text — extract real names directly from the code.
 
@@ -530,7 +581,7 @@ flowchart TD
 
 Generate the actual flowchart for THIS program based on the source code above.`,
 
-  modern:(code)=>`You are an IBM i modernisation architect.\n\nAnalyse this RPG code and produce a practical modernisation roadmap.\n\n## MODERNISATION OVERVIEW\n[Current state assessment in 3 sentences]\n\n## QUICK WINS (Phase 1 \u2014 Low effort, high value)\n### [Item name]\n**What:** [What to change]\n**How:** [Specific steps]\n**Effort:** [Hours estimate]\n**Benefit:** [Why this matters]\n\n## STRUCTURAL IMPROVEMENTS (Phase 2 \u2014 Medium effort)\nSame format.\n\n## MODERNISATION (Phase 3 \u2014 Higher effort)\nSame format.\n\n## WHAT TO KEEP\n[Logic or patterns that are well-written and should be preserved]\n\n## ESTIMATED TOTAL EFFORT\n[Realistic estimate in developer-days for each phase]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``
+  modern:(code)=>`You are an IBM i modernisation architect with 25+ years of hands-on RPG development experience. You give realistic effort estimates that include a 20% planning buffer — accurate enough to be credible, padded enough to be safe in a real project.\n\nAnalyse this RPG code and produce a practical modernisation roadmap.\n\n## EFFORT CALIBRATION — apply this before estimating anything\n\nThese are real-world durations for an experienced IBM i developer, with a 20% planning buffer already included:\n\n| Task type | Effort (incl. 20% buffer) |\n|---|---|\n| Add named constant to replace a hardcoded literal | 10–20 min |\n| Rename numeric indicator to named indicator | 15–25 min per indicator |\n| Convert one subroutine from fixed-format to /FREE | 25–55 min |\n| Convert entire small program (<200 lines) to /FREE | 1.5–4 hrs |\n| Convert entire medium program (200–500 lines) to /FREE | 4–8 hrs |\n| Convert entire large program (500+ lines) to /FREE | 7–15 hrs |\n| Add error handling to one file operation | 20–40 min |\n| Replace GOTO logic with structured DO/IF blocks | 45 min–2 hrs |\n| Extract one subroutine into a service program procedure | 1.5–3 hrs |\n| Replace fixed-format file I/O with embedded SQL | 2.5–5 hrs per file |\n| Add prototype and replace CALL with CALLP | 25–50 min |\n| Full rewrite to modern ILE with service programs | 3–6 days |\n\nCRITICAL RULES:\n- Never estimate a simple syntax change (indicators, literals, formatting) at more than 1.5 hours\n- Never estimate a single-subroutine refactor at more than 3 hours\n- Only use "days" for tasks that genuinely involve architectural change or full rewrites\n- Always give a range, never a single number (e.g. "2.5–5 hrs" not "5 hrs")\n- Base estimates on the ACTUAL line count and complexity of THIS program's code\n- The 20% buffer is already included in the table above — do not add further padding\n\n## MODERNISATION OVERVIEW\n[Current state in 3 sentences. Name the actual RPG format, key patterns used, and overall modernisation readiness.]\n\n## QUICK WINS (Phase 1 \u2014 Low effort, high value)\n### [Item name]\n**What:** [Specific change — name the actual field/indicator/subroutine from the code]\n**How:** [Concrete steps, e.g. "Replace *IN10 with named indicator FIRSTRUN"]\n**Effort:** [Range from calibration table, scaled to this program's size]\n**Benefit:** [Why this matters for maintainability or safety]\n\n## STRUCTURAL IMPROVEMENTS (Phase 2 \u2014 Medium effort)\nSame format. These are refactoring tasks, not rewrites.\n\n## MODERNISATION (Phase 3 \u2014 Higher effort)\nSame format. Reserve "days" estimates for genuine architectural changes only.\n\n## WHAT TO KEEP\n[Patterns or logic that are well-structured and should be preserved as-is]\n\n## ESTIMATED TOTAL EFFORT\n[Per-phase summary. Format exactly as: "Phase 1: X–Y hrs | Phase 2: X–Y hrs | Phase 3: X–Y hrs/days"]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``
 };
 
 async function initSession(){
