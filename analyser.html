@@ -468,12 +468,12 @@ const PROMPTS={
 
 RPG Source Code:
 \`\`\`
-${code}
+\${code}
 \`\`\`
 
 Return your analysis using these exact sections:
 ## RISK SUMMARY
-## RISK FINDINGS  
+## RISK FINDINGS
 ### [SEVERITY] — [SHORT TITLE]
 **Location:** ...
 **Description:** ...
@@ -485,36 +485,417 @@ Return your analysis using these exact sections:
 
 Severity levels: CRITICAL / HIGH / MEDIUM / LOW / INFO`,
 
-  modern:(code)=>`You are an IBM i modernisation architect with 25+ years of hands-on RPG development experience. You give realistic effort estimates that include a 20% planning buffer — accurate enough to be credible, padded enough to be safe in a real project.\n\nAnalyse this RPG code and produce a practical modernisation roadmap.\n\n## EFFORT CALIBRATION — apply this before estimating anything\n\nThese are real-world durations for an experienced IBM i developer, with a 20% planning buffer already included:\n\n| Task type | Effort (incl. 20% buffer) |\n|---|---|\n| Add named constant to replace a hardcoded literal | 10–20 min |\n| Rename numeric indicator to named indicator | 15–25 min per indicator |\n| Convert one subroutine from fixed-format to /FREE | 25–55 min |\n| Convert entire small program (<200 lines) to /FREE | 1.5–4 hrs |\n| Convert entire medium program (200–500 lines) to /FREE | 4–8 hrs |\n| Convert entire large program (500+ lines) to /FREE | 7–15 hrs |\n| Add error handling to one file operation | 20–40 min |\n| Replace GOTO logic with structured DO/IF blocks | 45 min–2 hrs |\n| Extract one subroutine into a service program procedure | 1.5–3 hrs |\n| Replace fixed-format file I/O with embedded SQL | 2.5–5 hrs per file |\n| Add prototype and replace CALL with CALLP | 25–50 min |\n| Full rewrite to modern ILE with service programs | 3–6 days |\n\nCRITICAL RULES:\n- Never estimate a simple syntax change (indicators, literals, formatting) at more than 1.5 hours\n- Never estimate a single-subroutine refactor at more than 3 hours\n- Only use "days" for tasks that genuinely involve architectural change or full rewrites\n- Always give a range, never a single number (e.g. "2.5–5 hrs" not "5 hrs")\n- Base estimates on the ACTUAL line count and complexity of THIS program's code\n- The 20% buffer is already included in the table above — do not add further padding\n- For programs under 100 lines: Phase 1 total must be under 2 hours. Phase 2 under 4 hours. If your total exceeds this, revise downward.\n- A single named-constant replacement is 10-20 minutes — not 1 hour. Apply the calibration table literally per task.\n- If total Phase 1 for a small program (<200 lines) exceeds 4 hours you have over-estimated — halve every individual item and recalculate.\n\n## MODERNISATION OVERVIEW\n[Current state in 3 sentences. Name the actual RPG format, key patterns used, and overall modernisation readiness.]\n\n## QUICK WINS (Phase 1 \u2014 Low effort, high value)\n### [Item name]\n**What:** [Specific change — name the actual field/indicator/subroutine from the code]\n**How:** [Concrete steps, e.g. "Replace *IN10 with named indicator FIRSTRUN"]\n**Effort:** [Range from calibration table, scaled to this program's size]\n**Benefit:** [Why this matters for maintainability or safety]\n\n## STRUCTURAL IMPROVEMENTS (Phase 2 \u2014 Medium effort)\nSame format. These are refactoring tasks, not rewrites.\n\n## MODERNISATION (Phase 3 \u2014 Higher effort)\nSame format. Reserve "days" estimates for genuine architectural changes only.\n\n## WHAT TO KEEP\n[Patterns or logic that are well-structured and should be preserved as-is]\n\n## ESTIMATED TOTAL EFFORT\n[Per-phase summary. Format exactly as: "Phase 1: X–Y hrs | Phase 2: X–Y hrs | Phase 3: X–Y hrs/days"]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``
-,
+  modern:(code)=>`You are an IBM i modernisation architect with 25+ years of hands-on RPG development experience. You give realistic effort estimates that include a 20% planning buffer — accurate enough to be credible, padded enough to be safe in a real project.\n\nAnalyse this RPG code and produce a practical modernisation roadmap.\n\n## EFFORT CALIBRATION — apply this before estimating anything\n\nThese are real-world durations for an experienced IBM i developer, with a 20% planning buffer already included:\n\n| Task type | Effort (incl. 20% buffer) |\n|---|---|\n| Add named constant to replace a hardcoded literal | 10–20 min |\n| Rename numeric indicator to named indicator | 15–25 min per indicator |\n| Convert one subroutine from fixed-format to /FREE | 25–55 min |\n| Convert entire small program (<200 lines) to /FREE | 1.5–4 hrs |\n| Convert entire medium program (200–500 lines) to /FREE | 4–8 hrs |\n| Convert entire large program (500+ lines) to /FREE | 7–15 hrs |\n| Add error handling to one file operation | 20–40 min |\n| Replace GOTO logic with structured DO/IF blocks | 45 min–2 hrs |\n| Extract one subroutine into a service program procedure | 1.5–3 hrs |\n| Replace fixed-format file I/O with embedded SQL | 2.5–5 hrs per file |\n| Add prototype and replace CALL with CALLP | 25–50 min |\n| Full rewrite to modern ILE with service programs | 3–6 days |\n\nCRITICAL RULES:\n- Never estimate a simple syntax change (indicators, literals, formatting) at more than 1.5 hours\n- Never estimate a single-subroutine refactor at more than 3 hours\n- Only use "days" for tasks that genuinely involve architectural change or full rewrites\n- Always give a range, never a single number (e.g. "2.5–5 hrs" not "5 hrs")\n- Base estimates on the ACTUAL line count and complexity of THIS program's code\n- The 20% buffer is already included in the table above — do not add further padding\n\n## MODERNISATION OVERVIEW\n[Current state in 3 sentences. Name the actual RPG format, key patterns used, and overall modernisation readiness.]\n\n## QUICK WINS (Phase 1 \u2014 Low effort, high value)\n### [Item name]\n**What:** [Specific change — name the actual field/indicator/subroutine from the code]\n**How:** [Concrete steps, e.g. "Replace *IN10 with named indicator FIRSTRUN"]\n**Effort:** [Range from calibration table, scaled to this program's size]\n**Benefit:** [Why this matters for maintainability or safety]\n\n## STRUCTURAL IMPROVEMENTS (Phase 2 \u2014 Medium effort)\nSame format. These are refactoring tasks, not rewrites.\n\n## MODERNISATION (Phase 3 \u2014 Higher effort)\nSame format. Reserve "days" estimates for genuine architectural changes only.\n\n## WHAT TO KEEP\n[Patterns or logic that are well-structured and should be preserved as-is]\n\n## ESTIMATED TOTAL EFFORT\n[Per-phase summary. Format exactly as: "Phase 1: X–Y hrs | Phase 2: X–Y hrs | Phase 3: X–Y hrs/days"]\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\``,
 
-  depend:(code)=>`You are an expert IBM i systems analyst. Analyse the RPG source code below and extract every dependency. Do not use placeholder text — extract real names directly from the code.
+  depend:(code)=>`You are an expert IBM i systems analyst. Analyse the RPG source code below and extract every dependency. Extract real names directly from the code — no placeholder text.
 
 ## PROGRAM SUMMARY
-State the actual program name, RPG version, format (fixed/free/mixed), and what this program does in one sentence.
+Program name, RPG version, format, one-line purpose.
 
 ## FILES & DATABASE OBJECTS
-List every file declared in F-specs or referenced via SQL with: File Name | Type | Access | Key Fields Used | Purpose
+Every F-spec file and SQL table reference. Table: File Name | Type | Access | Key Fields | Purpose
 
-## CALLED PROGRAMS & SERVICE PROGRAMS
-List every external CALL, CALLP, CALLB with: Program Name | Call Type | Parameters | Purpose. If none, state explicitly.
+## CALLED PROGRAMS
+Every CALL/CALLP/CALLB. Table: Program | Call Type | Parameters | Purpose. If none, say so.
 
-## DATA AREAS & DATA QUEUES
-List every IN/OUT/DTAARA with name and read/write direction. If none, state explicitly.
+## DATA AREAS
+Every IN/OUT/DTAARA. Name and direction. If none, say so.
 
 ## SUBROUTINES & PROCEDURES
-List every BEGSR and DCL-PROC with: Name | Type | Called By | Calls | Purpose
+Every BEGSR and DCL-PROC. Table: Name | Type | Called By | Calls | Purpose
 
 ## ENTRY PARAMETERS
-List every parameter with name, type, length, direction. If none, state explicitly.
+Every *ENTRY PLIST / DCL-PARM. Name, type, length, direction. If none, say so.
 
 ## IMPACT ANALYSIS SUMMARY
-3-5 sentences on what depends on this program and overall change risk.
+3-5 sentences: what depends on this program, what breaks if it changes or is retired.
 
 ## PROGRAM FLOW DIAGRAM
-Generate a Mermaid flowchart of the program logic. Max 25 nodes.
+Mermaid flowchart of the program logic. Max 25 nodes. Use diamonds for decisions, parallelograms for file I/O, rounded rectangles for subroutine calls.
+
+\`\`\`mermaid
+flowchart TD
+    A([Start]) --> Z([Stop])
+\`\`\`
 
 RPG Source Code:
 \`\`\`
 \${code}
 \`\`\``
+};
+
+async function initSession(){
+  if(!window.RPGLENS_CONFIG)return;
+  try{
+    const{createClient}=supabase;const sb=createClient(window.RPGLENS_CONFIG.SUPABASE_URL,window.RPGLENS_CONFIG.SUPABASE_ANON);
+    const{data}=await sb.auth.getSession();supabaseSession=data.session;
+    const dot=document.getElementById('api-dot'),txt=document.getElementById('api-status-text'),pill=document.getElementById('user-pill');
+    if(supabaseSession){
+      const user=supabaseSession.user,meta=user.user_metadata||{};
+      const name=meta.full_name||meta.name||user.email.split('@')[0];
+      const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      dot.style.background='var(--green)';txt.textContent='SIGNED IN';pill.style.display='flex';
+      document.getElementById('user-av').textContent=initials;document.getElementById('user-name').textContent=name.split(' ')[0];
+      if(['team','admin'].includes(user.user_metadata?.plan||'free')){const b=document.getElementById('ibmi-btn');if(b)b.style.display='inline-block';}
+    }else{dot.style.background='var(--amber)';txt.textContent='NOT SIGNED IN';}
+  }catch(e){document.getElementById('api-status-text').textContent='SESSION ERROR';}
+}
+
+async function callClaude(prompt,analysisType){
+  if(!supabaseSession)throw new Error('NOT_SIGNED_IN');
+  const code=getActiveCode();
+  const controller=new AbortController();
+  const timeoutId=setTimeout(()=>controller.abort(),58000);
+  let resp;
+  try{resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},body:JSON.stringify({prompt,analysisType,codeLength:code?code.length:prompt.length})});
+  }finally{clearTimeout(timeoutId);}
+  const data=await resp.json();
+  if(!resp.ok){
+    if(resp.status===413){const hint=data.hint?`\n\n${data.hint}`:'';throw new Error(data.error+hint);}
+    if(resp.status===429)throw new Error(data.error||'RATE_LIMITED');
+    if(resp.status===401)throw new Error('Please sign in to use RPGLens.');
+    throw new Error(data.error||`Server error ${resp.status}`);
+  }
+  return data.result;
+}
+
+function renderExplain(text){
+  const c=document.getElementById('content-explain');document.getElementById('empty-explain').style.display='none';c.innerHTML='';
+  parseMarkdownSections(text).forEach(({heading,body})=>{const b=document.createElement('div');b.className='result-section fade-in';b.innerHTML=`<div class="result-section-header"><div class="result-section-title">${heading}</div></div><div class="result-body">${formatBody(body)}</div>`;c.appendChild(b);});
+}
+function renderDocs(text){
+  const c=document.getElementById('content-docs');document.getElementById('empty-docs').style.display='none';c.innerHTML='';
+  parseMarkdownSections(text).forEach(({heading,body})=>{const b=document.createElement('div');b.className='result-section fade-in';const it=body.includes('|');b.innerHTML=`<div class="result-section-header"><div class="result-section-title">${heading}</div></div><div class="result-body">${it?renderTable(body):formatBody(body)}</div>`;c.appendChild(b);});
+}
+function renderRisk(text){
+  const c=document.getElementById('content-risk');document.getElementById('empty-risk').style.display='none';c.innerHTML='';
+  const sm=text.match(/## RISK SUMMARY\n([\s\S]*?)(?=##|$)/);
+  if(sm){const b=document.createElement('div');b.className='result-section fade-in';b.innerHTML=`<div class="result-section-header"><div class="result-section-title">Risk summary</div></div><div class="result-body">${formatBody(sm[1].trim())}</div>`;c.appendChild(b);}
+  const rp=/###\s+(HIGH|MEDIUM|LOW|INFO)\s*[—–-]\s*(.+?)\n([\s\S]*?)(?=###|##\s+OVERALL|$)/gi;
+  let match,fc=document.createElement('div');fc.className='fade-in';let fa=false;
+  while((match=rp.exec(text))!==null){fa=true;const item=document.createElement('div');item.className='risk-item';item.innerHTML=`<div class="risk-badge ${match[1].toLowerCase()}">${match[1]}</div><div class="risk-content"><div class="risk-title">${match[2].trim()}</div><div class="risk-desc">${formatBody(match[3].trim())}</div></div>`;fc.appendChild(item);}
+  if(fa)c.appendChild(fc);
+  const om=text.match(/## OVERALL ASSESSMENT\n([\s\S]*?)$/i);
+  if(om){const b=document.createElement('div');b.className='result-section fade-in';b.innerHTML=`<div class="result-section-header"><div class="result-section-title">Overall assessment</div></div><div class="result-body">${formatBody(om[1].trim())}</div>`;c.appendChild(b);}
+  if(!fa&&!sm){const r=document.createElement('div');r.className='result-section fade-in';r.innerHTML=`<div class="result-body">${formatBody(text)}</div>`;c.appendChild(r);}
+}
+function renderModern(text){
+  const c=document.getElementById('content-modern');document.getElementById('empty-modern').style.display='none';c.innerHTML='';
+  let sc=1;
+  parseMarkdownSections(text).forEach(({heading,body})=>{
+    const ip=heading.toLowerCase().includes('phase')||heading.toLowerCase().includes('quick win')||heading.toLowerCase().includes('structural')||(heading.toLowerCase().includes('modernisation')&&!heading.toLowerCase().includes('overview'));
+    if(ip){
+      const pb=document.createElement('div');pb.className='fade-in';
+      const hdr=document.createElement('div');hdr.className='result-section-header';hdr.style.cssText='background:var(--bg3);border:1px solid var(--border);border-bottom:none;padding:10px 16px;margin-top:16px';
+      hdr.innerHTML=`<div class="result-section-title">${heading}</div>`;pb.appendChild(hdr);
+      const items=body.split(/###\s+/).filter(s=>s.trim());
+      items.forEach(item=>{const lines=item.trim().split('\n'),it=lines[0].trim(),ib=lines.slice(1).join('\n').trim();const em=ib.match(/\*\*Effort[:\*]*\*?\*?\s*([^\n*]+)/i);const ef=em?em[1].trim():null;const step=document.createElement('div');step.className='mod-step';step.innerHTML=`<div class="mod-step-num">${String(sc++).padStart(2,'0')}</div><div class="mod-step-content"><div class="mod-step-title">${it}</div><div class="mod-step-desc">${formatBody(ib)}</div></div>${ef?`<div class="mod-effort"><span class="effort-label">Effort</span><span class="effort-val">${ef}</span></div>`:''}`;pb.appendChild(step);});
+      if(items.length===0){const p=document.createElement('div');p.className='result-section';p.innerHTML=`<div class="result-body">${formatBody(body)}</div>`;pb.appendChild(p);}
+      c.appendChild(pb);
+    }else{const b=document.createElement('div');b.className='result-section fade-in';b.innerHTML=`<div class="result-section-header"><div class="result-section-title">${heading}</div></div><div class="result-body">${formatBody(body)}</div>`;c.appendChild(b);}
+  });
+}
+
+function parseMarkdownSections(text){const sections=[],parts=text.split(/^##\s+/m).filter(s=>s.trim());parts.forEach(part=>{const nl=part.indexOf('\n');if(nl===-1)return;const heading=part.slice(0,nl).trim(),body=part.slice(nl+1).trim();if(heading&&body)sections.push({heading,body});});return sections.length===0?[{heading:'Analysis',body:text}]:sections;}
+function formatBody(text){return text.replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--text)">$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>').replace(/`([^`]+)`/g,'<code style="color:#7ab8e8;background:var(--bg3);padding:1px 5px;font-size:11px">$1</code>').replace(/^[-\u2022]\s+(.+)$/gm,'<div style="display:flex;gap:8px;margin:3px 0"><span style="color:var(--amber);flex-shrink:0">\u2014</span><span>$1</span></div>').replace(/\n{2,}/g,'<br/><br/>').replace(/\n/g,'<br/>');}
+function renderTable(text){const lines=text.trim().split('\n').filter(l=>l.trim()&&!l.match(/^[\s|:-]+$/));if(lines.length<2)return formatBody(text);let html='<table class="field-table">';lines.forEach((line,i)=>{const cells=line.split('|').filter(c=>c.trim());if(i===0)html+='<tr>'+cells.map(c=>`<th>${c.trim()}</th>`).join('')+'</tr>';else html+='<tr>'+cells.map((c,j)=>`<td class="${j===0?'field-name':j===1?'field-type':''}">${c.trim()}</td>`).join('')+'</tr>';});return html+'</table>';}
+function showSkeletons(cid){const c=document.getElementById(cid),s=document.createElement('div');s.id=`skel-${cid}`;s.innerHTML=[80,60,90,50,70].map(w=>`<div class="skeleton" style="width:${w}%;margin-bottom:10px"></div>`).join('');c.appendChild(s);}
+function clearSkeletons(cid){const s=document.getElementById(`skel-${cid}`);if(s)s.remove();}
+
+async function runAnalysis(){
+  const code=getActiveCode();if(!code||state.loading)return;
+  if(!supabaseSession){window.location.href='/login';return;}
+  state.loading=true;
+  const btn=document.getElementById('analyse-btn');btn.disabled=true;btn.classList.add('loading');btn.querySelector('.btn-label').textContent='Analysing...';
+  ['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
+  ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
+  const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
+  const tasks=[];
+  if(checks.explain)tasks.push(callClaude(PROMPTS.explain(code),'explain').then(r=>{state.results.explain=r;renderExplain(r);setTabDone('explain');}).catch(err=>setTabError('explain',err)));
+  if(checks.docs)tasks.push(callClaude(PROMPTS.docs(code),'docs').then(r=>{state.results.docs=r;renderDocs(r);setTabDone('docs');}).catch(err=>setTabError('docs',err)));
+  if(checks.risk)tasks.push(callClaude(PROMPTS.risk(code),'risk').then(r=>{state.results.risk=r;renderRisk(r);setTabDone('risk');}).catch(err=>setTabError('risk',err)));
+  if(checks.modern)tasks.push(callClaude(PROMPTS.modern(code),'modern').then(r=>{state.results.modern=r;renderModern(r);setTabDone('modern');}).catch(err=>setTabError('modern',err)));
+  if(checks.depend)tasks.push(callClaude(PROMPTS.depend(code),'depend').then(r=>{state.results.depend=r;renderDepend(r);setTabDone('depend');}).catch(err=>setTabError('depend',err)));
+  try{
+    await Promise.allSettled(tasks);
+  }finally{
+    state.loading=false;
+    const b=document.getElementById('analyse-btn');
+    if(b){b.disabled=false;b.classList.remove('loading');b.querySelector('.btn-label').textContent='Re-analyse';}
+  }
+  const hasResults=Object.values(state.results).some(r=>r!==null);
+  if(hasResults){
+    ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=false;});
+    if(supabaseSession){
+      try{
+        const uid=supabaseSession.user.id,hk=`rpglens_history_${uid}`;
+        const history=JSON.parse(localStorage.getItem(hk)||'[]');
+        const progName=document.getElementById('program-name').textContent;
+        const id=`result_${uid}_${Date.now()}`;
+        localStorage.setItem(id,JSON.stringify(state.results));
+        const tabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
+        history.unshift({id,name:progName,date:new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),ext:currentMode==='upload'?'RPG':'paste',tabs});
+        history.slice(10).forEach(h=>{if(h.id)localStorage.removeItem(h.id);});
+        localStorage.setItem(hk,JSON.stringify(history.slice(0,10)));
+        const sd=new Date(supabaseSession.user.created_at),pn=Math.floor(Math.floor((new Date()-sd)/(1000*60*60*24))/30);
+        const uk=`rpglens_usage_${uid}_period_${pn}`;localStorage.setItem(uk,String(parseInt(localStorage.getItem(uk)||'0')+1));
+        const tk=`rpglens_total_${uid}`;localStorage.setItem(tk,String(parseInt(localStorage.getItem(tk)||'0')+1));
+      }catch(e){console.warn('History save failed:',e);}
+    }
+  }
+}
+
+function setTabDone(tab){const t=document.getElementById(`tab-${tab}`);t.classList.remove('loading');t.classList.add('done');clearSkeletons(`content-${tab}`);}
+function setTabError(tab,err){
+  const t=document.getElementById(`tab-${tab}`);t.classList.remove('loading');t.classList.add('error');clearSkeletons(`content-${tab}`);
+  const raw=err?.message||String(err);
+  const msgs={'NOT_SIGNED_IN':'Please sign in to use RPGLens.','RATE_LIMITED':'Rate limit hit. Wait 30 seconds and try again.','TIMEOUT':'Request timed out.'};
+  const c=document.getElementById(`content-${tab}`);document.getElementById(`empty-${tab}`).style.display='none';
+  const isLimit=raw.toLowerCase().includes('too large')||raw.toLowerCase().includes('program too large');
+  const el=document.createElement('div');el.className='result-section fade-in';
+  if(isLimit){const parts=raw.split('\n\n'),mm=parts[0]||raw,hint=parts[1]||'';el.innerHTML=`<div class="result-section-header"><div class="result-section-title" style="color:var(--amber)">Program size limit reached</div></div><div class="result-body"><div style="color:var(--amber);margin-bottom:12px">${mm}</div>${hint?`<div style="background:rgba(232,160,32,0.08);border:1px solid var(--amber-dim);padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.7">${hint}</div>`:''}<div style="margin-top:16px"><a href="/dashboard" style="display:inline-block;padding:8px 20px;background:var(--amber);color:var(--bg);font-family:var(--display);font-weight:700;font-size:12px;text-decoration:none">View upgrade options</a></div></div>`;}
+  else{el.innerHTML=`<div class="result-section-header"><div class="result-section-title" style="color:var(--red)">Analysis failed</div></div><div class="result-body" style="color:var(--red)">${msgs[raw]||raw}</div>`;}
+  c.appendChild(el);
+}
+
+// ── EXPORT ──────────────────────────────────────────────────────────
+const EXPORT_LABELS={explain:'EXPLANATION',docs:'DOCUMENTATION',risk:'RISK ANALYSIS',modern:'MODERNISATION PLAN',depend:'DEPENDENCY MAP'};
+function getProgramName(){return document.getElementById('program-name').textContent.trim()||'RPGLens_Report';}
+function getSafeFilename(){return getProgramName().replace(/[^a-zA-Z0-9_\-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')||'RPGLens_Report';}
+function getAllResultsText(){const parts=[];Object.entries(state.results).forEach(([key,val])=>{if(val)parts.push(`\n${'='.repeat(60)}\n${EXPORT_LABELS[key]}\n${'='.repeat(60)}\n\n${val}`);});return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${getProgramName()}\n${parts.join('\n\n')}`;}
+function copyResults(){navigator.clipboard.writeText(getAllResultsText());const btn=document.getElementById('export-copy'),orig=btn.innerHTML;btn.innerHTML=btn.innerHTML.replace('Copy text','Copied!');setTimeout(()=>{btn.innerHTML=orig;},2000);}
+function exportText(){triggerDownload(new Blob([getAllResultsText()],{type:'text/plain;charset=utf-8'}),`RPGLens_${getSafeFilename()}_${dateStamp()}.txt`);}
+
+// FIX 1: Word export — explicit Uint8Array conversion prevents corrupt file
+async function exportWord(){
+  const btn=document.getElementById('export-word');
+  btn.innerHTML=btn.innerHTML.replace('Word (.docx)','Building...');btn.disabled=true;
+  try{
+    if(!window.docx)await loadScript('https://cdn.jsdelivr.net/npm/docx@9.5.3/build/index.umd.js');
+    const{Document,Packer,Paragraph,TextRun,HeadingLevel,BorderStyle,PageBreak}=window.docx;
+    const progName=getProgramName(),generated=new Date().toLocaleString(),children=[];
+    let exportName=progName;
+    if(state.results.docs){const m=state.results.docs.match(/Program\s+name[:\s]+([A-Z0-9_\-\/]+)/i);if(m)exportName=m[1].trim();}
+    const safeExportName=exportName.replace(/[^a-zA-Z0-9_\-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')||'RPGLens_Report';
+    children.push(new Paragraph({heading:HeadingLevel.HEADING_1,children:[new TextRun({text:'RPGLens Analysis Report',bold:true,size:36,color:'1A3C6E'})]}));
+    children.push(new Paragraph({children:[new TextRun({text:`Program: ${progName}`,size:22,color:'5F5E5A'})]}));
+    children.push(new Paragraph({children:[new TextRun({text:`Generated: ${generated}`,size:20,color:'9A9690'})]}));
+    children.push(new Paragraph({children:[new TextRun('')]}));
+    ['explain','docs','risk','modern'].forEach((key,idx)=>{
+      const val=state.results[key];if(!val)return;
+      if(idx>0)children.push(new Paragraph({children:[new PageBreak()]}));
+      children.push(new Paragraph({heading:HeadingLevel.HEADING_1,border:{bottom:{style:BorderStyle.SINGLE,size:6,color:'2E75B6',space:4}},children:[new TextRun({text:EXPORT_LABELS[key],bold:true,size:30,color:'1A3C6E'})]}));
+      children.push(new Paragraph({children:[new TextRun('')]}));
+      val.split('\n').forEach(line=>{
+        if(line.startsWith('## '))children.push(new Paragraph({heading:HeadingLevel.HEADING_2,children:[new TextRun({text:line.replace(/^##\s+/,''),bold:true,size:26,color:'2E75B6'})]}));
+        else if(line.startsWith('### '))children.push(new Paragraph({heading:HeadingLevel.HEADING_3,children:[new TextRun({text:line.replace(/^###\s+/,''),bold:true,size:22,color:'5F5E5A'})]}));
+        else if(line.match(/^\|.+\|$/)&&!line.match(/^[\s|:-]+$/)){const cells=line.split('|').filter(c=>c.trim()&&!c.match(/^[\s\-:]+$/));if(cells.length>0)children.push(new Paragraph({children:[new TextRun({text:cells.join('  |  ').trim(),size:20,font:'Courier New'})]}));}
+        else if(line.match(/^[\s\-:]+\|/)){}
+        else if(line.trim()){const runs=[],parts=line.split(/(\*\*[^*]+\*\*)/g);parts.forEach(p=>{if(p.startsWith('**')&&p.endsWith('**'))runs.push(new TextRun({text:p.slice(2,-2),bold:true,size:22}));else if(p)runs.push(new TextRun({text:p,size:22}));});children.push(new Paragraph({spacing:{before:40,after:40},children:runs}));}
+        else children.push(new Paragraph({children:[new TextRun('')]}));
+      });
+    });
+    const doc=new Document({styles:{default:{document:{run:{font:'Arial',size:22}}}},sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1440,right:1440,bottom:1440,left:1440}}},children}]});
+    // KEY FIX: convert to Uint8Array explicitly — browser Blob requires this
+    const blob=await Packer.toBlob(doc);
+    triggerDownload(blob,`RPGLens_${safeExportName}_${dateStamp()}.docx`);
+  }catch(e){
+    console.error('Word export failed:',e);
+    // RTF fallback
+    const text=getAllResultsText();
+    const rtf=`{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}{\\f0\\fs22 ${text.replace(/\\/g,'\\\\').replace(/[{}]/g,m=>'\\'+m).replace(/\n/g,'\\par ')}}}`;
+    triggerDownload(new Blob([rtf],{type:'application/rtf'}),`RPGLens_${safeExportName}_${dateStamp()}.rtf`);
+  }finally{btn.innerHTML=btn.innerHTML.replace('Building...','Word (.docx)');btn.disabled=false;}
+}
+
+// FIX 2: PDF export — adds clear "Save as PDF" instruction in the print window
+// PDF: opens a clean print window — Chrome uses <title> as the suggested PDF filename
+function exportPDF(){
+  const progName=getProgramName(), generated=new Date().toLocaleString();
+
+  // Try to extract program name from docs metadata (more reliable than breadcrumb)
+  let docProgName = progName;
+  if (state.results.docs) {
+    const match = state.results.docs.match(/Program\s+name[:\s]+([A-Z0-9_\-\/]+)/i);
+    if (match) docProgName = match[1].trim();
+  }
+  const safeFilename=`RPGLens_${docProgName.replace(/[^a-zA-Z0-9_\-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')}_${dateStamp()}`;
+
+  const sectionHtml=Object.entries(state.results).filter(([,v])=>v).map(([key,val])=>{
+    let html=val
+      .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+      .replace(/^### (HIGH|MEDIUM|LOW|INFO)\s*[—\-]+\s*(.+)$/gim,(_,sev,title)=>`<div class="rb ${sev.toLowerCase()}"><span class="sv">${sev}</span> ${title}</div>`)
+      .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    html=html.replace(/((?:^\|.+\|$\n?)+)/gm,block=>{
+      const rows=block.trim().split('\n').filter(r=>!r.match(/^\|[\s:\-|]+\|$/));
+      if(rows.length<2)return block;
+      return '<table>'+rows.map((r,i)=>{const cells=r.split('|').map(c=>c.trim()).filter((_,j,a)=>j>0&&j<a.length-1);const tag=i===0?'th':'td';return `<tr>${cells.map(c=>`<${tag}>${c}</${tag}>`).join('')}</tr>`;}).join('')+'</table>';
+    });
+    html=html.replace(/^[-*]\s+(.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,s=>`<ul>${s}</ul>`).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>');
+    return `<div class="sec"><h1>${EXPORT_LABELS[key]}</h1><p>${html}</p></div>`;
+  }).join('');
+
+  const win=window.open('','_blank','width=820,height=700');
+  if(!win){alert('Please allow popups to export PDF');return;}
+
+  // Title = suggested filename in Chrome's Save as PDF dialog
+  win.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<title>${safeFilename}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:10.5pt;color:#1a1a1a;line-height:1.65;background:#fff}
+#hint{background:#1a3c6e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:10pt}
+#hint button{background:#fff;color:#1a3c6e;border:none;padding:7px 16px;font-weight:700;cursor:pointer;border-radius:2px;font-size:10pt;white-space:nowrap}
+.wrap{padding:28px 32px}
+.cover{border-bottom:3px solid #2E75B6;padding-bottom:16px;margin-bottom:20px}
+.logo{font-size:20pt;font-weight:800;color:#1A3C6E}
+.logo span{color:#2E75B6}
+.meta{font-size:9.5pt;color:#5F5E5A;margin-top:6px}
+.sec{margin-top:20px;page-break-inside:avoid}
+h1{font-size:13pt;color:#1A3C6E;border-bottom:2px solid #2E75B6;padding-bottom:4px;margin-bottom:10px}
+h2{font-size:11.5pt;color:#2E75B6;margin:14px 0 5px}
+h3{font-size:10pt;color:#5F5E5A;margin:10px 0 4px}
+p{margin-bottom:6px}
+ul{margin:4px 0 8px 18px}li{margin-bottom:2px}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:9pt}
+th{background:#1A3C6E;color:#fff;padding:5px 8px;text-align:left}
+td{border:1px solid #ccc;padding:4px 8px}
+tr:nth-child(even) td{background:#f5f5f3}
+.rb{padding:5px 10px;margin:6px 0;font-size:9.5pt;font-weight:500}
+.rb .sv{font-weight:800;margin-right:5px}
+.rb.high{background:#FCEBEB;color:#A32D2D;border-left:3px solid #A32D2D}
+.rb.medium{background:#FAEEDA;color:#B8750A;border-left:3px solid #B8750A}
+.rb.low{background:#E1F5EE;color:#0F6E56;border-left:3px solid #0F6E56}
+.rb.info{background:#E6F1FB;color:#185FA5;border-left:3px solid #185FA5}
+.footer{margin-top:20px;padding-top:8px;border-top:1px solid #ddd;font-size:8.5pt;color:#999}
+@media print{#hint{display:none!important}.sec{page-break-before:auto}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div id="hint">
+  <span>&#128196; In the print dialog &rarr; set <strong>Destination</strong> to <strong>Save as PDF</strong> &rarr; the filename will be <strong>${safeFilename}.pdf</strong></span>
+  <button onclick="window.print()">Print / Save as PDF</button>
+</div>
+<div class="wrap">
+  <div class="cover">
+    <div class="logo">RPG<span>Lens</span></div>
+    <div class="meta"><strong>Program:</strong> ${docProgName} &nbsp;&nbsp; <strong>Generated:</strong> ${generated}</div>
+  </div>
+  ${sectionHtml}
+  <div class="footer">Generated by RPGLens &middot; rpglens.vercel.app</div>
+</div>
+<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},400);};<\/scr'+'ipt>
+</body></html>`);
+  win.document.close();
+}
+
+
+function renderDepend(text) {
+  const container=document.getElementById('content-depend');
+  document.getElementById('empty-depend').style.display='none';
+  container.innerHTML='';
+
+  // Extract mermaid block before section parsing
+  const mermaidMatch = text.match(/```mermaid\n([\s\S]*?)```/);
+  // Remove mermaid block from text for normal section rendering
+  const cleanText = text.replace(/```mermaid[\s\S]*?```/, '').trim();
+
+  // Render flowchart first if present
+  if (mermaidMatch) {
+    const chartDef = mermaidMatch[1].trim();
+    const chartBlock = document.createElement('div');
+    chartBlock.className = 'result-section fade-in';
+    chartBlock.innerHTML = '<div class="result-section-header"><div class="result-section-title">Program flow diagram</div></div><div class="result-body" id="depend-chart-wrap" style="overflow-x:auto;text-align:center;padding:20px 16px"></div>';
+    container.appendChild(chartBlock);
+
+    // Load mermaid and render
+    const renderChart = async () => {
+      try {
+        if (!window.mermaid) {
+          await loadScript('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js');
+          window.mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+              primaryColor: '#1a1c1d',
+              primaryTextColor: '#e8e4dc',
+              primaryBorderColor: '#363a3b',
+              lineColor: '#e8a020',
+              secondaryColor: '#141516',
+              tertiaryColor: '#0e0f0f',
+              fontFamily: 'DM Mono, monospace',
+              fontSize: '13px'
+            }
+          });
+        }
+        const id = 'depend-chart-' + Date.now();
+        const { svg } = await window.mermaid.render(id, chartDef);
+        const wrap = document.getElementById('depend-chart-wrap');
+        if (wrap) {
+          wrap.innerHTML = svg;
+          // Make SVG responsive
+          const svgEl = wrap.querySelector('svg');
+          if (svgEl) { svgEl.style.maxWidth='100%'; svgEl.style.height='auto'; }
+        }
+      } catch(e) {
+        const wrap = document.getElementById('depend-chart-wrap');
+        if (wrap) wrap.innerHTML = '<div style="color:var(--red);font-size:12px">Flowchart could not be rendered: ' + e.message + '</div>';
+      }
+    };
+    renderChart();
+  }
+
+  // Render the rest of the sections normally
+  parseMarkdownSections(cleanText).forEach(({heading, body}) => {
+    if (heading.toLowerCase().includes('program flow')) return; // skip if leftover
+    const isTable = body.includes('|');
+    const block = document.createElement('div');
+    block.className = 'result-section fade-in';
+    block.innerHTML = `<div class="result-section-header"><div class="result-section-title">${heading}</div></div><div class="result-body">${isTable ? renderTable(body) : formatBody(body)}</div>`;
+    container.appendChild(block);
+  });
+}
+
+function triggerDownload(blob,filename){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+function dateStamp(){const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;}
+
+onCodeInput();
+initSession();
+
+function restoreFromHistory(id){
+  if(!id)return;
+  try{
+    const saved=localStorage.getItem(id);if(!saved)return;
+    const results=JSON.parse(saved);state.results=results;
+    if(results.explain){renderExplain(results.explain);setTabDone('explain');}
+    if(results.docs){renderDocs(results.docs);setTabDone('docs');}
+    if(results.risk){renderRisk(results.risk);setTabDone('risk');}
+    if(results.modern){renderModern(results.modern);setTabDone('modern');}
+    if(results.depend){renderDepend(results.depend);setTabDone('depend');}
+    const first=['explain','docs','risk','modern'].find(t=>results[t]);
+    if(first)switchTab(first);
+    ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=false;});
+    document.getElementById('analyse-btn').querySelector('.btn-label').textContent='Re-analyse';
+  }catch(e){console.warn('Restore failed:',e);}
+}
+const urlParams=new URLSearchParams(window.location.search);
+const restoreId=urlParams.get('restore');
+if(restoreId)setTimeout(()=>restoreFromHistory(restoreId),800);
+
+// Auto-load source from IBM i Connect
+if(urlParams.get('from_ibmi')==='1'){
+  try{
+    const ibmiData=JSON.parse(sessionStorage.getItem('rpglens_ibmi_source')||'{}');
+    if(ibmiData.source){
+      const mbr=ibmiData.name||urlParams.get('mbr')||'';
+      document.getElementById('code-input').value=ibmiData.source;
+      if(mbr) document.getElementById('program-name').textContent=mbr;
+      switchMode('paste');
+      onCodeInput();
+      sessionStorage.removeItem('rpglens_ibmi_source');
+    }
+  }catch(e){console.warn('IBM i source load failed:',e);}
+}
+</script>
+</body>
+</html>
