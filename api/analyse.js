@@ -316,9 +316,10 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("Proxy error:", err);
-    if (err.status === 401) return res.status(502).json({ error: "Invalid Anthropic API key. Contact support." });
+    if (err.status === 401) return res.status(502).json({ error: "Analysis service unavailable. Please try again or contact support." });
     if (err.status === 429) return res.status(429).json({ error: "AI service rate limited. Please wait 30 seconds." });
     if (err.status === 529) return res.status(503).json({ error: "AI service overloaded. Please try again." });
-    return res.status(500).json({ error: "Analysis failed. Please try again." });
+    const safe = (err.message||"").includes("fetch") ? "Network error. Please check your connection." : "Analysis failed. Please try again.";
+    return res.status(500).json({ error: safe });
   }
 }
