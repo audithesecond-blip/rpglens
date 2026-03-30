@@ -1593,10 +1593,21 @@
   <div class="section-tag reveal">Pricing</div>
   <h2 class="section-title reveal">Pay less than one hour<br/>of developer time.</h2>
   <p class="section-sub reveal">Every plan includes a 14-day free trial. No credit card required to start.</p>
+
+  <!-- Currency toggle -->
+  <div class="reveal" style="display:flex;align-items:center;gap:12px;margin-bottom:32px">
+    <span style="font-size:12px;color:var(--text3);letter-spacing:0.08em">INR</span>
+    <div id="currency-toggle" onclick="toggleCurrency()" style="width:44px;height:24px;background:var(--border2);border-radius:12px;cursor:pointer;position:relative;transition:background 0.2s">
+      <div id="toggle-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--amber);transition:transform 0.2s"></div>
+    </div>
+    <span style="font-size:12px;color:var(--text3);letter-spacing:0.08em">USD</span>
+    <span id="currency-note" style="font-size:11px;color:var(--text3);margin-left:4px">(for international users)</span>
+  </div>
+
   <div class="pricing-grid reveal">
     <div class="price-card">
       <div class="price-plan">Free</div>
-      <div class="price-amt">₹0</div>
+      <div class="price-amt"><span class="price-inr">₹0</span><span class="price-usd" style="display:none">$0</span></div>
       <div class="price-period">forever</div>
       <div class="price-divider"></div>
       <ul class="price-features">
@@ -1610,7 +1621,7 @@
     </div>
     <div class="price-card featured">
       <div class="price-plan">Starter</div>
-      <div class="price-amt">₹2,999<span>/mo</span></div>
+      <div class="price-amt"><span class="price-inr">₹2,999</span><span class="price-usd" style="display:none">$36</span><span>/mo</span></div>
       <div class="price-period">billed monthly &nbsp;·&nbsp; 14-day trial</div>
       <div class="price-divider"></div>
       <ul class="price-features">
@@ -1627,7 +1638,7 @@
     </div>
     <div class="price-card">
       <div class="price-plan">Team</div>
-      <div class="price-amt">₹9,999<span>/mo</span></div>
+      <div class="price-amt"><span class="price-inr">₹9,999</span><span class="price-usd" style="display:none">$120</span><span>/mo</span></div>
       <div class="price-period">5 seats &nbsp;·&nbsp; 14-day trial</div>
       <div class="price-divider"></div>
       <ul class="price-features">
@@ -1741,6 +1752,19 @@
 
   const statsEl = document.querySelector('.stats');
   if (statsEl) statsObserver.observe(statsEl);
+</script>
+
+<script>
+let usdActive = false;
+function toggleCurrency() {
+  usdActive = !usdActive;
+  const knob = document.getElementById('toggle-knob');
+  const note = document.getElementById('currency-note');
+  knob.style.transform = usdActive ? 'translateX(20px)' : 'translateX(0)';
+  document.querySelectorAll('.price-inr').forEach(el => el.style.display = usdActive ? 'none' : '');
+  document.querySelectorAll('.price-usd').forEach(el => el.style.display = usdActive ? '' : 'none');
+  note.textContent = usdActive ? '(billed in INR at checkout)' : '(for international users)';
+}
 </script>
 </body>
 </html>
