@@ -919,6 +919,15 @@ function renderOutput(raw, original) {
 
   // Code output
   document.getElementById('code-output').textContent = convertedCode;
+  // Increment lifetime conversions counter
+  try{
+    const sess=window._rpglensSession;
+    const uid=sess?.user?.id;
+    if(uid){
+      const ck=`rpglens_total_conv_${uid}`;
+      localStorage.setItem(ck,String(parseInt(localStorage.getItem(ck)||'0')+1));
+    }
+  }catch(e){}
 
   // Notes
   if (notes.length > 0) {

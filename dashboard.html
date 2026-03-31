@@ -173,6 +173,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="metric-label">Total analyses ever</div>
     </div>
     <div class="metric-card">
+      <div class="metric-val amber" id="m-total-conv">—</div>
+      <div class="metric-label">Total conversions ever</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val" id="m-total-brd" style="color:var(--text2)">—</div>
+      <div class="metric-label">Total BRD→TDDs ever</div>
+    </div>
+    <div class="metric-card">
       <div class="metric-val" id="m-plan">Free</div>
       <div class="metric-label">Current plan</div>
     </div>
@@ -379,11 +387,17 @@ async function init() {
   const remaining     = Math.max(0, analysisLimit - used);
   const totalKey      = `rpglens_total_${user.id}`;
   const total         = parseInt(localStorage.getItem(totalKey) || '0');
+  const totalConvKey  = `rpglens_total_conv_${user.id}`;
+  const totalConv     = parseInt(localStorage.getItem(totalConvKey) || '0');
+  const totalBrdKey   = `rpglens_total_brd_${user.id}`;
+  const totalBrd      = parseInt(localStorage.getItem(totalBrdKey) || '0');
 
   document.getElementById('m-used').textContent      = plan === 'admin' ? '∞' : used;
   document.getElementById('m-remaining').textContent = plan === 'admin' ? '∞' : remaining;
   document.getElementById('m-remaining').className   = 'metric-val ' + (remaining > 0 || plan === 'admin' ? 'green' : 'red');
-  document.getElementById('m-total').textContent     = total;
+  document.getElementById('m-total').textContent      = total;
+  document.getElementById('m-total-conv').textContent = totalConv;
+  document.getElementById('m-total-brd').textContent  = totalBrd;
   document.getElementById('m-plan').textContent      = plan.charAt(0).toUpperCase() + plan.slice(1) + (PLAN_PRICES[plan] && plan !== 'free' && plan !== 'admin' ? ' — ' + PLAN_PRICES[plan] : '');
 
   const pct  = analysisLimit > 0 && plan !== 'admin' ? Math.min(100, Math.round((used / analysisLimit) * 100)) : 0;

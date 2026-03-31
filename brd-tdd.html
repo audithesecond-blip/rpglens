@@ -272,6 +272,14 @@ async function generateTDD(){
     tddResult=result;
     renderTDD(result.tdd, result.projectName);
     setStatus('');
+    // Increment lifetime BRD→TDD counter
+    try{
+      const uid=session?.user?.id;
+      if(uid){
+        const bk=`rpglens_total_brd_${uid}`;
+        localStorage.setItem(bk,String(parseInt(localStorage.getItem(bk)||'0')+1));
+      }
+    }catch(e){}
 
   }catch(e){
     alert('Something went wrong: '+e.message);
