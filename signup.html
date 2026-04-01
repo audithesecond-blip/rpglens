@@ -132,7 +132,7 @@ body::after{content:'';position:fixed;top:30%;left:50%;transform:translateX(-50%
   </button>
 
   <p class="terms-note">
-    By signing up you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.<br/>
+    By signing up you agree to our <a href="#privacy">Terms of Service</a> and <a href="#privacy">Privacy Policy</a>.<br/>
     No credit card required.
   </p>
 
@@ -154,7 +154,7 @@ sb.auth.getSession().then(({ data }) => {
 
 function showMsg(text, type = 'error') {
   const el = document.getElementById('msg');
-  el.textContent = text;
+  el.innerHTML = text;
   el.className = 'msg ' + type;
   el.style.display = 'block';
 }
@@ -214,7 +214,7 @@ async function submitSignup() {
 
   setLoading(true);
 
-  const { error } = await sb.auth.signUp({
+  const { data, error } = await sb.auth.signUp({
     email,
     password,
     options: {
@@ -231,8 +231,9 @@ async function submitSignup() {
     };
     showMsg(msgs[error.message] || error.message);
   } else {
-    showMsg('Account created! Check your email and click the confirmation link to activate your account.', 'success');
-    document.getElementById('submit-btn').disabled = true;
+    // Redirect directly to dashboard — no email confirmation required
+    showMsg('Welcome to RPGLens! Setting up your account...', 'success');
+    setTimeout(() => { window.location.href = '/dashboard'; }, 1200);
   }
 }
 </script>
