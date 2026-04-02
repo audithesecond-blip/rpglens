@@ -424,12 +424,19 @@ function stopProgress(){
   setTimeout(()=>{document.getElementById('progress-fill').style.width='0%';},1000);
 }
 
-function showUpgradeMessage(msg){
+function showUpgradeMessage(msg, plan){
   document.getElementById('output-body').innerHTML=`
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:40px;text-align:center">
-      <div style="font-size:32px;opacity:0.4">&#9650;</div>
-      <div style="font-family:var(--display);font-weight:700;font-size:16px;color:var(--text)">${msg}</div>
-      <a href="/dashboard" style="padding:10px 24px;background:var(--amber);color:var(--bg);text-decoration:none;font-family:var(--display);font-weight:700;font-size:12px">Upgrade Plan →</a>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;padding:48px;text-align:center">
+      <div style="font-size:40px;opacity:0.3">&#9889;</div>
+      <div style="font-family:var(--display);font-weight:800;font-size:18px;color:var(--text);letter-spacing:-0.02em">Team Plan Required</div>
+      <div style="font-size:13px;color:var(--text2);max-width:340px;line-height:1.7">${msg} Upgrade to unlock the BRD → TDD Generator, TDD → Code Generator, and IBM i Live Connect.</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <a href="/dashboard" style="padding:11px 28px;background:var(--amber);color:var(--bg);text-decoration:none;font-family:var(--display);font-weight:700;font-size:13px;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%)">Upgrade to Team →</a>
+        <a href="/" style="padding:11px 28px;background:transparent;border:1px solid var(--border2);color:var(--text2);text-decoration:none;font-family:var(--display);font-weight:700;font-size:13px">View pricing</a>
+      </div>
+      <div style="font-size:11px;color:var(--text3);border:1px solid var(--border);padding:8px 16px">
+        Current plan: <strong style="color:var(--amber)">${(plan||'free').charAt(0).toUpperCase()+(plan||'free').slice(1)}</strong>
+      </div>
     </div>`;
 }
 
@@ -437,6 +444,18 @@ function showUpgradeMessage(msg){
 async function init(){
   const{data}=await sb.auth.getSession();
   if(!data.session){window.location.href='/login';return;}
+
+  const plan=data.session.user?.user_metadata?.plan||'free';
+  if(!['team','admin'].includes(plan)){
+    // Show upgrade wall immediately — don't let them interact with the page
+    document.getElementById('generate-btn').disabled=true;
+    document.getElementById('brd-text').disabled=true;
+    document.getElementById('project-name').disabled=true;
+    showUpgradeMessage(
+      'BRD → TDD Generator is available on the Team plan and above.',
+      plan
+    );
+  }
 }
 init();
 </script>
