@@ -133,6 +133,32 @@ UNBOUNDED SQL: EXEC SQL SELECT without FETCH FIRST n ROWS ONLY or limiting WHERE
 Financial UPDATE/DELETE with no audit trail = MEDIUM: 'No audit trail -- consider enabling QAUDJRN for this file'
 QSYS2.OBJECT_LOCK_INFO: mention in recommendations when lock contention is flagged
 
+── COMMITMENT CONTROL — DEEP KNOWLEDGE ──
+THE JOURNALING MISCONCEPTION: Journaling records what happened but does NOT undo previous updates. COMMIT/ROLLBACK is the decision maker. NEVER say journaling provides transactional protection — they are different things. If a program updates multiple files WITHOUT commitment control, each successful update is PERMANENT even if subsequent updates fail. This is silent data corruption — no error, no warning, just partial truth in the data.
+
+COMMITMENT CONTROL SETUP — positive patterns to recognise:
+- STRCMTCTL LCKLVL(*CHG) CMTSCOPE(*ACTGRP) in CL = commitment control is active
+- COMMIT keyword on file declarations = file is under commitment control
+- DFTACTGRP(*NO) ACTGRP('name') in CTL-OPT = correct ILE setup for commitment control
+- EXEC SQL SET OPTION COMMIT = *CHG = SQL joins the same transaction as native I/O
+- MONITOR/ON-ERROR with ROLLBACK in the ON-ERROR block = production-ready pattern
+
+PITFALL 1 — FORGOTTEN COMMIT: Program writes data under commitment control but no explicit COMMIT before *INLR = *ON. IBM i automatically rolls back uncommitted changes when program ends. Update silently lost, no error. Severity: HIGH.
+
+PITFALL 2 — MIXED COMMITMENT SCOPES: Programs sharing a logical transaction but using different ACTGRP names maintain independent transactions. COMMIT in Program A does NOT commit Program B's changes. Severity: HIGH — partial commits appear to succeed but are incomplete.
+
+PITFALL 3 — LONG-RUNNING TRANSACTION WITH USER INTERACTION: Pattern: COMMIT then CHAIN then UPDATE then EXFMT then COMMIT. Lock is held for the entire EXFMT interaction — could be minutes. Correct: EXFMT should be OUTSIDE the transaction boundary. Severity: MEDIUM.
+
+PITFALL 4 — MISSING ROLLBACK IN ON-ERROR: MONITOR/ON-ERROR that updates multiple files but has no ROLLBACK in the ON-ERROR section. Without ROLLBACK, previous updates in the current transaction remain committed — partial data. Every ON-ERROR in a commitment control context MUST contain ROLLBACK. Severity: HIGH.
+
+BATCH PROCESSING — commit interval: Large batch jobs that UPDATE thousands of records with COMMIT only at end hold locks for hours and block all other access. Correct pattern: COMMIT every 1,000-10,000 records. Detection: batch program with READ loop, multiple UPDATEs, but COMMIT only once at end = MEDIUM.
+
+MIXED NATIVE I/O AND SQL: When program uses both native RPG file I/O and EXEC SQL without EXEC SQL SET OPTION COMMIT = *CHG, both operate in separate transactions — partial commits possible. Severity: HIGH if financial files involved.
+
+ERROR LOG FILE PATTERN (positive): Error logging files deliberately NOT under commitment control = intentional good design. Ensures error records are always written even when transaction rolls back. Recognise and note this as positive.
+
+CPF MESSAGES: CPF8356 (ROLLBACK completed) occurring frequently = application errors in production — each deserves investigation.
+
 ── WHAT IS NEVER A RISK ──
 Never flag: fixed-format RPG syntax, BEGSR/ENDSR, KLIST/KFLD, numeric indicators used consistently, CHAIN/READE/SETLL/SETGT, Z-ADD/MOVE/MOVEL/MULT/ADD/SUB opcodes, the RPG program cycle, SETON/SETOFF, EXCEPT output, *ENTRY PLIST/PARM, READ/READE with EOF indicator, DFTACTGRP(*YES), century-year logic from 1995-2005.
 
