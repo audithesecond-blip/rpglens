@@ -138,8 +138,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="dropdown-menu">
         <a href="/analyser" class="dropdown-item"><span class="dropdown-item-icon">+</span> New analysis</a>
         <a href="/converter" class="dropdown-item"><span class="dropdown-item-icon">&#8644;</span> New conversion</a>
-        <a href="/brd-tdd" class="dropdown-item"><span class="dropdown-item-icon">&#9889;</span> BRD → TDD</a>
-        <a href="/tdd-code" class="dropdown-item"><span class="dropdown-item-icon">&#10021;</span> TDD → Code</a>
+        <a href="/brd-tdd" class="dropdown-item" id="dd-brd-tdd" style="display:none"><span class="dropdown-item-icon">&#9889;</span> BRD → TDD</a>
+        <a href="/tdd-code" class="dropdown-item" id="dd-tdd-code" style="display:none"><span class="dropdown-item-icon">&#10021;</span> TDD → Code</a>
       </div>
     </div>
     <button class="btn-ghost" onclick="signOut()">Sign out</button>
@@ -292,12 +292,12 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="action-title">Fixed → Free format converter</div>
       <div class="action-desc">Convert fixed-format RPG III / RPG IV to modern free-format ILE RPG. The fastest path to modernisation.</div>
     </a>
-    <a href="/brd-tdd" class="action-card">
+    <a href="/brd-tdd" class="action-card" id="brd-tdd-card" style="display:none">
       <div class="action-icon" style="color:var(--amber)">&#9889;</div>
       <div class="action-title">BRD → TDD Generator</div>
       <div class="action-desc">Upload a Business Requirements Document and get a complete IBM i Technical Design Document — program specs, file layouts, CL flow, and test scenarios.</div>
     </a>
-    <a href="/tdd-code" class="action-card">
+    <a href="/tdd-code" class="action-card" id="tdd-code-card" style="display:none">
       <div class="action-icon" style="color:var(--blue)">&#10021;</div>
       <div class="action-title">TDD → Code Generator</div>
       <div class="action-desc">Upload a TDD and generate production-ready RPG, CL, and DDS source code skeletons ready to drop into RDi or SEU.</div>
@@ -412,6 +412,14 @@ async function init() {
   if(['team','admin'].includes(plan)){
     const card=document.getElementById('ibmi-connect-card');
     if(card) card.style.display='';
+    const brdCard=document.getElementById('brd-tdd-card');
+    if(brdCard) brdCard.style.display='';
+    const tddCard=document.getElementById('tdd-code-card');
+    if(tddCard) tddCard.style.display='';
+    const ddBrd=document.getElementById('dd-brd-tdd');
+    if(ddBrd) ddBrd.style.display='';
+    const ddTdd=document.getElementById('dd-tdd-code');
+    if(ddTdd) ddTdd.style.display='';
     const topbtn=document.getElementById('ibmi-topbar-btn');
     if(topbtn) topbtn.style.display='';
   }
