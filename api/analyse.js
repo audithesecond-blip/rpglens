@@ -86,6 +86,53 @@ DO NOT frame as "updating wrong record" unless an indicator is provably reused f
 - Hardcoded ACCOUNT NUMBERS or DOLLAR AMOUNTS in financial calculations: HIGH
 - Magic numbers driving SELECT/WHEN branches: LOW
 
+
+-- LOCK MANAGEMENT -- ADVANCED PATTERNS --
+Lock types on IBM i (most to least restrictive):
+- *EXCL: exclusive, one job only, blocks all. Used for file reorg/backups. Flag in OLTP code.
+- *EXCLRD: exclusive read, one job reads, no others. Rarely appropriate.
+- *SHRNUP: shared no update, multiple read, none update. Good for reporting.
+- *SHRUPD: shared update, multiple read and update. Standard OLTP.
+- *SHRRD: shared read, multiple read, no updates. Good for SELECT queries.
+
+WAITRCD parameter:
+- WAITRCD(*YES) = wait indefinitely: HIGH risk on batch files also used by interactive jobs
+- WAITRCD(0) = fail immediately: flag if no error handler present
+- WAITRCD(30) = 30 seconds: recommended safe default
+
+DEADLOCK: Code that acquires locks on multiple files in different orders = MEDIUM: 'Inconsistent lock acquisition order -- potential deadlock. Always lock files in the same sequence.'
+
+FORGOTTEN LOCK: Interactive program (WORKSTN) that reads a record then calls EXFMT holds the lock during entire user interaction. UPDATE after EXFMT = MEDIUM: 'Record lock held during interactive display -- if user abandons session, lock persists.'
+
+CASCADE EFFECT: RGZPFM or CPYF with MBROPT(*REPLACE) on a file during business hours = HIGH: 'File reorganization during business hours causes cascade lock -- all jobs accessing this file will wait.'
+
+OPTIMISTIC LOCKING: Row versioning or timestamp-based conflict detection = POSITIVE pattern, note as good design.
+
+-- SQL INJECTION AND SECURITY PATTERNS --
+CRITICAL: SQL injection via string concatenation:
+- Building SQL using concatenation with input fields = CRITICAL severity
+- Safe pattern: always use parameter markers (:variable) in EXEC SQL
+- Never flag EXEC SQL with :variable as injection risk
+
+HARDCODED CREDENTIALS: Passwords, API keys, or connection strings hardcoded in source = HIGH
+
+MISSING SQLCODE CHECK: INSERT/UPDATE/DELETE without checking SQLCODE or SQLSTATE = HIGH if financial data
+
+WHENEVER CLAUSE: EXEC SQL WHENEVER SQLERROR GOTO errorHandler = valid error handling, do NOT flag as missing error handling
+
+-- REST API AND MODERN INTEGRATION PATTERNS --
+LOCK AMPLIFICATION: Program holds a file lock and then makes an external call (web service, data queue, socket) while lock is held = MEDIUM: 'Lock held during external call -- network latency extends lock duration'
+
+SERVICE LAYER: RPG service programs (*SRVPGM) encapsulating business logic called by APIs = GOOD architecture. Direct table access from API without service layer = LOW/INFO.
+
+CCSID ENCODING: Programs moving data between IBM i (EBCDIC) and external systems without explicit CCSID handling = LOW: 'Verify character encoding is handled at the API layer'
+
+UNBOUNDED SQL: EXEC SQL SELECT without FETCH FIRST n ROWS ONLY or limiting WHERE clause on large tables = MEDIUM: 'Unbounded result set -- may return millions of rows under production load'
+
+-- AUDIT AND COMPLIANCE PATTERNS --
+Financial UPDATE/DELETE with no audit trail = MEDIUM: 'No audit trail -- consider enabling QAUDJRN for this file'
+QSYS2.OBJECT_LOCK_INFO: mention in recommendations when lock contention is flagged
+
 ── WHAT IS NEVER A RISK ──
 Never flag: fixed-format RPG syntax, BEGSR/ENDSR, KLIST/KFLD, numeric indicators used consistently, CHAIN/READE/SETLL/SETGT, Z-ADD/MOVE/MOVEL/MULT/ADD/SUB opcodes, the RPG program cycle, SETON/SETOFF, EXCEPT output, *ENTRY PLIST/PARM, READ/READE with EOF indicator, DFTACTGRP(*YES), century-year logic from 1995-2005.
 
