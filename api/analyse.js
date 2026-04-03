@@ -159,8 +159,93 @@ ERROR LOG FILE PATTERN (positive): Error logging files deliberately NOT under co
 
 CPF MESSAGES: CPF8356 (ROLLBACK completed) occurring frequently = application errors in production — each deserves investigation.
 
+── DATA STRUCTURES — RISK AND RECOGNITION PATTERNS ──
+OVERLAY DATA STRUCTURE: Fields sharing the same memory positions via OVERLAY keyword or positional alignment in a DS. If a CLEAR opcode or assignment is made to the base field, ALL overlaid fields are corrupted simultaneously. Flag as MEDIUM if any overlaid field is financial. Flag as HIGH if the base field is CLEAR'd inside a financial transaction loop.
+
+EXTERNAL DATA STRUCTURE (EXTNAME): DS definition inherited from a physical file. Program is silently broken at runtime if the PF field order, type, or length changes without recompiling the RPG program. Flag as LOW/INFO: "External DS bound to PF — PF changes require program recompile to avoid runtime field misalignment."
+
+FILE INFORMATION DATA STRUCTURE (INFDS): When declared but INFSR subroutine is absent, file-level errors (CPF5001, CPF5006, CPF5029) are captured but never actioned. Positive pattern when INFDS + INFSR are both present and the INFSR handles *STATUS codes.
+
+PROGRAM STATUS DATA STRUCTURE (*STATUS DS): Used in *PSSR. Contains *STATUS (error code), *ROUTINE (subroutine where error occurred), *PARMS (parameter count). When *PSSR uses ENDSR '*CANCL' — program cancels after error. ENDSR '*GETIN' — program tries to get next input record. '*CANCL' is the safer choice for batch financial programs.
+
+DUMP OPCODE: Writes a formatted dump to QSYS/QPPGMDMP for debugging. Should NEVER exist in production code. Flag as HIGH: "DUMP opcode found — remove before production deployment. Creates uncontrolled output and is a security concern."
+
+DEBUG H-SPEC KEYWORD (DEBUG(*YES) or DEBUG in CTL-OPT): Enables debug mode in production. Flag as MEDIUM: "DEBUG keyword active — disable in production builds."
+
+── CL PROGRAM PATTERNS — RISK DETECTION ──
+MONMSG CPF0000 WITHOUT EXEC: Catches every possible exception and silently discards it. This is the most dangerous CL pattern — a failed CALL, CHGVAR, or file operation is swallowed with no action. Flag as MEDIUM: "MONMSG CPF0000 with no EXEC clause — all exceptions silently ignored. Use specific CPF codes or add EXEC(DO/ENDDO) with logging."
+
+MONMSG CPF0000 EXEC(GOTO label): Catches all and jumps to a label — usually the bottom of the program. Better than nothing but still loses the error context. Flag as LOW.
+
+QCMDEXC WITH DYNAMIC COMMAND STRING: If the command string passed to QCMDEXC is built from program parameters or user input, it is a command injection vector. Flag as HIGH: "QCMDEXC with dynamic command — user-supplied input can execute arbitrary CL commands."
+
+OVRDBF SECURE(*YES): Prevents any downstream program from further overriding the file. Security positive — prevents unintended file redirection in call chains. Note as good practice, not a risk.
+
+SBMJOB WITHOUT EXPLICIT JOBQ/JOBD: Uses the default job queue. In busy production environments this can compete with interactive jobs for resources. Flag as LOW/INFO: "SBMJOB without explicit JOBQ — may compete with production interactive jobs."
+
+RTVJOBA: Retrieves job attributes (user, environment, library list). Common in programs that behave differently based on execution context. Not a risk — note in explain output as environment-aware logic.
+
+── DATABASE AND DB2 FOR i — DEEP PATTERNS ──
+JOIN LOGICAL FILES: Access paths joining multiple physical files at the database level. Changing any underlying PF key structure or field definition can break the join silently — no compile error, runtime data errors. Flag as LOW/INFO when detected: "Join logical file detected — changes to any underlying PF require LF rebuild and testing."
+
+SELECT/OMIT CRITERIA IN LOGICAL FILES: Business logic embedded in the database access path definition, not visible in RPG source. Flag as INFO: "Business filtering may be applied by a logical file access path — verify select/omit criteria before assuming all records are processed."
+
+OPNQRYF: Legacy IBM i dynamic query mechanism, predecessor to embedded SQL. Generates a temporary access path at runtime. Flag as LOW modernisation item: "OPNQRYF detected — migrate to EXEC SQL SELECT for maintainability, performance visibility, and modern tooling support."
+
+NULL-CAPABLE FIELDS (ALWNULL in DDS): RPG programs must use %NULLIND to check and set null indicators before reading or writing nullable fields. If a program reads a null-capable field without %NULLIND handling, the field value is undefined. Flag as MEDIUM if detected: "Null-capable field accessed without %NULLIND check — field value is unreliable when null."
+
+ROW-LEVEL TRIGGERS: INSERT/UPDATE/DELETE triggers on DB2 for i tables fire automatically but are NOT visible in the RPG source. Always note in documentation and dependencies: "Row-level triggers may exist on this file — verify with DSPFD before modifying file operations."
+
+REFERENTIAL INTEGRITY CONSTRAINTS: FK constraints enforced at the DB2 level. DELETE or UPDATE that violates a constraint fails with CPF5034. Not visible in RPG source. Note in dependency analysis.
+
+ARRIVAL SEQUENCE vs KEYED ACCESS: Programs reading a file without specifying a key (arrival sequence) are sensitive to physical record order — which can change after RGZPFM. Flag as LOW if financial totals depend on arrival sequence order.
+
+DATA TYPES — RISK AWARENESS:
+- Packed decimal (P/PACK): most common, efficient. Watch for MOVE to shorter packed field — truncation.
+- Zoned decimal (S): display format, less efficient. MOVE between zoned and packed can cause MCH1210 if data contains non-numeric characters.
+- Binary (B): efficient for counters and indexes. No decimal truncation risk.
+- Float (F): imprecise — NEVER appropriate for financial calculations. Flag as HIGH if float field used in financial arithmetic.
+- VARCHAR (A VARYING): variable-length character. %LEN and %ADDR behave differently — note if used in pointer arithmetic.
+
+── ACTIVATION GROUP — COMPLETE PATTERNS ──
+DFTACTGRP(*YES): OPM-compatible mode. *INLR = *ON ends the program AND releases all resources (files, storage). Legacy programs. This is correct and expected — do not flag.
+
+DFTACTGRP(*NO) ACTGRP(*CALLER): Program runs in the caller's activation group. CRITICAL: *INLR = *ON ends the program but does NOT release resources — files remain open, storage is not freed. This is intentional for service programs (resources persist for the caller's use). Risk: if program is called standalone (not as a service program), resources leak. Flag as LOW/INFO if used in a context that appears to be standalone rather than service program.
+
+DFTACTGRP(*NO) ACTGRP(*NEW): Creates a new isolated activation group per call. *INLR ends the program; the AG is destroyed when the last program in it ends. Safe for standalone ILE programs. No resource leak risk.
+
+DFTACTGRP(*NO) ACTGRP(named): Named activation group shared by multiple programs. Required for commitment control across multiple programs. COMMIT in any program in the named AG commits all changes from all programs in that AG. This is correct ILE design for multi-program transactions.
+
+ACTGRP(*CALLER) WITH COMMIT: Inherits the caller's commitment control scope. This is intentional and correct — do NOT flag as missing commitment control. The caller controls the transaction boundary.
+
+── ERROR HANDLING — COMPLETE IBM i MESSAGE TYPES ──
+CPF MESSAGES (CPFnnnn): IBM i system-generated escape messages. CPF5026 = record locked, CPF5001 = file not found, CPF5006 = member not found, CPF4131 = data format error. Handled by *PSSR, INFSR, MONITOR/ON-ERROR, or (E) extenders.
+
+MCH MESSAGES (MCHnnnn): Machine-level errors. MCH1211 = divide by zero, MCH1210 = decimal data error (non-numeric in numeric field), MCH3601 = null pointer dereference. These terminate the program with a diagnostic unless caught. MCH1210 is the most common — caused by MOVE of non-numeric data into numeric field.
+
+RNX MESSAGES (RNXnnnn): RPG runtime errors. RNX0100 = array index out of bounds, RNX1201 = null pointer, RNX0112 = numeric overflow. These are the RPG-layer equivalent of MCH errors.
+
+*PSSR SUBROUTINE: Program-level error handler. Called when an unhandled exception occurs. ENDSR '*CANCL' = cancel the program after logging. ENDSR '*GETIN' = retry the failed operation (rarely correct). If *PSSR exists, the program has a last-resort error handler — note as positive. If *PSSR ENDSR has '*GETIN' in a financial program — flag as MEDIUM: "ENDSR '*GETIN' in *PSSR retries failed operations — can cause infinite retry loops."
+
+INFSR SUBROUTINE: File-level error handler. Called when a file operation fails. Uses INFDS *STATUS to identify the error. Positive pattern when present. If absent on a file with no (E) extenders, file errors propagate to *PSSR.
+
+(E) EXTENDER: Prevents file/calculation errors from becoming escape messages. %ERROR returns *ON if operation failed. %STATUS returns the specific error code. Positive when combined with proper %ERROR checking. Risk: if (E) is used but %ERROR is never checked afterward — error is silently swallowed.
+
+── PERFORMANCE — DEEP PATTERNS ──
+CHAIN vs SETLL+READE: CHAIN always acquires a record lock (*SHRUPD). In read-only programs, this is unnecessary and causes lock contention. SETLL positions the file without locking. READE reads the next record in key sequence without locking unless UPDATE follows. Flag as LOW/INFO in read-only programs: "CHAIN used for read-only access — SETLL+READE eliminates unnecessary record lock."
+
+ODP SHARING (SHARE(*YES) on F-spec): Multiple programs share one Open Data Path — efficient but tightly coupled. If one program changes the file position, all sharing programs are affected. Note as architecture dependency, not a defect.
+
+OPNQRYF with KEYFLD: Dynamic sort order at runtime. Flexible but carries a cost — a new access path is created every time. Replace with SQL ORDER BY for predictable performance.
+
+NOMAIN MODULE: Service program module with no RPG cycle and no main procedure. Modern, efficient. Positive pattern — note in documentation.
+
+%KDS (Key Data Structure): Composite key lookup using a DS. Cleaner than KLIST/KFLD chains. Positive modernisation signal.
+
+SUBFILE WITHOUT PAGE-AT-A-TIME LOADING: Loading all records into a subfile at once is a performance anti-pattern for large files (>1,000 records). At scale, response time degrades linearly. Flag as LOW: "Subfile loaded without page-at-a-time — response time degrades with file size. Consider SFLPAG/SFLRCD page-at-a-time loading."
+
 ── WHAT IS NEVER A RISK ──
-Never flag: fixed-format RPG syntax, BEGSR/ENDSR, KLIST/KFLD, numeric indicators used consistently, CHAIN/READE/SETLL/SETGT, Z-ADD/MOVE/MOVEL/MULT/ADD/SUB opcodes, the RPG program cycle, SETON/SETOFF, EXCEPT output, *ENTRY PLIST/PARM, READ/READE with EOF indicator, DFTACTGRP(*YES), century-year logic from 1995-2005.
+Never flag: fixed-format RPG syntax, BEGSR/ENDSR, KLIST/KFLD, numeric indicators used consistently, CHAIN/READE/SETLL/SETGT, Z-ADD/MOVE/MOVEL/MULT/ADD/SUB opcodes, the RPG program cycle, SETON/SETOFF, EXCEPT output, *ENTRY PLIST/PARM, READ/READE with EOF indicator, DFTACTGRP(*YES), century-year logic from 1995-2005, overflow indicators (OA-OG, OV) on printer files, halt indicators (H1-H9) used intentionally, INFDS declarations, RTVJOBA, OVRDBF SECURE(*YES), DCL-PR/DCL-PI prototypes, CALLP with prototype, %TRIM/%SUBST/%SCAN/%FOUND/%EOF/%ELEM BIFs, NOMAIN modules, SHARE(*YES) on F-spec when architectural intent is ODP sharing, ACTGRP(*CALLER) in service programs, named activation groups used for multi-program commitment control., BEGSR/ENDSR, KLIST/KFLD, numeric indicators used consistently, CHAIN/READE/SETLL/SETGT, Z-ADD/MOVE/MOVEL/MULT/ADD/SUB opcodes, the RPG program cycle, SETON/SETOFF, EXCEPT output, *ENTRY PLIST/PARM, READ/READE with EOF indicator, DFTACTGRP(*YES), century-year logic from 1995-2005.
 
 ══════════════════════
 SECTION 2 — GRADING RUBRIC
