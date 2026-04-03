@@ -22,6 +22,15 @@ export default async function handler(req, res) {
     if (authError || !user) return res.status(401).json({ error: 'Session expired. Please sign in again.' });
 
     const plan = user.user_metadata?.plan || 'free';
+
+    // ── Plan check — Team and Enterprise only ─────────────────────────
+    if (!['team', 'admin'].includes(plan)) {
+      return res.status(403).json({
+        error: 'The TDD to Code generator is available on the Team plan and above.',
+        upgrade: true,
+        requiredPlan: 'team'
+      });
+    }
     const limit = PLAN_LIMITS[plan] || 3;
 
     // ── Usage check ───────────────────────────────────────────────────
@@ -67,14 +76,38 @@ Generate each component as a separate clearly labelled section. For each compone
 
 1. Start with a header line: === COMPONENT: [name] | TYPE: [RPGLE/CLLE/DSPF/PRTF/PF/LF] ===
 2. Provide complete, compilable source code skeleton
-3. Include all H-specs/Control specs
-4. Include all F-specs with actual file names from the TDD
+3. Include all H-specs/Control specs — use CTL-OPT DFTACTGRP(*NO) ACTGRP('progname') for ILE programs
+4. Include all F-specs with actual file names from the TDD — add COMMIT keyword to any file that participates in a multi-file transaction
 5. Include D-specs / DCL-S / DCL-DS for all data structures from TDD
 6. Include the full program structure with all subroutines/procedures stubbed out
 7. Add inline comments explaining each section
 8. Use free-format ILE RPG (not fixed format) for RPG programs
 9. Use proper IBM i naming conventions (max 10 chars for objects)
-10. Include proper error handling with MONITOR/ON-ERROR blocks
+10. Include proper error handling with MONITOR/ON-ERROR blocks and ROLLBACK in every ON-ERROR that spans multiple file updates
+
+MANDATORY IBM i STANDARDS — apply to every generated component:
+
+COMMITMENT CONTROL: If the TDD involves updates to 2+ files in the same logical transaction:
+- Add COMMIT keyword to all transactional file declarations
+- Wrap multi-file updates in MONITOR/ON-ERROR with COMMIT on success and ROLLBACK on error
+- Keep error logging files deliberately OUTSIDE commitment control (no COMMIT keyword)
+- For batch programs: add periodic COMMIT every 1,000 records with a counter variable
+
+LOCK MANAGEMENT:
+- EXFMT must always be OUTSIDE the commit boundary — never between COMMIT and the final COMMIT
+- Add WAITRCD(30) comments in F-specs or note for CL OVRDBF configuration
+- For concurrent-access programs: stub an optimistic locking version check before UPDATE
+
+SQL SAFETY (for SQLRPGLE components):
+- Always use parameter markers (:variable) — never string concatenation
+- Always check SQLSTATE after every INSERT/UPDATE/DELETE
+- Add FETCH FIRST n ROWS ONLY to any SELECT that may return multiple records
+- Include EXEC SQL SET OPTION COMMIT = *CHG if mixing native I/O and SQL in same transaction
+
+SECURITY:
+- Never hardcode passwords, API keys, or credentials — use *DTAARA or environment approach
+- For API-called programs: add comment noting dedicated service profile requirement
+- For programs with SQL: parameterised queries only
 
 For DDS files (PF/LF):
 - Include all fields with proper types and lengths from the TDD
@@ -84,7 +117,8 @@ For DDS files (PF/LF):
 For CL programs:
 - Include proper PGM/ENDPGM structure
 - DCLF, DCL variables
-- MONMSG handlers
+- STRCMTCTL if the job involves multi-file transactions
+- MONMSG handlers for CPF0000 and specific CPF codes
 - SBMJOB calls where applicable
 
 End each component with: === END: [name] ===
