@@ -24,6 +24,15 @@ export default async function handler(req, res) {
     const plan = user.user_metadata?.plan || 'free';
     const limit = PLAN_LIMITS[plan] || 3;
 
+    // ── Plan check — Team and Enterprise only ─────────────────────────
+    if (!['team', 'admin'].includes(plan)) {
+      return res.status(403).json({
+        error: 'The BRD to TDD generator is available on the Team plan and above.',
+        upgrade: true,
+        requiredPlan: 'team'
+      });
+    }
+
     // ── Usage check ───────────────────────────────────────────────────
     if (plan !== 'admin') {
       const periodStart = new Date();
@@ -119,7 +128,34 @@ List any ambiguities in the BRD that need clarification before development begin
 Provide a realistic development effort estimate broken down by component:
 | Component | Type | Estimated Hours | Complexity |
 
-Be specific and IBM i focused. Use actual RPG field naming conventions (max 10 chars for DDS, max 15 for SQL). Use IBM i terminology throughout.`;
+Be specific and IBM i focused. Use actual RPG field naming conventions (max 10 chars for DDS, max 15 for SQL). Use IBM i terminology throughout.
+
+CRITICAL IBM i DESIGN STANDARDS TO APPLY IN EVERY TDD:
+
+COMMITMENT CONTROL: For any TDD involving updates to 2+ files in the same logical transaction, ALWAYS include commitment control in the design:
+- Specify STRCMTCTL LCKLVL(*CHG) CMTSCOPE(*ACTGRP) in the CL job flow
+- Specify COMMIT keyword on all transactional file declarations
+- Include MONITOR/ON-ERROR with ROLLBACK in error handling strategy
+- Include error logging file deliberately OUTSIDE commitment control
+- For batch programs: specify periodic COMMIT every 1,000 records
+
+LOCK MANAGEMENT: For any interactive program (using DSPF):
+- User interaction (EXFMT) must be OUTSIDE the commit boundary
+- Specify WAITRCD(30) as default on all files — never WAITRCD(*YES)
+- For programs accessed by multiple concurrent users, recommend optimistic locking pattern
+
+REST API READINESS: For any TDD that will be called by APIs or external systems:
+- Always specify a service program (*SRVPGM) wrapper — never expose DB tables directly
+- Include connection pooling recommendation
+- Specify READ UNCOMMITTED isolation for any reporting queries
+- Include CCSID conversion requirements for external data exchange
+- Specify pagination (FETCH FIRST n ROWS ONLY) for any multi-record API response
+
+SECURITY: For any TDD involving sensitive data:
+- Specify dedicated API service profile with *NONE special authority
+- Parameterised SQL only — never dynamic SQL by concatenation
+- Specify QAUDJRN enablement for financial or personal data files
+- Include JWT authentication specification for external-facing APIs`;
 
     const response = await client.messages.create({
       model:      'claude-opus-4-5',
