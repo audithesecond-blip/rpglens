@@ -241,7 +241,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
           Upgrade to Starter
         </button>
       </div>
-      <!-- Team -->
+      <!-- Pro -->
       <div style="background:var(--bg2);border:1px solid var(--amber-dim);padding:20px 24px;position:relative">
         <div style="position:absolute;top:-1px;right:20px;background:var(--amber);color:var(--bg);font-size:10px;font-family:var(--display);font-weight:700;padding:3px 10px;letter-spacing:0.08em">MOST POPULAR</div>
         <div style="font-size:10px;letter-spacing:0.15em;color:var(--text3);margin-bottom:6px">TEAM</div>
@@ -254,8 +254,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
           — Word &amp; PDF export<br>
           — Priority support
         </div>
-        <button onclick="startUpgrade('team')" id="btn-team" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-          Upgrade to Team
+        <button onclick="startUpgrade('pro')" id="btn-team" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          Upgrade to Pro
         </button>
       </div>
     </div>
@@ -339,10 +339,10 @@ const sb = createClient(
   window.RPGLENS_CONFIG.SUPABASE_ANON
 );
 
-const PLAN_LIMITS      = { free: 3,   starter: 25,  team: 150,  admin: 999999 };
-const CONV_LIMITS      = { free: 1,   starter: 5,   team: 20,   admin: 999999 };
-const PLAN_PRICES      = { free: '₹0', starter: '₹3,999/mo', team: '₹12,999/mo', admin: 'Admin' };
-const CONV_LINE_LIMITS = { free: 500, starter: 1000, team: 2000, admin: 999999 };
+const PLAN_LIMITS      = { free: 3,   starter: 25,  pro: 150,   admin: 999999 };
+const CONV_LIMITS      = { free: 1,   starter: 5,   pro: 20,    admin: 999999 };
+const PLAN_PRICES      = { free: '$0', starter: '$49/mo', pro: '$149/mo', admin: 'Admin' };
+const CONV_LINE_LIMITS = { free: 500, starter: 1000, pro: 2000,  admin: 999999 };
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
@@ -366,7 +366,7 @@ async function init() {
   // Plan badge
   const planBadge = document.getElementById('plan-badge');
   planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
-  if (plan === 'starter' || plan === 'team') planBadge.classList.add('starter');
+  if (plan === 'starter' || plan === 'pro') planBadge.classList.add('starter');
 
   // ── Rolling 30-day period ─────────────────────────────────────────
   const signupDate   = new Date(user.created_at);
@@ -409,7 +409,7 @@ async function init() {
 
   if (plan !== 'free') document.getElementById('upgrade-link').style.display = 'none';
   updateUpgradeSection(plan);
-  if(['team','admin'].includes(plan)){
+  if(['pro','admin'].includes(plan)){
     const card=document.getElementById('ibmi-connect-card');
     if(card) card.style.display='';
     const brdCard=document.getElementById('brd-tdd-card');
@@ -563,7 +563,7 @@ async function startUpgrade(plan) {
 
     const PLAN_DESC = {
       starter: 'Starter Plan — ₹3,999/month',
-      team:    'Team Plan — ₹12,999/month'
+      pro:     'Pro Plan — ₹12,999/month'
     };
 
     // Open Razorpay checkout
