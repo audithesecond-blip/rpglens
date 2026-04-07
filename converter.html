@@ -921,8 +921,7 @@ function renderOutput(raw, original) {
   document.getElementById('code-output').textContent = convertedCode;
   // Increment lifetime conversions counter
   try{
-    const sess=window._rpglensSession;
-    const uid=sess?.user?.id;
+    const uid=supabaseSession?.user?.id;
     if(uid){
       const ck=`rpglens_total_conv_${uid}`;
       localStorage.setItem(ck,String(parseInt(localStorage.getItem(ck)||'0')+1));
