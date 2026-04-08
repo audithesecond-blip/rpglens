@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjMGUwZjBmIi8+CiAgPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjkiLz4KICA8cmVjdCB4PSIxNyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjMmEyZDJlIi8+CiAgPHJlY3QgeD0iMyIgeT0iMTciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSIgZmlsbD0iIzJhMmQyZSIvPgogIDxyZWN0IHg9IjE3IiB5PSIxNyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjQiLz4KICA8bGluZSB4MT0iMCIgeTE9IjE2IiB4Mj0iMzIiIHkyPSIxNiIgc3Ryb2tlPSIjZThhMDIwIiBzdHJva2Utd2lkdGg9IjAuNSIgb3BhY2l0eT0iMC40Ii8+CiAgPGxpbmUgeDE9IjE2IiB5MT0iMCIgeDI9IjE2IiB5Mj0iMzIiIHN0cm9rZT0iI2U4YTAyMCIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuNCIvPgo8L3N2Zz4="/>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>RPGLens — Analyser</title>
+<title>RPGLens | Analyser</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
@@ -544,7 +545,7 @@ async function initSession(){
       const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
       dot.style.background='var(--green)';txt.textContent='SIGNED IN';pill.style.display='flex';
       document.getElementById('user-av').textContent=initials;document.getElementById('user-name').textContent=name.split(' ')[0];
-      if(['team','admin'].includes(user.user_metadata?.plan||'free')){const b=document.getElementById('ibmi-btn');if(b)b.style.display='inline-block';}
+      if(['pro','admin'].includes(user.user_metadata?.plan||'free')){const b=document.getElementById('ibmi-btn');if(b)b.style.display='inline-block';}
     }else{dot.style.background='var(--amber)';txt.textContent='NOT SIGNED IN';}
   }catch(e){document.getElementById('api-status-text').textContent='SESSION ERROR';}
 }
@@ -749,6 +750,7 @@ function exportPDF(){
 
   // Title = suggested filename in Chrome's Save as PDF dialog
   win.document.write(`<!DOCTYPE html><html><head>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjMGUwZjBmIi8+CiAgPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjkiLz4KICA8cmVjdCB4PSIxNyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjMmEyZDJlIi8+CiAgPHJlY3QgeD0iMyIgeT0iMTciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSIgZmlsbD0iIzJhMmQyZSIvPgogIDxyZWN0IHg9IjE3IiB5PSIxNyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjQiLz4KICA8bGluZSB4MT0iMCIgeTE9IjE2IiB4Mj0iMzIiIHkyPSIxNiIgc3Ryb2tlPSIjZThhMDIwIiBzdHJva2Utd2lkdGg9IjAuNSIgb3BhY2l0eT0iMC40Ii8+CiAgPGxpbmUgeDE9IjE2IiB5MT0iMCIgeDI9IjE2IiB5Mj0iMzIiIHN0cm9rZT0iI2U4YTAyMCIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuNCIvPgo8L3N2Zz4="/>
 <meta charset="UTF-8">
 <title>${safeFilename}</title>
 <style>

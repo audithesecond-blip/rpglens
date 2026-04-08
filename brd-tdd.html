@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjMGUwZjBmIi8+CiAgPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjkiLz4KICA8cmVjdCB4PSIxNyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjMmEyZDJlIi8+CiAgPHJlY3QgeD0iMyIgeT0iMTciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSIgZmlsbD0iIzJhMmQyZSIvPgogIDxyZWN0IHg9IjE3IiB5PSIxNyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjQiLz4KICA8bGluZSB4MT0iMCIgeTE9IjE2IiB4Mj0iMzIiIHkyPSIxNiIgc3Ryb2tlPSIjZThhMDIwIiBzdHJva2Utd2lkdGg9IjAuNSIgb3BhY2l0eT0iMC40Ii8+CiAgPGxpbmUgeDE9IjE2IiB5MT0iMCIgeDI9IjE2IiB5Mj0iMzIiIHN0cm9rZT0iI2U4YTAyMCIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuNCIvPgo8L3N2Zz4="/>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>RPGLens — BRD to TDD Generator</title>
+<title>RPGLens | BRD to TDD Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
@@ -428,10 +429,10 @@ function showUpgradeMessage(msg, plan){
   document.getElementById('output-body').innerHTML=`
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;padding:48px;text-align:center">
       <div style="font-size:40px;opacity:0.3">&#9889;</div>
-      <div style="font-family:var(--display);font-weight:800;font-size:18px;color:var(--text);letter-spacing:-0.02em">Team Plan Required</div>
+      <div style="font-family:var(--display);font-weight:800;font-size:18px;color:var(--text);letter-spacing:-0.02em">Pro Plan Required</div>
       <div style="font-size:13px;color:var(--text2);max-width:340px;line-height:1.7">${msg} Upgrade to unlock the BRD → TDD Generator, TDD → Code Generator, and IBM i Live Connect.</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-        <a href="/dashboard" style="padding:11px 28px;background:var(--amber);color:var(--bg);text-decoration:none;font-family:var(--display);font-weight:700;font-size:13px;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%)">Upgrade to Team →</a>
+        <a href="/dashboard" style="padding:11px 28px;background:var(--amber);color:var(--bg);text-decoration:none;font-family:var(--display);font-weight:700;font-size:13px;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%)">Upgrade to Pro →</a>
         <a href="/" style="padding:11px 28px;background:transparent;border:1px solid var(--border2);color:var(--text2);text-decoration:none;font-family:var(--display);font-weight:700;font-size:13px">View pricing</a>
       </div>
       <div style="font-size:11px;color:var(--text3);border:1px solid var(--border);padding:8px 16px">
@@ -446,13 +447,13 @@ async function init(){
   if(!data.session){window.location.href='/login';return;}
 
   const plan=data.session.user?.user_metadata?.plan||'free';
-  if(!['team','admin'].includes(plan)){
+  if(!['pro','admin'].includes(plan)){
     // Show upgrade wall immediately — don't let them interact with the page
     document.getElementById('generate-btn').disabled=true;
     document.getElementById('brd-text').disabled=true;
     document.getElementById('project-name').disabled=true;
     showUpgradeMessage(
-      'BRD → TDD Generator is available on the Team plan and above.',
+      'BRD → TDD Generator is available on the Pro plan and above.',
       plan
     );
   }
