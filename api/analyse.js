@@ -159,6 +159,58 @@ ERROR LOG FILE PATTERN (positive): Error logging files deliberately NOT under co
 
 CPF MESSAGES: CPF8356 (ROLLBACK completed) occurring frequently = application errors in production — each deserves investigation.
 
+ERROR LOG FILE PATTERN (positive): Error logging files deliberately NOT under commitment control = intentional good design. Ensures error records are always written even when transaction rolls back. Recognise and note this as positive.
+
+CPF MESSAGES: CPF8356 (ROLLBACK completed) occurring frequently = application errors in production — each deserves investigation.
+
+── LOCAL DATA AREA (LDA) PATTERNS ──
+The LDA is a 1024-byte area associated with every job. Programs access it using IN/OUT with *LDA or DTAARA(*LDA).
+- IN *LDA: reads LDA into a DS — creates a runtime dependency on the job's LDA content
+- OUT *LDA: writes DS back to LDA — modifies data for downstream programs in the same job
+- LDA is a job-level dependency NOT visible in file specifications — always note in dependency analysis
+- If a program reads @LDATSD, @LDAFGP, or any variable from *LDA, the program behaviour depends on how the LDA was populated by the CL caller
+- Flag as INFO: "Program reads from Local Data Area (*LDA) — runtime behaviour depends on LDA content set by CL caller"
+
+── MULTI-MEMBER FILE AND PREFIX PATTERNS ──
+PREFIX on F-spec: same physical file opened twice with different prefixes to access different members.
+Example: IPSAHDR (main) and ATSAHDR (audit member) are the SAME file with PREFIX(AT) on the second declaration.
+- This is NOT two separate files — it is one file opened twice for different members
+- Always check if two files with similar names (one with prefix letters) follow this pattern
+- Dependency note: changes to the underlying PF affect BOTH member accesses simultaneously
+- Flag as INFO: "Multi-member file access via PREFIX — [FileA] and [FileB] share the same underlying physical file"
+
+── COPY BOOK AND INCLUDE DEPENDENCIES ──
+/COPY and /INCLUDE members contain field definitions, prototypes, or constants included at compile time.
+- /COPY MYLIB/QCPYSRC,A@RADS — includes field definitions from copybook A@RADS
+- These are compile-time dependencies — the copybook content is not visible in the main source
+- Always note in dependency analysis: "Copybook [name] included — field definitions, prototypes, or constants in this member affect the program but are not visible in this source"
+- If a field name cannot be found in the D-specs but is used in calculations, it likely comes from a copybook
+
+── OCCURS DATA STRUCTURE RISK ──
+OCCURS(n): multi-occurrence data structure with fixed capacity n.
+- If processing adds more occurrences than n, the program terminates with RNX0100 (array index out of bounds)
+- Historically safe limits may be exceeded as data volumes grow
+- If OCCURS was previously increased (modification history shows capacity change), flag as LOW: "OCCURS fixed at [n] — if transaction volume exceeds this, program will terminate with RNX0100. Consider dynamic array or larger capacity."
+- OCCURS(1000) for a transaction processor that handles varying volumes = potential risk
+
+── CONDITIONAL COMPILATION MARKERS ──
+/IF, /DEFINE, /IFDEF, /IFNDEF, /ELSE, /ENDIF in source = conditional compilation
+Version markers like /16, /17, /18 (or similar numeric markers used as pseudo-version control):
+- These are a form of embedded version history, not true conditional compilation
+- They indicate sections of code added at different times by different developers
+- Flag as LOW technical debt: "Conditional compilation markers used as version control — code contains embedded modification history making it harder to follow active logic flow. Consider removing inactive branches."
+
+── MODERNISATION EFFORT — CRITICAL DISTINCTION ──
+FIXED-TO-FREE FORMAT CONVERSION: syntax change only. Does NOT change program architecture, subroutine structure, or business logic.
+- 2600-line program: 7-15 hours for conversion
+- This is Phase 1 work
+
+FULL ARCHITECTURAL REFACTOR (modular ILE): breaking into service programs, modules, procedures.
+- This is Phase 3 work — weeks, not hours
+- Do NOT conflate these two as the same workload
+- If someone asks for "modernisation", clarify which phase they mean
+- Converting to free-format and then refactoring to service programs are SEPARATE projects with SEPARATE estimates
+
 ── DATA STRUCTURES — RISK AND RECOGNITION PATTERNS ──
 OVERLAY DATA STRUCTURE: Fields sharing the same memory positions via OVERLAY keyword or positional alignment in a DS. If a CLEAR opcode or assignment is made to the base field, ALL overlaid fields are corrupted simultaneously. Flag as MEDIUM if any overlaid field is financial. Flag as HIGH if the base field is CLEAR'd inside a financial transaction loop.
 
@@ -283,24 +335,24 @@ RISK CLASSIFICATION TABLE — include in every Overall Assessment:
 Only include rows where actual findings exist. This table makes the output client-facing and presentation-ready.`;
 
 // ── PLAN LIMITS ───────────────────────────────────────────────────────
-const ANALYSIS_LIMITS        = { free: 3,     starter: 25,     team: 150,    admin: 999999 };
-const CONVERSION_LIMITS      = { free: 1,     starter: 5,      team: 20,     admin: 999999 };
-const CHAR_LIMITS            = { free: 30000, starter: 100000, team: 300000, admin: 999999 };
-const CONVERSION_LINE_LIMITS = { free: 500,   starter: 1000,   team: 2000,   admin: 999999 };
+const ANALYSIS_LIMITS        = { free: 3,     starter: 25,     pro: 150,    admin: 999999 };
+const CONVERSION_LIMITS      = { free: 1,     starter: 5,      pro: 20,     admin: 999999 };
+const CHAR_LIMITS            = { free: 30000, starter: 100000, pro: 300000, admin: 999999 };
+const CONVERSION_LINE_LIMITS = { free: 500,   starter: 1000,   pro: 2000,   admin: 999999 };
 
-const PLAN_NAMES = { free: "Free", starter: "Starter", team: "Team", admin: "Admin" };
+const PLAN_NAMES = { free: "Free", starter: "Starter", pro: "Pro", admin: "Admin" };
 
 const CONV_UPGRADE_HINTS = {
   free:    "Upgrade to Starter (₹2,999/mo) for 5 conversions/month up to 1,000 lines.",
   starter: "Upgrade to Team (₹9,999/mo) for 20 conversions/month up to 2,000 lines.",
-  team:    "Contact us for Enterprise with unlimited conversions.",
+  pro:     "Contact us for Enterprise with unlimited conversions.",
   admin:   ""
 };
 
 const ANALYSIS_UPGRADE_HINTS = {
   free:    "Upgrade to Starter (₹2,999/mo) to analyse programs up to 100,000 characters.",
   starter: "Upgrade to Team (₹9,999/mo) for 150 analyses/month.",
-  team:    "Contact us for Enterprise.",
+  pro:     "Contact us for Enterprise.",
   admin:   ""
 };
 
@@ -359,7 +411,7 @@ export default async function handler(req, res) {
         return res.status(413).json({
           error:     `Program too large for conversion on your ${PLAN_NAMES[plan]} plan. Your program has ${lines.toLocaleString()} lines. ${PLAN_NAMES[plan]} supports up to ${lineLimit.toLocaleString()} lines.`,
           hint:      CONV_UPGRADE_HINTS[plan],
-          upgrade:   plan !== "team",
+          upgrade:   plan !== "pro",
           lineLimit,
           lineCount: lines,
           type:      "line_limit"
@@ -377,7 +429,7 @@ export default async function handler(req, res) {
         return res.status(429).json({
           error:     `Conversion limit reached. You have used ${convCount} of ${convLimit} conversions this period. Resets on ${resetLabel}.`,
           hint:      CONV_UPGRADE_HINTS[plan],
-          upgrade:   plan !== "team",
+          upgrade:   plan !== "pro",
           resetDate: periodEnd.toISOString(),
           type:      "conversion_limit"
         });
@@ -393,7 +445,7 @@ export default async function handler(req, res) {
         return res.status(413).json({
           error:   `Program too large for your ${PLAN_NAMES[plan]} plan (~${kb}KB). ${PLAN_NAMES[plan]} supports up to ${Math.round(charLimit/1000)}KB.`,
           hint:    ANALYSIS_UPGRADE_HINTS[plan],
-          upgrade: plan !== "team",
+          upgrade: plan !== "pro",
           charLimit,
           programLength
         });
@@ -410,7 +462,7 @@ export default async function handler(req, res) {
         return res.status(429).json({
           error:     `Monthly limit reached. You have used ${usageCount} of ${analysisLimit} analyses this period. Resets on ${resetLabel}.`,
           hint:      ANALYSIS_UPGRADE_HINTS[plan],
-          upgrade:   plan !== "team",
+          upgrade:   plan !== "pro",
           resetDate: periodEnd.toISOString(),
           type:      "analysis_limit"
         });
