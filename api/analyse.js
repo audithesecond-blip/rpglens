@@ -471,7 +471,16 @@ export default async function handler(req, res) {
 
     // ── 5. CALL CLAUDE API ────────────────────────────────────────────
     const client    = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const maxTokens = isConversion ? 16000 : 1500;
+    // Token limits per analysis type — explain and docs need high limits for large programs
+    const TOKEN_LIMITS = {
+      conversion: 16000,
+      explain:    8000,   // Large programs need full walkthrough
+      docs:       6000,   // Full file tables, DS tables, subroutine tables
+      risk:       4000,   // Structured findings
+      modern:     4000,   // Phased roadmap
+      depend:     4000,   // Dependency tables + diagram
+    };
+    const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (TOKEN_LIMITS[analysisType] || 4000);
 
     // Use system prompt for risk analysis to keep browser payload small
     const isRiskAnalysis = analysisType === "risk";
@@ -482,7 +491,7 @@ export default async function handler(req, res) {
     };
     if (isRiskAnalysis) {
       messageParams.system = RISK_SYSTEM_PROMPT;
-      messageParams.max_tokens = 4000;
+      messageParams.max_tokens = TOKEN_LIMITS.risk;
     }
     const message = await client.messages.create(messageParams);
 
