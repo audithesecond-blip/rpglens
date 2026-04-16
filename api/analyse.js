@@ -472,6 +472,8 @@ export default async function handler(req, res) {
 
 
 
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
     // ── COMBINED ANALYSIS ─────────────────────────────────────────────
     if (analysisType === 'combined') {
       const selectedTabs = req.body.selectedTabs || ['explain','docs','risk','modern','depend'];
@@ -513,7 +515,6 @@ export default async function handler(req, res) {
     // ── END COMBINED ──────────────────────────────────────────────────
 
     // ── 5. CALL CLAUDE API ────────────────────────────────────────────
-    const client    = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     // Token limits per analysis type — explain and docs need high limits for large programs
     const TOKEN_LIMITS = {
       conversion: 16000,
