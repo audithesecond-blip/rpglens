@@ -484,11 +484,11 @@ export default async function handler(req, res) {
     const codeLen = codeLength || prompt.length;
     const isLargeProgram = codeLen > 50000; // >50K chars = ~2500+ lines
     const LARGE_LIMITS = {
-      explain: 5000,
-      docs:    4000,
+      explain: 7000,
+      docs:    5000,
       risk:    4000,
-      modern:  3000,
-      depend:  3000,
+      modern:  4000,
+      depend:  3500,
     };
     const activeLimits = isLargeProgram ? LARGE_LIMITS : TOKEN_LIMITS;
     const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (activeLimits[analysisType] || 4000);
