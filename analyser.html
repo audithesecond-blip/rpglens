@@ -665,34 +665,41 @@ async function runAnalysis(){
   const selectedTabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
   try{
     if(selectedTabs.length===0){return;}
-    const controller=new AbortController();
-    const timeoutId=setTimeout(()=>controller.abort(),270000);
-    let resp;
-    try{
-      resp=await fetch('/api/analyse',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
-        body:JSON.stringify({prompt:code,analysisType:'combined',selectedTabs,codeLength:code.length}),
-        signal:controller.signal
-      });
-    }finally{clearTimeout(timeoutId);}
-    const data=await resp.json();
+    const resp=await fetch('/api/analyse',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
+      body:JSON.stringify({prompt:code,analysisType:'combined',selectedTabs,codeLength:code.length})
+    });
     if(!resp.ok){
+      const data=await resp.json().catch(()=>({error:'Server error'}));
       if(resp.status===429){selectedTabs.forEach(tab=>setTabError(tab,new Error(data.error||'RATE_LIMITED')));return;}
       if(resp.status===401){window.location.href='/login';return;}
       selectedTabs.forEach(tab=>setTabError(tab,new Error(data.error||`Server error ${resp.status}`)));
       return;
     }
-    if(data.combined&&data.sections){
-      console.log('Combined sections received:',Object.keys(data.sections));
-      console.log('Section sizes:',Object.fromEntries(Object.entries(data.sections).map(([k,v])=>[k,v?.length||0])));
-      const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
-      for(const [tab,result] of Object.entries(data.sections)){
-        if(result&&renders[tab]){state.results[tab]=result;renders[tab](result);setTabDone(tab);}
+    // Handle streaming response
+    const reader=resp.body.getReader();
+    const decoder=new TextDecoder();
+    let buffer='';
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buffer+=decoder.decode(value,{stream:true});
+      const lines=buffer.split('\n');
+      buffer=lines.pop()||'';
+      for(const line of lines){
+        if(!line.startsWith('data: '))continue;
+        try{
+          const msg=JSON.parse(line.slice(6));
+          if(msg.done&&msg.sections){
+            const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
+            for(const[tab,result] of Object.entries(msg.sections)){
+              if(result&&renders[tab]){state.results[tab]=result;renders[tab](result);setTabDone(tab);}
+            }
+            selectedTabs.forEach(tab=>{if(!msg.sections[tab])setTabError(tab,new Error('No result for this tab'));});
+          }
+        }catch(e){}
       }
-      selectedTabs.forEach(tab=>{if(!data.sections||!data.sections[tab])setTabError(tab,new Error('No result returned for this tab'));});
-    } else {
-      console.log('Response data:', JSON.stringify(data).slice(0,500));
     }
   }catch(err){
     if(err.name==='AbortError'){selectedTabs.forEach(tab=>setTabError(tab,new Error('Analysis timed out. Try a smaller program or fewer tabs.')));}
