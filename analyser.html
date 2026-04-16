@@ -667,10 +667,12 @@ async function runAnalysis(){
   const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
   async function runTab(tab){
     try{
+      // Use tab-specific prompt, not raw code
+      const tabPrompt=PROMPTS[tab]?PROMPTS[tab](code):code;
       const resp=await fetch('/api/analyse',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
-        body:JSON.stringify({prompt:code,analysisType:tab,codeLength:code.length})
+        body:JSON.stringify({prompt:tabPrompt,analysisType:tab,codeLength:code.length})
       });
       const data=await resp.json();
       if(!resp.ok)throw new Error(data.error||`Error ${resp.status}`);
@@ -678,7 +680,11 @@ async function runAnalysis(){
     }catch(err){setTabError(tab,err);}
   }
   try{
-    for(const tab of selectedTabs){await runTab(tab);}
+    for(const tab of selectedTabs){
+      await runTab(tab);
+      // Small delay between calls to avoid rate limiting
+      if(selectedTabs.indexOf(tab)<selectedTabs.length-1)await new Promise(r=>setTimeout(r,1000));
+    }
     }finally{
     state.loading=false;
     if(window._progressTimer){clearInterval(window._progressTimer);window._progressTimer=null;}
