@@ -679,9 +679,40 @@ async function runAnalysis(){
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
       body:JSON.stringify({prompt:tabPrompt,analysisType:tab,codeLength:code.length})
     });
-    const data=await resp.json();
-    if(!resp.ok)throw new Error(data.error||`Error ${resp.status}`);
-    if(data.result&&renders[tab]){state.results[tab]=data.result;renders[tab](data.result);setTabDone(tab);}
+    if(!resp.ok){
+      // Error responses are JSON
+      const data=await resp.json().catch(()=>({error:`Server error ${resp.status}`}));
+      throw new Error(data.error||`Server error ${resp.status}`);
+    }
+    // Stream text response — render as tokens arrive
+    const reader=resp.body.getReader();
+    const decoder=new TextDecoder();
+    let fullText='';
+    // Show streaming indicator in tab
+    const container=document.getElementById(`content-${tab}`);
+    const emptyEl=document.getElementById(`empty-${tab}`);
+    if(emptyEl)emptyEl.style.display='none';
+    // Create live streaming element
+    let streamEl=document.getElementById(`stream-${tab}`);
+    if(!streamEl){
+      streamEl=document.createElement('div');
+      streamEl.id=`stream-${tab}`;
+      streamEl.style.cssText='padding:12px 16px;font-size:12px;color:var(--text2);line-height:1.7;white-space:pre-wrap;font-family:var(--mono)';
+      container.appendChild(streamEl);
+    }
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      const chunk=decoder.decode(value,{stream:true});
+      fullText+=chunk;
+      // Show last 500 chars of streaming text as preview
+      streamEl.textContent=fullText.slice(-500)+'...';
+    }
+    // Remove streaming element and render properly
+    if(streamEl)streamEl.remove();
+    state.results[tab]=fullText;
+    if(renders[tab])renders[tab](fullText);
+    setTabDone(tab);
   }
   try{
     for(const tab of selectedTabs){
