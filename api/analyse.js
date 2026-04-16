@@ -474,43 +474,55 @@ export default async function handler(req, res) {
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    // ── COMBINED ANALYSIS ─────────────────────────────────────────────
+    // ── COMBINED ANALYSIS — STREAMING ───────────────────────────────
     if (analysisType === 'combined') {
       const selectedTabs = req.body.selectedTabs || ['explain','docs','risk','modern','depend'];
 
       const sectionInstructions = {
-        explain: '=== EXPLAIN ===\nProvide a COMPREHENSIVE plain-English explanation. Program Overview (3-4 sentences). Purpose & Business Logic (what business problem does this solve). Input & Output (every file with access mode and key fields). Key Logic Walkthrough — cover EVERY subroutine individually with 3-5 sentences each, group by functional role, identify paired subroutines (Forward/Reverse, Create_xx/Create_xxR). Business Rules Identified — enumerate EVERY hardcoded value with its business meaning, use decision tables for multi-path logic (e.g. RTN+QTY combinations), flag ghost business rules where values are referenced but not processed. Notable Patterns & Concerns (commitment control gaps, lock issues, LDA dependency, OCCURS capacity, conditional compilation markers).',
-        docs: '=== DOCS ===\nGenerate COMPLETE structured technical documentation. Program Metadata (name, language, format, activation group model, lines, execution context). Executive Summary (3-4 sentences for manager/auditor). Input Files table (Name|Usage|Key Fields|Description). Output Files table (Name|Update Type|Description). Copybooks & Includes (list every /COPY and /INCLUDE member). Data Structures & Key Fields (every DS with OCCURS capacity and purpose, key standalone S-spec variables). Subroutines & Procedures table (Name|Purpose|Called From|Returns). Error Handling (MONITOR/ON-ERROR, *PSSR, INFSR, (E) extenders, ROLLBACK presence). Transaction & Lock Behaviour (COMMIT keyword on files, WAITRCD, UPDATE after EXFMT). Integration & API Readiness. Performance Characteristics. Change History Notes.',
-        risk: '=== RISK ===\nIBM i expert risk analysis using full knowledge: fail-fast vs silent corruption, WAITRCD framing, commitment control (journaling ≠ transactional protection), PCI/crypto patterns, lock management (deadlock, forgotten lock, cascade), activation group patterns, CL MONMSG patterns, OCCURS overflow, LDA dependency, SQL injection, hardcoded credentials, row-level triggers. Risk Summary. Risk Findings each as ### SEVERITY — TITLE with Location/Description/Impact/Recommendation. Overall Assessment (EXCELLENT/GOOD/FAIR/POOR) with Risk Classification Table.',
-        modern: '=== MODERN ===\nModernisation roadmap with calibrated IBM i effort estimates. Modernisation Overview (current state, patterns, readiness). Phase 1 Quick Wins — each item: What (specific field/subroutine from code)/How (concrete steps)/Effort (from calibration table)/Benefit. Phase 2 Structural Improvements. Phase 3 Modernisation (REST API exposure, full free-format, SQL). What to Keep. Estimated Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y hrs/days). NEVER confuse fixed-to-free conversion (hours) with full architectural refactor (days/weeks).',
-        depend: '=== DEPEND ===\nExtract ALL dependencies. Program Summary. Files & Database Objects table (Name|Type|Access|Key Fields|Purpose). Called Programs table (Program|Call Type|Parameters|Purpose). Data Areas (IN/OUT *LDA, DTAARA). Subroutines & Procedures table (Name|Type|Called By|Calls|Purpose). Entry Parameters (every *ENTRY PLIST/DCL-PARM). Transaction & Lock Dependencies. Copybook dependencies (/COPY, /INCLUDE). OCCURS capacity risks. Impact Analysis Summary (5 sentences including lock/transaction impact). Program Flow Diagram in Mermaid flowchart (max 25 nodes).'
+        explain: 'Provide a comprehensive plain-English explanation: Program Overview, Purpose & Business Logic, Input & Output (every file), Key Logic Walkthrough (every subroutine individually), Business Rules (enumerate every hardcoded value with decision tables), Notable Patterns & Concerns.',
+        docs: 'Generate complete technical documentation: Program Metadata, Executive Summary, Input Files table, Output Files table, Copybooks, Data Structures (OCCURS capacity and purpose), Subroutines table, Error Handling, Transaction & Lock Behaviour, Change History.',
+        risk: 'IBM i risk analysis (fail-fast vs silent corruption, WAITRCD, commitment control, PCI, lock management, activation groups): Risk Summary, Risk Findings (### SEVERITY — TITLE), Overall Assessment (EXCELLENT/GOOD/FAIR/POOR).',
+        modern: 'Modernisation roadmap: Overview, Phase 1 Quick Wins (What/How/Effort/Benefit with calibrated estimates), Phase 2 Structural, Phase 3 Modernisation, What to Keep, Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y days).',
+        depend: 'Extract all dependencies: Program Summary, Files table, Called Programs, Data Areas, Subroutines table, Entry Parameters, Transaction & Lock Dependencies, Impact Summary, Mermaid diagram.'
       };
 
-      const parts = selectedTabs.filter(t => sectionInstructions[t]).map(t => sectionInstructions[t]);
-      const sectionsText = parts.join('\n\n');
+      const parts = selectedTabs.filter(t => sectionInstructions[t]).map(t => `=== ${t.toUpperCase()} ===\n${sectionInstructions[t]}`);
+      const combinedPrompt = 'Analyse this IBM i RPG program and produce all sections below. Be specific — name actual fields, files, subroutines, values. Cover every subroutine individually.\n\n' + parts.join('\n\n') + '\n\nRPG Source Code:\n```\n' + prompt + '\n```';
 
-      const combinedPrompt = 'Analyse this IBM i RPG program and produce all requested sections below. Be specific - name actual fields, files, subroutines, and values from the code. For large programs cover every subroutine individually.\n\n' + sectionsText + '\n\nRPG Source Code:\n```\n' + prompt + '\n```';
+      // Use streaming to avoid timeout
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
 
-      const combinedMessage = await client.messages.create({
+      const stream = await client.messages.stream({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 12000,
         system: RISK_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: combinedPrompt }]
       });
 
-      const combinedResult = combinedMessage.content.map(b => b.type === 'text' ? b.text : '').join('');
-
-      // Parse sections
-      const sections = {};
-      const markers = { explain: 'EXPLAIN', docs: 'DOCS', risk: 'RISK', modern: 'MODERN', depend: 'DEPEND' };
-      const allMarkers = Object.values(markers).join('|');
-      for (const [key, marker] of Object.entries(markers)) {
-        const re = new RegExp('=== ' + marker + ' ===\\n([\\s\\S]*?)(?==== (?:' + allMarkers + ') ===|$)');
-        const match = combinedResult.match(re);
-        if (match) sections[key] = match[1].trim();
+      let fullText = '';
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
+          fullText += chunk.delta.text;
+          res.write(`data: ${JSON.stringify({ chunk: chunk.delta.text })}\n\n`);
+        }
       }
 
-      return res.status(200).json({ combined: true, sections });
+      // Parse and send final sections
+      const sections = {};
+      const tabNames = ['EXPLAIN','DOCS','RISK','MODERN','DEPEND'];
+      const allPattern = tabNames.join('|');
+      for (const tab of selectedTabs) {
+        const marker = tab.toUpperCase();
+        const re = new RegExp('=== ' + marker + ' ===\n([\s\S]*?)(?==== (?:' + allPattern + ') ===|$)');
+        const match = fullText.match(re);
+        if (match) sections[tab] = match[1].trim();
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true, sections })}\n\n`);
+      res.end();
+      return;
     }
     // ── END COMBINED ──────────────────────────────────────────────────
 
