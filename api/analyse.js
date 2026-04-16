@@ -511,10 +511,24 @@ export default async function handler(req, res) {
       messageParams.system = RISK_SYSTEM_PROMPT;
       messageParams.max_tokens = TOKEN_LIMITS.risk;
     }
-    const message = await client.messages.create(messageParams);
+    // Stream response back to client as tokens arrive
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("X-Accel-Buffering", "no");
 
-    const result     = message.content.map(b => b.type === "text" ? b.text : "").join("");
-    const stopReason = message.stop_reason;
+    let result = "";
+    const stream = await client.messages.stream(messageParams);
+
+    for await (const chunk of stream) {
+      if (chunk.type === "content_block_delta" && chunk.delta?.type === "text_delta") {
+        const text = chunk.delta.text;
+        result += text;
+        res.write(text);
+      }
+    }
+
+    const finalMessage = await stream.finalMessage();
+    const stopReason = finalMessage.stop_reason;
 
     // ── 6. INCREMENT USAGE ────────────────────────────────────────────
     if (plan !== "admin") {
