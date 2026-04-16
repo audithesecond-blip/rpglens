@@ -470,59 +470,41 @@ export default async function handler(req, res) {
     }
 
 
+
+
     // ── COMBINED ANALYSIS ─────────────────────────────────────────────
-    // One API call, code sent once, all 5 tabs returned together
     if (analysisType === 'combined') {
       const selectedTabs = req.body.selectedTabs || ['explain','docs','risk','modern','depend'];
-      
-      const sectionPrompts = {
-        explain: `## EXPLAIN
-Provide a detailed plain-English explanation of this program. Cover: Program Overview, Purpose & Business Logic, Input & Output, Key Logic Walkthrough (every subroutine individually), Business Rules Identified (enumerate every hardcoded value), Notable Patterns & Concerns.`,
-        docs: `## DOCS
-Generate structured technical documentation. Cover: Program Metadata (name/language/format/activation group/lines/purpose), Executive Summary, Input Files (table: Name|Usage|Key Fields|Description), Output Files (table: Name|Update Type|Description), Copybooks & Includes, Data Structures & Key Fields (include OCCURS capacity and purpose), Subroutines & Procedures (table: Name|Purpose|Called From|Returns), Error Handling, Transaction & Lock Behaviour, Performance Characteristics, Change History Notes.`,
-        risk: `## RISK
-Analyse for risks and code quality. Cover: Risk Summary, Risk Findings (each as ### SEVERITY — TITLE with Location/Description/Impact/Recommendation), Overall Assessment with rating (EXCELLENT/GOOD/FAIR/POOR) and Risk Classification Table.`,
-        modern: `## MODERN
-Produce a modernisation roadmap. Cover: Modernisation Overview, Quick Wins Phase 1 (each item: What/How/Effort/Benefit), Structural Improvements Phase 2, Modernisation Phase 3, What to Keep, Estimated Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y hrs/days).`,
-        depend: `## DEPEND
-Extract every dependency. Cover: Program Summary, Files & Database Objects (table), Called Programs (table), Data Areas, Subroutines & Procedures (table), Entry Parameters, Transaction & Lock Dependencies, Impact Analysis Summary, Program Flow Diagram (Mermaid flowchart max 25 nodes).`
+
+      const sectionInstructions = {
+        explain: '=== EXPLAIN ===\nProvide a detailed plain-English explanation covering: Program Overview (3-4 sentences), Purpose & Business Logic, Input & Output (every file with access mode), Key Logic Walkthrough (every subroutine individually named and described - no grouping multiple into one sentence), Business Rules Identified (enumerate every hardcoded value with its meaning, use decision tables for multi-path logic), Notable Patterns & Concerns.',
+        docs: '=== DOCS ===\nGenerate structured technical documentation covering: Program Metadata (name/language/format/activation group/lines/execution context), Executive Summary, Input Files (table: Name|Usage|Key Fields|Description), Output Files (table: Name|Update Type|Description), Copybooks & Includes, Data Structures & Key Fields (include OCCURS capacity and purpose for each DS), Subroutines & Procedures (table: Name|Purpose|Called From|Returns), Error Handling, Transaction & Lock Behaviour, Performance Characteristics, Change History Notes.',
+        risk: '=== RISK ===\nAnalyse for risks and code quality. Use IBM i expertise: fail-fast vs silent corruption distinction, WAITRCD framing, commitment control gaps, PCI patterns, activation group patterns, lock management. Cover: Risk Summary, Risk Findings (each as ### SEVERITY — TITLE), Overall Assessment with EXCELLENT/GOOD/FAIR/POOR rating.',
+        modern: '=== MODERN ===\nProduce a modernisation roadmap covering: Modernisation Overview (current state in 3 sentences), Quick Wins Phase 1 (each item: What/How/Effort/Benefit with calibrated estimates), Structural Improvements Phase 2, Modernisation Phase 3, What to Keep, Estimated Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y hrs/days).',
+        depend: '=== DEPEND ===\nExtract every dependency covering: Program Summary, Files & Database Objects (table), Called Programs (table), Data Areas, Subroutines & Procedures (table), Entry Parameters, Transaction & Lock Dependencies, Impact Analysis Summary, Program Flow Diagram in Mermaid (max 25 nodes).'
       };
-      
-      const selectedPrompts = selectedTabs
-        .filter(t => sectionPrompts[t])
-        .map(t => sectionPrompts[t])
-        .join('
 
-');
+      const parts = selectedTabs.filter(t => sectionInstructions[t]).map(t => sectionInstructions[t]);
+      const sectionsText = parts.join('\n\n');
 
-      const combinedPrompt = `You are a senior IBM i / AS400 expert with 25+ years of hands-on RPG experience. Analyse the following RPG source code and produce ALL requested sections. Use the exact section headers shown. Be specific — name actual field names, file names, subroutine names, and values from the code.
+      const combinedPrompt = 'Analyse this IBM i RPG program and produce all requested sections below. Be specific - name actual fields, files, subroutines, and values from the code. For large programs cover every subroutine individually.\n\n' + sectionsText + '\n\nRPG Source Code:\n```\n' + prompt + '\n```';
 
-${selectedPrompts}
-
-Produce each section completely. For large programs do NOT summarise — cover every subroutine individually. For business rules enumerate every hardcoded value. For risk use the IBM i semantic knowledge: fail-fast vs silent corruption, WAITRCD framing, commitment control gaps, PCI patterns, activation group patterns.
-
-RPG Source Code:
-\`\`\`
-${prompt}
-\`\`\``;
-
-      const combinedParams = {
+      const combinedMessage = await client.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 12000,
         system: RISK_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: combinedPrompt }]
-      };
+      });
 
-      const combinedMessage = await client.messages.create(combinedParams);
       const combinedResult = combinedMessage.content.map(b => b.type === 'text' ? b.text : '').join('');
 
-      // Parse sections from combined result
+      // Parse sections
       const sections = {};
-      const sectionMap = { EXPLAIN: 'explain', DOCS: 'docs', RISK: 'risk', MODERN: 'modern', DEPEND: 'depend' };
-      
-      for (const [marker, key] of Object.entries(sectionMap)) {
-        const regex = new RegExp(`## ${marker}\n([\s\S]*?)(?=## (?:EXPLAIN|DOCS|RISK|MODERN|DEPEND)|$)`, 'i');
-        const match = combinedResult.match(regex);
+      const markers = { explain: 'EXPLAIN', docs: 'DOCS', risk: 'RISK', modern: 'MODERN', depend: 'DEPEND' };
+      const allMarkers = Object.values(markers).join('|');
+      for (const [key, marker] of Object.entries(markers)) {
+        const re = new RegExp('=== ' + marker + ' ===\\n([\\s\\S]*?)(?==== (?:' + allMarkers + ') ===|$)');
+        const match = combinedResult.match(re);
         if (match) sections[key] = match[1].trim();
       }
 
