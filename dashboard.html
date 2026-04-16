@@ -24,8 +24,6 @@
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;display:flex;flex-direction:column}
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
-
-/* TOPBAR */
 .topbar{display:flex;align-items:center;height:52px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 24px;gap:16px}
 .topbar-logo{display:flex;align-items:center;gap:9px;text-decoration:none;padding-right:20px;border-right:1px solid var(--border)}
 .logo-mark svg{width:24px;height:24px}
@@ -39,6 +37,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .plan-badge.starter{background:rgba(232,160,32,0.1);border-color:var(--amber-dim);color:var(--amber)}
 .btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:1px solid transparent;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block;white-space:nowrap;border-radius:2px}
 .btn-sm:hover{opacity:0.88}
+.btn-ghost{font-family:var(--mono);font-size:11px;padding:5px 12px;background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all 0.2s}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
 .dropdown{position:relative;display:inline-block}
 .dropdown-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);min-width:190px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
 .dropdown.open .dropdown-menu{display:block}
@@ -46,33 +46,25 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .dropdown-item:last-child{border-bottom:none}
 .dropdown-item:hover{background:var(--bg3);color:var(--text)}
 .dropdown-item-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0}
-
-
-/* MAIN */
 .main{flex:1;overflow-y:auto;padding:32px 32px}
 .page-title{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-0.02em;margin-bottom:4px}
 .page-sub{font-size:12px;color:var(--text2);margin-bottom:32px}
-
-/* METRICS */
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
 .metric-card{background:var(--bg2);border:1px solid var(--border);padding:16px 20px}
 .metric-val{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-0.03em;line-height:1;margin-bottom:6px}
 .metric-val.amber{color:var(--amber)}
 .metric-val.green{color:var(--green)}
+.metric-val.red{color:var(--red)}
 .metric-label{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3)}
-
-/* USAGE BAR */
-.usage-section{background:var(--bg2);border:1px solid var(--border);padding:20px 24px;margin-bottom:28px}
+.usage-section{background:var(--bg2);border:1px solid var(--border);padding:20px 24px;margin-bottom:16px}
 .usage-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .usage-title{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
 .usage-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--amber)}
 .usage-bar-wrap{height:6px;background:var(--bg3);border:1px solid var(--border);margin-bottom:8px}
 .usage-bar-fill{height:100%;transition:width 0.6s ease}
 .usage-counts{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);letter-spacing:0.06em}
-.upgrade-cta{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--amber);text-decoration:none;letter-spacing:0.06em;border:1px solid var(--amber-dim);padding:4px 12px;transition:all 0.2s}
+.upgrade-cta{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--amber);text-decoration:none;letter-spacing:0.06em;border:1px solid var(--amber-dim);padding:4px 12px;transition:all 0.2s;background:transparent;cursor:pointer;font-family:var(--mono)}
 .upgrade-cta:hover{background:rgba(232,160,32,0.06)}
-
-/* QUICK ACTIONS */
 .actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
 .action-card{background:var(--bg2);border:1px solid var(--border);padding:20px;cursor:pointer;transition:all 0.2s;text-decoration:none;display:block;position:relative;overflow:hidden}
 .action-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--amber);transform:scaleX(0);transform-origin:left;transition:transform 0.3s}
@@ -81,8 +73,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .action-icon{font-size:22px;margin-bottom:12px;line-height:1}
 .action-title{font-family:var(--display);font-weight:700;font-size:14px;margin-bottom:6px;color:var(--text)}
 .action-desc{font-size:11px;color:var(--text2);line-height:1.6}
-
-/* RECENT */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .section-title{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
 .section-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--amber)}
@@ -102,7 +92,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .htag.explain{border-color:rgba(91,155,213,0.3);color:var(--blue)}
 .htag.risk{border-color:rgba(232,80,80,0.3);color:var(--red)}
 .htag.modern{border-color:rgba(46,194,126,0.3);color:var(--green)}
-
+.topup-option:hover{border-color:var(--amber)!important}
+.topup-option.selected{border-color:var(--amber)!important;background:rgba(232,160,32,0.06)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .fade-in{animation:fadeIn 0.4s ease both}
 </style>
@@ -149,28 +140,28 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 <div class="main">
   <div class="page-title fade-in" id="greeting">Good morning</div>
-  <div class="page-sub fade-in">Here's your RPGLens activity this month.</div>
+  <div class="page-sub fade-in">Here's your RPGLens Units balance and activity.</div>
 
-  <!-- METRICS -->
+  <!-- RLU METRICS -->
   <div class="metrics fade-in">
     <div class="metric-card">
-      <div class="metric-val amber" id="m-used">—</div>
-      <div class="metric-label">Analyses used</div>
+      <div class="metric-val amber" id="m-rlu-total">—</div>
+      <div class="metric-label">RLUs remaining</div>
     </div>
     <div class="metric-card">
-      <div class="metric-val" id="m-remaining">—</div>
-      <div class="metric-label">Analyses left</div>
+      <div class="metric-val" id="m-rlu-monthly">—</div>
+      <div class="metric-label">Monthly RLUs</div>
     </div>
     <div class="metric-card">
-      <div class="metric-val amber" id="m-conv-used">—</div>
-      <div class="metric-label">Conversions used</div>
+      <div class="metric-val" id="m-rlu-rollover" style="color:var(--text2)">—</div>
+      <div class="metric-label">Rollover RLUs</div>
     </div>
     <div class="metric-card">
-      <div class="metric-val" id="m-conv-remaining">—</div>
-      <div class="metric-label">Conversions left</div>
+      <div class="metric-val" id="m-rlu-topup" style="color:var(--text2)">—</div>
+      <div class="metric-label">Top-up RLUs</div>
     </div>
     <div class="metric-card">
-      <div class="metric-val green" id="m-total">—</div>
+      <div class="metric-val green" id="m-total-analyses">—</div>
       <div class="metric-label">Total analyses ever</div>
     </div>
     <div class="metric-card">
@@ -178,8 +169,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="metric-label">Total conversions ever</div>
     </div>
     <div class="metric-card">
-      <div class="metric-val" id="m-total-brd" style="color:var(--text2)">—</div>
-      <div class="metric-label">Total BRD→TDDs ever</div>
+      <div class="metric-val" id="m-rlu-consumed" style="color:var(--text2)">—</div>
+      <div class="metric-label">Total RLUs consumed</div>
     </div>
     <div class="metric-card">
       <div class="metric-val" id="m-plan">Free</div>
@@ -187,82 +178,98 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
 
-  <!-- USAGE BAR — ANALYSES -->
+  <!-- RLU BALANCE BAR -->
   <div class="usage-section fade-in">
     <div class="usage-header">
-      <div class="usage-title">Analysis usage</div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div class="usage-title">RPGLens Units (RLUs)</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <a href="/analyser" class="upgrade-cta">&#10011; Go to analyser</a>
         <a href="#" class="upgrade-cta" id="upgrade-link">&#8679; Upgrade plan</a>
+        <button class="upgrade-cta" id="topup-btn" onclick="showTopup()" style="background:rgba(232,160,32,0.12);font-weight:700">+ Top up RLUs</button>
       </div>
     </div>
     <div class="usage-bar-wrap">
-      <div class="usage-bar-fill" id="usage-fill" style="width:0%;background:var(--amber)"></div>
+      <div class="usage-bar-fill" id="rlu-fill" style="width:0%;background:var(--amber)"></div>
     </div>
     <div class="usage-counts">
-      <span id="usage-text">0 of 3 analyses used</span>
-      <span id="reset-text">Resets in 30 days</span>
+      <span id="rlu-text">Loading...</span>
+      <span id="rlu-reset-text"></span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap" id="rlu-breakdown-pills"></div>
+  </div>
+
+  <!-- RLU COST GUIDE -->
+  <div class="usage-section fade-in" style="margin-bottom:28px">
+    <div class="usage-header" style="margin-bottom:10px">
+      <div class="usage-title">RLU cost guide</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:11px;color:var(--text2)">
+      <div>
+        <div style="color:var(--amber);font-weight:700;margin-bottom:4px">Analysis (per tab)</div>
+        <div>1 RLU per 100 lines</div>
+        <div style="color:var(--text3);margin-top:2px">e.g. 1,000-line program = 10 RLUs per tab</div>
+      </div>
+      <div>
+        <div style="color:var(--amber);font-weight:700;margin-bottom:4px">Conversion (fixed→free)</div>
+        <div>5 RLUs per 100 lines</div>
+        <div style="color:var(--text3);margin-top:2px">e.g. 1,000-line program = 50 RLUs</div>
+      </div>
+      <div>
+        <div style="color:var(--green);font-weight:700;margin-bottom:4px">Rollover policy</div>
+        <div>50% of unused RLUs roll over on renewal</div>
+        <div style="color:var(--text3);margin-top:2px">Top-up RLUs never expire</div>
+      </div>
     </div>
   </div>
 
-  <!-- USAGE BAR — CONVERSIONS -->
-  <div class="usage-section fade-in">
-    <div class="usage-header">
-      <div class="usage-title">Conversion usage</div>
-      <a href="/converter" class="upgrade-cta">&#8644; Go to converter</a>
-    </div>
-    <div class="usage-bar-wrap">
-      <div class="usage-bar-fill" id="conv-fill" style="width:0%;background:var(--green)"></div>
-    </div>
-    <div class="usage-counts">
-      <span id="conv-text">0 of 1 conversions used</span>
-      <span id="conv-reset-text"></span>
+  <!-- RECENT RLU ACTIVITY -->
+  <div class="section-header">
+    <div class="section-title">Recent activity</div>
+  </div>
+  <div id="rlu-history-container" class="fade-in" style="margin-bottom:28px">
+    <div class="history-empty">
+      <div class="history-empty-title">No activity yet</div>
+      <div class="history-empty-sub">Your RLU usage history will appear here.</div>
     </div>
   </div>
 
-  <!-- UPGRADE SECTION — shown only for free users -->
+  <!-- UPGRADE / MANAGE SECTION -->
   <div id="upgrade-section" style="display:none;margin-bottom:28px">
     <div class="section-header">
       <div class="section-title">Upgrade your plan</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="fade-in">
-      <!-- Starter -->
       <div style="background:var(--bg2);border:1px solid var(--border);padding:20px 24px">
         <div style="font-size:10px;letter-spacing:0.15em;color:var(--text3);margin-bottom:6px">STARTER</div>
-        <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--text);margin-bottom:2px">₹3,999<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">billed monthly · cancel anytime</div>
+        <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--text);margin-bottom:2px">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">₹3,999/mo · cancel anytime</div>
         <div style="font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:18px">
-          — 25 analyses per month<br>
-          — 5 conversions per month<br>
-          — Up to 1,000 lines per conversion<br>
+          — 500 RLUs per month<br>
+          — 50% rollover on renewal<br>
+          — Fixed→free conversions included<br>
           — Word &amp; PDF export<br>
           — Email support
         </div>
-        <button onclick="startUpgrade('starter')" id="btn-starter" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-          Upgrade to Starter
-        </button>
+        <button onclick="startUpgrade('starter')" id="btn-starter" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer">Upgrade to Starter</button>
       </div>
-      <!-- Pro -->
       <div style="background:var(--bg2);border:1px solid var(--amber-dim);padding:20px 24px;position:relative">
         <div style="position:absolute;top:-1px;right:20px;background:var(--amber);color:var(--bg);font-size:10px;font-family:var(--display);font-weight:700;padding:3px 10px;letter-spacing:0.08em">MOST POPULAR</div>
-        <div style="font-size:10px;letter-spacing:0.15em;color:var(--text3);margin-bottom:6px">TEAM</div>
-        <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--text);margin-bottom:2px">₹12,999<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">5 seats · cancel anytime</div>
+        <div style="font-size:10px;letter-spacing:0.15em;color:var(--text3);margin-bottom:6px">PRO</div>
+        <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--text);margin-bottom:2px">$149<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">₹12,999/mo · cancel anytime</div>
         <div style="font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:18px">
-          — 150 analyses per month<br>
-          — 20 conversions per month<br>
-          — Up to 2,000 lines per conversion<br>
+          — 2,000 RLUs per month<br>
+          — 50% rollover on renewal<br>
+          — Fixed→free conversions included<br>
           — Word &amp; PDF export<br>
-          — Priority support
+          — Priority support<br>
+          — Feature requests prioritised
         </div>
-        <button onclick="startUpgrade('pro')" id="btn-team" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-          Upgrade to Pro
-        </button>
+        <button onclick="startUpgrade('pro')" id="btn-pro" style="width:100%;padding:10px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:0.06em;cursor:pointer">Upgrade to Pro</button>
       </div>
     </div>
   </div>
 
-  <!-- MANAGE SUBSCRIPTION — shown for paid users -->
   <div id="manage-section" style="display:none;margin-bottom:28px" class="fade-in">
     <div class="section-header">
       <div class="section-title">Subscription</div>
@@ -272,9 +279,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <div style="font-size:12px;color:var(--text2)" id="sub-status-text">Active subscription</div>
         <div style="font-size:10px;color:var(--text3);margin-top:2px" id="sub-detail-text"></div>
       </div>
-      <button onclick="cancelSubscription()" style="padding:7px 16px;background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
-        Cancel subscription
-      </button>
+      <button onclick="cancelSubscription()" style="padding:7px 16px;background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:11px;cursor:pointer" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">Cancel subscription</button>
     </div>
   </div>
 
@@ -286,23 +291,23 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <a href="/analyser" class="action-card">
       <div class="action-icon">&#10011;</div>
       <div class="action-title">New analysis</div>
-      <div class="action-desc">Paste or upload an RPG program and run a full 4-tab analysis — explanation, documentation, risk, and modernisation.</div>
+      <div class="action-desc">Paste or upload an RPG program and run a full 5-tab analysis — explanation, documentation, risk, modernisation, and dependencies.</div>
     </a>
     <a href="/converter" class="action-card">
       <div class="action-icon">&#8644;</div>
       <div class="action-title">Fixed → Free format converter</div>
       <div class="action-desc">Convert fixed-format RPG III / RPG IV to modern free-format ILE RPG. The fastest path to modernisation.</div>
     </a>
-    <a href="/brd-tdd" class="action-card" id="brd-tdd-card" style="display:none">
+    <div class="action-card" id="brd-tdd-card" style="display:none;opacity:0.55;cursor:default">
       <div class="action-icon" style="color:var(--amber)">&#9889;</div>
-      <div class="action-title">BRD → TDD Generator</div>
-      <div class="action-desc">Upload a Business Requirements Document and get a complete IBM i Technical Design Document — program specs, file layouts, CL flow, and test scenarios.</div>
-    </a>
-    <a href="/tdd-code" class="action-card" id="tdd-code-card" style="display:none">
+      <div class="action-title">BRD → TDD Generator <span style="font-size:9px;background:var(--amber);color:var(--bg);padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">COMING SOON</span></div>
+      <div class="action-desc">Upload a Business Requirements Document and get a complete IBM i Technical Design Document.</div>
+    </div>
+    <div class="action-card" id="tdd-code-card" style="display:none;opacity:0.55;cursor:default">
       <div class="action-icon" style="color:var(--blue)">&#10021;</div>
-      <div class="action-title">TDD → Code Generator</div>
-      <div class="action-desc">Upload a TDD and generate production-ready RPG, CL, and DDS source code skeletons ready to drop into RDi or SEU.</div>
-    </a>
+      <div class="action-title">TDD → Code Generator <span style="font-size:9px;background:var(--blue);color:var(--bg);padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">COMING SOON</span></div>
+      <div class="action-desc">Upload a TDD and generate production-ready RPG, CL, and DDS source code skeletons.</div>
+    </div>
     <a href="/connect" class="action-card" id="ibmi-connect-card" style="display:none;border-color:rgba(46,194,126,0.2);background:rgba(46,194,126,0.03)">
       <div class="action-icon" style="color:var(--green)">&#9906;</div>
       <div class="action-title" style="color:var(--green)">IBM i Live Connect</div>
@@ -314,15 +319,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="section-header">
     <div class="section-title">Recent analyses</div>
   </div>
-  <div id="history-container" class="fade-in">
+  <div id="history-container" class="fade-in" style="margin-bottom:24px">
     <div class="history-empty">
       <div class="history-empty-title">No analyses yet</div>
-      <div class="history-empty-sub">Run your first analysis to see your history here.<br/>Your results are saved locally in your browser.</div>
+      <div class="history-empty-sub">Run your first analysis to see your history here.</div>
     </div>
   </div>
 
   <!-- RECENT CONVERSIONS -->
-  <div class="section-header" style="margin-top:24px">
+  <div class="section-header">
     <div class="section-title">Recent conversions</div>
   </div>
   <div id="conv-history-container" class="fade-in">
@@ -333,323 +338,289 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 </div>
 
+<!-- TOP-UP MODAL -->
+<div id="topup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9998;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border2);padding:28px 32px;max-width:420px;width:90%;position:relative">
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Top up RPGLens Units</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:20px">Purchased RLUs never expire and are used after your monthly allocation.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="topup-option" onclick="selectTopup(this,100,'$10')" style="border:1px solid var(--border);padding:16px;cursor:pointer;text-align:center;transition:all 0.2s">
+        <div style="font-size:22px;font-weight:800;color:var(--amber);font-family:var(--display)">100</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">RLUs</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">$10</div>
+      </div>
+      <div class="topup-option" onclick="selectTopup(this,300,'$25')" style="border:1px solid var(--border);padding:16px;cursor:pointer;text-align:center;transition:all 0.2s">
+        <div style="font-size:22px;font-weight:800;color:var(--amber);font-family:var(--display)">300</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">RLUs</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">$25</div>
+        <div style="font-size:9px;color:var(--green);margin-top:2px">Save 17%</div>
+      </div>
+      <div class="topup-option" onclick="selectTopup(this,700,'$50')" style="border:1px solid var(--border);padding:16px;cursor:pointer;text-align:center;transition:all 0.2s">
+        <div style="font-size:22px;font-weight:800;color:var(--amber);font-family:var(--display)">700</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">RLUs</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">$50</div>
+        <div style="font-size:9px;color:var(--green);margin-top:2px">Save 29%</div>
+      </div>
+      <div class="topup-option" onclick="selectTopup(this,1500,'$100')" style="border:1px solid var(--border);padding:16px;cursor:pointer;text-align:center;transition:all 0.2s">
+        <div style="font-size:22px;font-weight:800;color:var(--amber);font-family:var(--display)">1,500</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">RLUs</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">$100</div>
+        <div style="font-size:9px;color:var(--green);margin-top:2px">Save 33%</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:14px;min-height:16px" id="topup-selected-label"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="document.getElementById('topup-modal').style.display='none'" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:12px;font-family:var(--mono)">Cancel</button>
+      <button id="topup-pay-btn" onclick="processTopup()" disabled style="flex:2;padding:10px;background:var(--amber);border:none;color:var(--bg);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--display);opacity:0.4">Pay &amp; Add RLUs</button>
+    </div>
+    <div style="font-size:9px;color:var(--text3);margin-top:10px;text-align:center">Secure payment · RLUs credited instantly after payment</div>
+  </div>
+</div>
+
 <script>
 const { createClient } = supabase;
-const sb = createClient(
-  window.RPGLENS_CONFIG.SUPABASE_URL,
-  window.RPGLENS_CONFIG.SUPABASE_ANON
-);
+const sb = createClient(window.RPGLENS_CONFIG.SUPABASE_URL, window.RPGLENS_CONFIG.SUPABASE_ANON);
 
-const PLAN_LIMITS      = { free: 3,   starter: 25,  pro: 150,   admin: 999999 };
-const CONV_LIMITS      = { free: 1,   starter: 5,   pro: 20,    admin: 999999 };
-const PLAN_PRICES      = { free: '$0', starter: '$49/mo', pro: '$149/mo', admin: 'Admin' };
-const CONV_LINE_LIMITS = { free: 500, starter: 1000, pro: 2000,  admin: 999999 };
+const PLAN_PRICES = { free:'$0', starter:'$49/mo', pro:'$149/mo', admin:'Admin' };
+const RLU_ALLOC   = { free:50, starter:500, pro:2000, enterprise:999999, admin:999999 };
+
+let _selectedRlu = 0, _selectedPrice = '';
+
+function showTopup(){ document.getElementById('topup-modal').style.display='flex'; }
+
+function selectTopup(el, rlu, price){
+  document.querySelectorAll('.topup-option').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  _selectedRlu=rlu; _selectedPrice=price;
+  document.getElementById('topup-selected-label').textContent=`Selected: ${rlu} RLUs for ${price}`;
+  const btn=document.getElementById('topup-pay-btn');
+  btn.disabled=false; btn.style.opacity='1';
+  btn.textContent=`Pay ${price} & Add ${rlu} RLUs`;
+}
+
+function processTopup(){
+  // Razorpay one-time payment — to be wired in next iteration
+  alert(`Top-up coming soon via Razorpay! You selected ${_selectedRlu} RLUs for ${_selectedPrice}.\n\nFor now, email audithesecond@gmail.com with your selection and we'll credit your account manually.`);
+  document.getElementById('topup-modal').style.display='none';
+}
 
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.href = '/login'; return; }
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session){ window.location.href='/login'; return; }
 
-  const user = session.user;
-  const meta = user.user_metadata || {};
-  const name = meta.full_name || meta.name || user.email.split('@')[0];
-  const plan = meta.plan || 'free';
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const user=session.user, meta=user.user_metadata||{};
+  const name=meta.full_name||meta.name||user.email.split('@')[0];
+  const plan=meta.plan||'free';
+  const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
 
-  // Greeting
-  const hour = new Date().getHours();
-  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  document.getElementById('greeting').textContent = `${greet}, ${name.split(' ')[0]}`;
+  const hour=new Date().getHours();
+  document.getElementById('greeting').textContent=`${hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'}, ${name.split(' ')[0]}`;
+  document.getElementById('user-avatar').textContent=initials;
+  document.getElementById('user-email').textContent=name;
 
-  // User pill
-  document.getElementById('user-avatar').textContent = initials;
-  document.getElementById('user-email').textContent = name;
+  const planBadge=document.getElementById('plan-badge');
+  planBadge.textContent=plan.charAt(0).toUpperCase()+plan.slice(1);
+  if(plan==='starter'||plan==='pro') planBadge.classList.add('starter');
 
-  // Plan badge
-  const planBadge = document.getElementById('plan-badge');
-  planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
-  if (plan === 'starter' || plan === 'pro') planBadge.classList.add('starter');
+  // Rolling period
+  const signupDate=new Date(user.created_at), now=new Date();
+  const daysSince=Math.floor((now-signupDate)/(1000*60*60*24));
+  const periodNumber=Math.floor(daysSince/30);
+  const periodEnd=new Date(signupDate.getTime()+(periodNumber+1)*30*24*60*60*1000);
+  const daysLeft=Math.ceil((periodEnd-now)/(1000*60*60*24));
+  const resetLabel=periodEnd.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const resetStr=`Resets ${resetLabel} (${daysLeft} day${daysLeft!==1?'s':''} left)`;
 
-  // ── Rolling 30-day period ─────────────────────────────────────────
-  const signupDate   = new Date(user.created_at);
-  const now          = new Date();
-  const daysSince    = Math.floor((now - signupDate) / (1000 * 60 * 60 * 24));
-  const periodNumber = Math.floor(daysSince / 30);
-  const periodStart  = new Date(signupDate.getTime() + periodNumber * 30 * 24 * 60 * 60 * 1000);
-  const periodEnd    = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const periodKey    = `period_${periodNumber}`;
-  const daysLeft     = Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24));
-  const resetLabel   = periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  const resetStr     = `Resets ${resetLabel} (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`;
+  // ── Fetch RLU credits from Supabase ──────────────────────────────
+  const { data:credits } = await sb.from('rlu_credits').select('*').eq('user_id',user.id).single();
 
-  // ── Analysis usage ────────────────────────────────────────────────
-  const usageKey      = `rpglens_usage_${user.id}_${periodKey}`;
-  const used          = parseInt(localStorage.getItem(usageKey) || '0');
-  const analysisLimit = PLAN_LIMITS[plan] || 3;
-  const remaining     = Math.max(0, analysisLimit - used);
-  const totalKey      = `rpglens_total_${user.id}`;
-  const total         = parseInt(localStorage.getItem(totalKey) || '0');
-  const totalConvKey  = `rpglens_total_conv_${user.id}`;
-  const totalConv     = parseInt(localStorage.getItem(totalConvKey) || '0');
-  const totalBrdKey   = `rpglens_total_brd_${user.id}`;
-  const totalBrd      = parseInt(localStorage.getItem(totalBrdKey) || '0');
+  const monthlyAvail  = credits ? Math.max(0, credits.monthly_rlu  - credits.monthly_used)  : 0;
+  const rolloverAvail = credits ? Math.max(0, credits.rollover_rlu - credits.rollover_used) : 0;
+  const topupAvail    = credits ? Math.max(0, credits.topup_rlu    - credits.topup_used)    : 0;
+  const totalAvail    = monthlyAvail + rolloverAvail + topupAvail;
+  const planAlloc     = RLU_ALLOC[plan] || 50;
+  const totalConsumed = credits?.total_rlu_consumed || 0;
+  const totalAnalyses = credits?.total_analyses     || 0;
+  const totalConvAll  = credits?.total_conversions  || 0;
 
-  document.getElementById('m-used').textContent      = plan === 'admin' ? '∞' : used;
-  document.getElementById('m-remaining').textContent = plan === 'admin' ? '∞' : remaining;
-  document.getElementById('m-remaining').className   = 'metric-val ' + (remaining > 0 || plan === 'admin' ? 'green' : 'red');
-  document.getElementById('m-total').textContent      = total;
-  document.getElementById('m-total-conv').textContent = totalConv;
-  document.getElementById('m-total-brd').textContent  = totalBrd;
-  document.getElementById('m-plan').textContent      = plan.charAt(0).toUpperCase() + plan.slice(1) + (PLAN_PRICES[plan] && plan !== 'free' && plan !== 'admin' ? ' — ' + PLAN_PRICES[plan] : '');
+  // Metric cards
+  const rluEl=document.getElementById('m-rlu-total');
+  rluEl.textContent = plan==='admin' ? '∞' : totalAvail.toLocaleString();
+  rluEl.className   = 'metric-val '+(totalAvail>planAlloc*0.2?'amber':'red');
+  document.getElementById('m-rlu-monthly').textContent  = plan==='admin' ? '∞' : monthlyAvail.toLocaleString();
+  document.getElementById('m-rlu-rollover').textContent = rolloverAvail>0 ? rolloverAvail.toLocaleString() : '—';
+  document.getElementById('m-rlu-topup').textContent    = topupAvail>0    ? topupAvail.toLocaleString()    : '—';
+  document.getElementById('m-total-analyses').textContent = totalAnalyses.toLocaleString();
+  document.getElementById('m-total-conv').textContent     = totalConvAll.toLocaleString();
+  document.getElementById('m-rlu-consumed').textContent   = totalConsumed.toLocaleString();
+  document.getElementById('m-plan').textContent = plan.charAt(0).toUpperCase()+plan.slice(1)+(PLAN_PRICES[plan]&&plan!=='free'&&plan!=='admin'?' — '+PLAN_PRICES[plan]:'');
 
-  const pct  = analysisLimit > 0 && plan !== 'admin' ? Math.min(100, Math.round((used / analysisLimit) * 100)) : 0;
-  const fill = document.getElementById('usage-fill');
-  fill.style.width      = pct + '%';
-  fill.style.background = pct >= 90 ? 'var(--red)' : pct >= 60 ? 'var(--amber)' : 'var(--green)';
-  document.getElementById('usage-text').textContent  = plan === 'admin' ? 'Unlimited analyses' : `${used} of ${analysisLimit} analyses used`;
-  document.getElementById('reset-text').textContent  = plan === 'admin' ? '' : resetStr;
+  // RLU bar
+  const pct = plan==='admin' ? 100 : Math.min(100,Math.round(totalAvail/planAlloc*100));
+  const fill=document.getElementById('rlu-fill');
+  fill.style.width=pct+'%';
+  fill.style.background=pct<=20?'var(--red)':pct<=40?'var(--amber)':'var(--green)';
+  document.getElementById('rlu-text').textContent = plan==='admin' ? 'Unlimited RLUs' : `${totalAvail.toLocaleString()} of ${planAlloc.toLocaleString()} RLUs remaining`;
+  document.getElementById('rlu-reset-text').textContent = plan==='admin' ? '' : resetStr;
 
-  if (plan !== 'free') document.getElementById('upgrade-link').style.display = 'none';
-  updateUpgradeSection(plan);
+  // Breakdown pills
+  const pillsEl=document.getElementById('rlu-breakdown-pills');
+  if(pillsEl&&plan!=='admin'){
+    const pills=[
+      {label:'Monthly',val:monthlyAvail,color:'var(--amber)'},
+      {label:'Rollover',val:rolloverAvail,color:'var(--text2)'},
+      {label:'Top-up',val:topupAvail,color:'var(--green)'},
+    ].filter(p=>p.val>0);
+    pillsEl.innerHTML=pills.map(p=>`<span style="font-size:10px;color:${p.color};background:var(--bg3);padding:2px 10px;border:1px solid var(--border)">${p.label}: ${p.val.toLocaleString()} RLUs</span>`).join('');
+  }
+
+  if(plan!=='free') document.getElementById('upgrade-link').style.display='none';
+  if(totalAvail<=0&&plan!=='admin'){ document.getElementById('topup-btn').style.background='rgba(232,80,80,0.15)'; document.getElementById('topup-btn').style.color='var(--red)'; }
+
+  // Show Pro features
   if(['pro','admin'].includes(plan)){
-    const card=document.getElementById('ibmi-connect-card');
-    if(card) card.style.display='';
-    const brdCard=document.getElementById('brd-tdd-card');
-    if(brdCard) brdCard.style.display='';
-    const tddCard=document.getElementById('tdd-code-card');
-    if(tddCard) tddCard.style.display='';
-    const ddBrd=document.getElementById('dd-brd-tdd');
-    if(ddBrd) ddBrd.style.display='';
-    const ddTdd=document.getElementById('dd-tdd-code');
-    if(ddTdd) ddTdd.style.display='';
-    const topbtn=document.getElementById('ibmi-topbar-btn');
-    if(topbtn) topbtn.style.display='';
-  }
-
-  // ── Conversion usage ─────────────────────────────────────────────
-  const convKey       = `rpglens_conv_${user.id}_${periodKey}`;
-  const convUsed      = parseInt(localStorage.getItem(convKey) || '0');
-  const convLimit     = CONV_LIMITS[plan] || 1;
-  const convRemaining = Math.max(0, convLimit - convUsed);
-  const lineLimit     = CONV_LINE_LIMITS[plan] || 500;
-
-  document.getElementById('m-conv-used').textContent      = plan === 'admin' ? '∞' : convUsed;
-  document.getElementById('m-conv-remaining').textContent = plan === 'admin' ? '∞' : convRemaining;
-  document.getElementById('m-conv-remaining').className   = 'metric-val ' + (convRemaining > 0 || plan === 'admin' ? 'green' : 'red');
-
-  const convPct  = convLimit > 0 && plan !== 'admin' ? Math.min(100, Math.round((convUsed / convLimit) * 100)) : 0;
-  const convFill = document.getElementById('conv-fill');
-  convFill.style.width      = convPct + '%';
-  convFill.style.background = convPct >= 90 ? 'var(--red)' : convPct >= 60 ? 'var(--amber)' : 'var(--green)';
-  document.getElementById('conv-text').textContent       = plan === 'admin' ? 'Unlimited conversions' : `${convUsed} of ${convLimit} conversions used  ·  up to ${lineLimit.toLocaleString()} lines each`;
-  document.getElementById('conv-reset-text').textContent = plan === 'admin' ? '' : resetStr;
-
-  // History from localStorage
-  const histKey = `rpglens_history_${user.id}`;
-  const history = JSON.parse(localStorage.getItem(histKey) || '[]');
-  renderHistory(history);
-
-  // Conversion history
-  const convHistKey = `rpglens_conv_history_${user.id}`;
-  const convHistory = JSON.parse(localStorage.getItem(convHistKey) || '[]');
-  renderConvHistory(convHistory);
-}
-
-function renderHistory(history) {
-  const container = document.getElementById('history-container');
-  if (!history.length) return;
-
-  const list = document.createElement('div');
-  list.className = 'history-list';
-
-  history.slice(0, 8).forEach(item => {
-    const el = document.createElement('a');
-    el.href = item.id ? `/analyser?restore=${item.id}` : '/analyser';
-    el.className = 'history-item';
-    const ext = (item.ext || 'RPG').toUpperCase().slice(0, 3);
-    el.innerHTML = `
-      <div class="history-icon">${ext}</div>
-      <div class="history-meta">
-        <div class="history-name">${item.name || 'Unnamed program'}</div>
-        <div class="history-date">${item.date || 'Recently'}</div>
-      </div>
-      <div class="history-tags">
-        ${item.tabs?.includes('explain') ? '<span class="htag explain">Explain</span>' : ''}
-        ${item.tabs?.includes('risk')    ? '<span class="htag risk">Risk</span>'    : ''}
-        ${item.tabs?.includes('modern')  ? '<span class="htag modern">Modern</span>' : ''}
-      </div>`;
-    list.appendChild(el);
-  });
-
-  container.innerHTML = '';
-  container.appendChild(list);
-}
-
-function renderConvHistory(history) {
-  const container = document.getElementById('conv-history-container');
-  if (!history.length) return;
-
-  const list = document.createElement('div');
-  list.className = 'history-list';
-
-  history.slice(0, 8).forEach(item => {
-    const el = document.createElement('a');
-    el.href      = item.id ? `/converter?restore=${item.id}` : '/converter';
-    el.className = 'history-item';
-    el.innerHTML = `
-      <div class="history-icon" style="background:rgba(46,194,126,0.12);color:var(--green)">RPG</div>
-      <div class="history-meta">
-        <div class="history-name">${item.name || 'Unnamed program'}</div>
-        <div class="history-date">${item.date || 'Recently'}</div>
-      </div>
-      <div class="history-tags">
-        <span class="htag" style="background:rgba(46,194,126,0.1);border-color:rgba(46,194,126,0.3);color:var(--green)">${item.lines ? item.lines + ' lines' : 'Converted'}</span>
-        <span class="htag" style="background:rgba(46,194,126,0.06);border-color:rgba(46,194,126,0.2);color:var(--green);opacity:0.7">Free format</span>
-      </div>`;
-    list.appendChild(el);
-  });
-
-  container.innerHTML = '';
-  container.appendChild(list);
-}
-
-// ── UPGRADE SECTION VISIBILITY ────────────────────────────────────
-function updateUpgradeSection(plan) {
-  const upgradeSection = document.getElementById('upgrade-section');
-  const manageSection  = document.getElementById('manage-section');
-  if (plan === 'free') {
-    upgradeSection.style.display = 'block';
-    manageSection.style.display  = 'none';
-  } else if (plan === 'admin') {
-    upgradeSection.style.display = 'none';
-    manageSection.style.display  = 'none';
-  } else {
-    upgradeSection.style.display = 'none';
-    manageSection.style.display  = 'block';
-    document.getElementById('sub-status-text').textContent = `Active ${plan.charAt(0).toUpperCase()+plan.slice(1)} subscription`;
-    document.getElementById('sub-detail-text').textContent = 'Cancel anytime — access continues until end of current billing period';
-  }
-}
-
-// ── RAZORPAY CHECKOUT ─────────────────────────────────────────────
-async function startUpgrade(plan) {
-  const btn = document.getElementById(`btn-${plan}`);
-  const orig = btn.textContent;
-  btn.textContent = 'Loading...';
-  btn.disabled = true;
-
-  try {
-    // Load Razorpay checkout script
-    if (!window.Razorpay) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    }
-
-    // Get session token
-    const { data } = await sb.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) { window.location.href = '/login'; return; }
-
-    // Create subscription on backend
-    const resp = await fetch('/api/create-subscription', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ plan })
+    ['ibmi-connect-card','brd-tdd-card','tdd-code-card','dd-brd-tdd','dd-tdd-code','ibmi-topbar-btn'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.display='';
     });
-    const sub = await resp.json();
-    if (!resp.ok) { alert(sub.error || 'Failed to start checkout'); return; }
+  }
 
-    const PLAN_DESC = {
-      starter: 'Starter Plan — ₹3,999/month',
-      pro:     'Pro Plan — ₹12,999/month'
-    };
+  updateUpgradeSection(plan);
 
-    // Open Razorpay checkout
-    const rzp = new window.Razorpay({
-      key:             sub.key_id,
-      subscription_id: sub.subscription_id,
-      name:            'RPGLens',
-      description:     PLAN_DESC[plan],
-      image:           'https://rpglens.vercel.app/favicon.ico',
-      prefill:         { email: sub.email, name: sub.name },
-      theme:           { color: '#e8a020' },
-      modal:           { ondismiss: () => { btn.textContent = orig; btn.disabled = false; } },
-      handler: async function(response) {
-        btn.textContent = 'Verifying...';
+  // ── RLU Transaction history ───────────────────────────────────────
+  const { data:txns } = await sb.from('rlu_transactions')
+    .select('*').eq('user_id',user.id)
+    .order('created_at',{ascending:false}).limit(10);
 
-        const vResp = await fetch('/api/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            razorpay_payment_id:      response.razorpay_payment_id,
-            razorpay_subscription_id: response.razorpay_subscription_id,
-            razorpay_signature:       response.razorpay_signature,
-            plan
-          })
-        });
-        const vData = await vResp.json();
+  const histContainer=document.getElementById('rlu-history-container');
+  if(txns&&txns.length>0){
+    histContainer.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:8px 14px;color:var(--text3);font-weight:600;letter-spacing:0.08em">ACTION</th>
+          <th style="text-align:left;padding:8px 14px;color:var(--text3);font-weight:600;letter-spacing:0.08em">TAB</th>
+          <th style="text-align:right;padding:8px 14px;color:var(--text3);font-weight:600;letter-spacing:0.08em">LINES</th>
+          <th style="text-align:right;padding:8px 14px;color:var(--text3);font-weight:600;letter-spacing:0.08em">RLUs USED</th>
+          <th style="text-align:right;padding:8px 14px;color:var(--text3);font-weight:600;letter-spacing:0.08em">BALANCE</th>
+          <th style="text-align:right;padding:8px 14px;color:var(--text3);font-weight:600;letter-spacing:0.08em">DATE</th>
+        </tr></thead><tbody>
+        ${txns.map(t=>{
+          const d=new Date(t.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+          const action=t.action==='conversion'?'&#8644; Conversion':'&#128269; Analysis';
+          const tabLabel=t.tab&&t.tab!=='all'?t.tab:'all tabs';
+          return `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:8px 14px;color:var(--text)">${action}</td>
+            <td style="padding:8px 14px;color:var(--text2)">${tabLabel}</td>
+            <td style="padding:8px 14px;color:var(--text2);text-align:right">${t.lines?t.lines.toLocaleString():'—'}</td>
+            <td style="padding:8px 14px;color:var(--red);text-align:right;font-weight:700">-${t.rlu_cost}</td>
+            <td style="padding:8px 14px;color:var(--text2);text-align:right">${t.balance_after!==null?t.balance_after.toLocaleString():'—'}</td>
+            <td style="padding:8px 14px;color:var(--text3);text-align:right">${d}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }
 
-        if (vResp.ok && vData.success) {
-          // Refresh session so new plan is loaded
-          await sb.auth.refreshSession();
-          alert(`Welcome to RPGLens ${plan.charAt(0).toUpperCase()+plan.slice(1)}! Your plan is now active.`);
-          window.location.reload();
-        } else {
-          alert('Payment received but verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
-          btn.textContent = orig; btn.disabled = false;
-        }
+  // ── Local storage history ─────────────────────────────────────────
+  renderHistory(JSON.parse(localStorage.getItem(`rpglens_history_${user.id}`)||'[]'));
+  renderConvHistory(JSON.parse(localStorage.getItem(`rpglens_conv_history_${user.id}`)||'[]'));
+}
+
+function renderHistory(history){
+  const container=document.getElementById('history-container');
+  if(!history.length) return;
+  const list=document.createElement('div'); list.className='history-list';
+  history.slice(0,8).forEach(item=>{
+    const el=document.createElement('a');
+    el.href=item.id?`/analyser?restore=${item.id}`:'/analyser';
+    el.className='history-item';
+    const ext=(item.ext||'RPG').toUpperCase().slice(0,3);
+    el.innerHTML=`<div class="history-icon">${ext}</div>
+      <div class="history-meta">
+        <div class="history-name">${item.name||'Unnamed program'}</div>
+        <div class="history-date">${item.date||'Recently'}</div>
+      </div>
+      <div class="history-tags">
+        ${item.tabs?.includes('explain')?'<span class="htag explain">Explain</span>':''}
+        ${item.tabs?.includes('risk')?'<span class="htag risk">Risk</span>':''}
+        ${item.tabs?.includes('modern')?'<span class="htag modern">Modern</span>':''}
+      </div>`;
+    list.appendChild(el);
+  });
+  container.innerHTML=''; container.appendChild(list);
+}
+
+function renderConvHistory(history){
+  const container=document.getElementById('conv-history-container');
+  if(!history.length) return;
+  const list=document.createElement('div'); list.className='history-list';
+  history.slice(0,8).forEach(item=>{
+    const el=document.createElement('a');
+    el.href=item.id?`/converter?restore=${item.id}`:'/converter';
+    el.className='history-item';
+    el.innerHTML=`<div class="history-icon" style="background:rgba(46,194,126,0.12);color:var(--green)">RPG</div>
+      <div class="history-meta">
+        <div class="history-name">${item.name||'Unnamed program'}</div>
+        <div class="history-date">${item.date||'Recently'}</div>
+      </div>
+      <div class="history-tags">
+        <span class="htag" style="background:rgba(46,194,126,0.1);border-color:rgba(46,194,126,0.3);color:var(--green)">${item.lines?item.lines+' lines':'Converted'}</span>
+      </div>`;
+    list.appendChild(el);
+  });
+  container.innerHTML=''; container.appendChild(list);
+}
+
+function updateUpgradeSection(plan){
+  const up=document.getElementById('upgrade-section'), mg=document.getElementById('manage-section');
+  if(plan==='free'){ up.style.display='block'; mg.style.display='none'; }
+  else if(plan==='admin'){ up.style.display='none'; mg.style.display='none'; }
+  else {
+    up.style.display='none'; mg.style.display='block';
+    document.getElementById('sub-status-text').textContent=`Active ${plan.charAt(0).toUpperCase()+plan.slice(1)} subscription`;
+    document.getElementById('sub-detail-text').textContent='Cancel anytime — access continues until end of current billing period';
+  }
+}
+
+async function startUpgrade(plan){
+  const btn=document.getElementById(`btn-${plan}`), orig=btn.textContent;
+  btn.textContent='Loading...'; btn.disabled=true;
+  try{
+    if(!window.Razorpay) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://checkout.razorpay.com/v1/checkout.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+    const{data}=await sb.auth.getSession(); const token=data.session?.access_token;
+    if(!token){window.location.href='/login';return;}
+    const resp=await fetch('/api/create-subscription',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({plan})});
+    const sub=await resp.json();
+    if(!resp.ok){alert(sub.error||'Failed to start checkout');return;}
+    const PLAN_DESC={starter:'Starter Plan — ₹3,999/month',pro:'Pro Plan — ₹12,999/month'};
+    const rzp=new window.Razorpay({
+      key:sub.key_id,subscription_id:sub.subscription_id,name:'RPGLens',
+      description:PLAN_DESC[plan],image:'https://rpglens.vercel.app/favicon.ico',
+      prefill:{email:sub.email,name:sub.name},theme:{color:'#e8a020'},
+      modal:{ondismiss:()=>{btn.textContent=orig;btn.disabled=false;}},
+      handler:async function(response){
+        btn.textContent='Verifying...';
+        const vResp=await fetch('/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({...response,plan})});
+        const vData=await vResp.json();
+        if(vResp.ok&&vData.success){await sb.auth.refreshSession();alert(`Welcome to RPGLens ${plan.charAt(0).toUpperCase()+plan.slice(1)}!`);window.location.reload();}
+        else{alert('Payment received but verification failed. Contact support with payment ID: '+response.razorpay_payment_id);btn.textContent=orig;btn.disabled=false;}
       }
     });
-
     rzp.open();
-
-  } catch(e) {
-    console.error('startUpgrade error:', e);
-    alert('Something went wrong. Please try again.');
-    btn.textContent = orig; btn.disabled = false;
-  }
+  }catch(e){alert('Something went wrong. Please try again.');btn.textContent=orig;btn.disabled=false;}
 }
 
-// ── CANCEL SUBSCRIPTION ───────────────────────────────────────────
-async function cancelSubscription() {
-  if (!confirm('Cancel your subscription? You will keep access until the end of your current billing period.')) return;
-
-  try {
-    const { data } = await sb.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) return;
-
-    const resp = await fetch('/api/cancel-subscription', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-    });
-    const result = await resp.json();
-
-    if (resp.ok) {
-      alert(result.message || 'Subscription cancelled successfully.');
-    } else {
-      alert(result.error || 'Failed to cancel. Please try again or contact support.');
-    }
-  } catch(e) {
-    alert('Something went wrong. Please contact support.');
-  }
+async function cancelSubscription(){
+  if(!confirm('Cancel your subscription? You will keep access until the end of your current billing period.')) return;
+  const{data}=await sb.auth.getSession(); const token=data.session?.access_token; if(!token)return;
+  const resp=await fetch('/api/cancel-subscription',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}});
+  const result=await resp.json();
+  alert(resp.ok?result.message||'Subscription cancelled.':result.error||'Failed to cancel. Contact support.');
 }
 
-function toggleDropdown(){
-  document.getElementById('tools-dropdown').classList.toggle('open');
-}
-document.addEventListener('click', function(e){
-  const dd = document.getElementById('tools-dropdown');
-  if(dd && !dd.contains(e.target)) dd.classList.remove('open');
-});
-
-async function signOut() {
-  await sb.auth.signOut();
-  window.location.href = '/';
-}
+function toggleDropdown(){ document.getElementById('tools-dropdown').classList.toggle('open'); }
+document.addEventListener('click',function(e){ const dd=document.getElementById('tools-dropdown'); if(dd&&!dd.contains(e.target))dd.classList.remove('open'); });
+async function signOut(){ await sb.auth.signOut(); window.location.href='/'; }
 
 init();
 </script>
