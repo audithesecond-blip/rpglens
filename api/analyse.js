@@ -553,24 +553,14 @@ ${prompt}
     // Token limits per analysis type — explain and docs need high limits for large programs
     const TOKEN_LIMITS = {
       conversion: 16000,
-      explain:    6000,
+      explain:    8000,
       docs:       4500,
       risk:       4000,
       modern:     4000,
       depend:     3500,
     };
-    // Adaptive limits — very large programs get reduced output to stay within time budget
-    const codeLen = codeLength || prompt.length;
-    const isLargeProgram = codeLen > 50000; // >50K chars = ~2500+ lines
-    const LARGE_LIMITS = {
-      explain: 3500,
-      docs:    3000,
-      risk:    3000,
-      modern:  3000,
-      depend:  2500,
-    };
-    const activeLimits = isLargeProgram ? LARGE_LIMITS : TOKEN_LIMITS;
-    const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (activeLimits[analysisType] || 4000);
+    // Flat token limits — larger programs need MORE tokens, not fewer
+    const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (TOKEN_LIMITS[analysisType] || 4000);
 
     // Use system prompt for risk analysis to keep browser payload small
     const isRiskAnalysis = analysisType === "risk";
