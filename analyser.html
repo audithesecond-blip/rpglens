@@ -566,7 +566,7 @@ async function callClaude(prompt,analysisType){
   if(!supabaseSession)throw new Error('NOT_SIGNED_IN');
   const code=getActiveCode();
   const controller=new AbortController();
-  const timeoutId=setTimeout(()=>controller.abort(),58000);
+  const timeoutId=setTimeout(()=>controller.abort(),115000);
   let resp;
   try{resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},body:JSON.stringify({prompt,analysisType,codeLength:code?code.length:prompt.length})});
   }finally{clearTimeout(timeoutId);}
