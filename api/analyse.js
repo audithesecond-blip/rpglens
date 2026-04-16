@@ -340,6 +340,29 @@ const CONVERSION_LIMITS      = { free: 1,     starter: 5,      pro: 20,     admi
 const CHAR_LIMITS            = { free: 30000, starter: 100000, pro: 300000, admin: 999999 };
 const CONVERSION_LINE_LIMITS = { free: 500,   starter: 1000,   pro: 2000,   admin: 999999 };
 
+// ── RLU CONSTANTS ────────────────────────────────────────────────────
+const RLU_PLAN_ALLOCATION = {
+  free:       50,
+  starter:    500,
+  pro:        2000,
+  enterprise: 999999,
+  admin:      999999
+};
+
+// RLU cost: 1 RLU per 100 lines per tab (min 100 lines)
+// Conversions: 5 RLUs per 100 lines
+const RLU_COST_PER_100_LINES = {
+  analysis:   1,
+  conversion: 5,
+  summary:    0   // summary pass is free — internal architecture call
+};
+
+function calcRLU(lines, type) {
+  const effectiveLines = Math.max(lines || 100, 100);
+  const per100 = RLU_COST_PER_100_LINES[type] || 1;
+  return Math.ceil(effectiveLines / 100) * per100;
+}
+
 const PLAN_NAMES = { free: "Free", starter: "Starter", pro: "Pro", admin: "Admin" };
 
 const CONV_UPGRADE_HINTS = {
@@ -401,72 +424,106 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Request too large. Maximum 300,000 characters." });
     }
 
-    // ── 4. ENFORCE LIMITS ─────────────────────────────────────────────
-    if (isConversion && isFirstChunk && plan !== "admin") {
+    // ── 4. ENFORCE RLU LIMITS ────────────────────────────────────────────
+    const effectiveLines = Math.max(lineCount || 100, 100);
+    const rluType        = isConversion ? 'conversion' : (analysisType === 'summary' ? 'summary' : 'analysis');
+    const rluCost        = calcRLU(effectiveLines, rluType);
 
-      // 4a. Line count limit
-      const lineLimit = CONVERSION_LINE_LIMITS[plan] || 500;
-      const lines     = lineCount || 0;
-      if (lines > lineLimit) {
-        return res.status(413).json({
-          error:     `Program too large for conversion on your ${PLAN_NAMES[plan]} plan. Your program has ${lines.toLocaleString()} lines. ${PLAN_NAMES[plan]} supports up to ${lineLimit.toLocaleString()} lines.`,
-          hint:      CONV_UPGRADE_HINTS[plan],
-          upgrade:   plan !== "pro",
-          lineLimit,
-          lineCount: lines,
-          type:      "line_limit"
+    if (plan !== "admin" && rluType !== 'summary') {
+      // Fetch current RLU balance
+      const { data: credits } = await sb
+        .from("rlu_credits")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!credits) {
+        return res.status(402).json({
+          error: "No RLU balance found. Please contact support.",
+          type:  "no_balance"
         });
       }
 
-      // 4b. Conversion count limit
-      const convLimit = CONVERSION_LIMITS[plan] || 1;
-      const { data: convData } = await sb
-        .from("conversions").select("count")
-        .eq("user_id", user.id).eq("month_key", monthKey).single();
-      const convCount = convData?.count || 0;
+      // Check and refresh period if expired
+      const periodExpired = credits.period_end && new Date(credits.period_end) < now;
+      if (periodExpired) {
+        // Calculate rollover — 50% of unused monthly RLUs (capped at 50% of monthly allocation)
+        const unusedMonthly  = Math.max(0, credits.monthly_rlu - credits.monthly_used);
+        const rolloverAmount = Math.min(
+          Math.floor(unusedMonthly * 0.5),
+          Math.floor(credits.monthly_rlu * 0.5)
+        );
+        const newAllocation = RLU_PLAN_ALLOCATION[plan] || 50;
+        await sb.from("rlu_credits").update({
+          monthly_rlu:    newAllocation,
+          monthly_used:   0,
+          rollover_rlu:   (credits.rollover_rlu - credits.rollover_used) + rolloverAmount,
+          rollover_used:  0,
+          period_key:     monthKey,
+          period_start:   periodStart.toISOString(),
+          period_end:     periodEnd.toISOString(),
+          updated_at:     now.toISOString()
+        }).eq("user_id", user.id);
+        // Refetch
+        const { data: refreshed } = await sb.from("rlu_credits").select("*").eq("user_id", user.id).single();
+        Object.assign(credits, refreshed);
+      }
 
-      if (convCount >= convLimit) {
+      const availableMonthly  = credits.monthly_rlu  - credits.monthly_used;
+      const availableRollover = credits.rollover_rlu  - credits.rollover_used;
+      const availableTopup    = credits.topup_rlu     - credits.topup_used;
+      const totalAvailable    = availableMonthly + availableRollover + availableTopup;
+
+      if (totalAvailable < rluCost) {
         return res.status(429).json({
-          error:     `Conversion limit reached. You have used ${convCount} of ${convLimit} conversions this period. Resets on ${resetLabel}.`,
-          hint:      CONV_UPGRADE_HINTS[plan],
-          upgrade:   plan !== "pro",
+          error:    `Insufficient RPGLens Units. This analysis requires ${rluCost} RLUs but you have ${totalAvailable} remaining.`,
+          rluCost,
+          available: totalAvailable,
           resetDate: periodEnd.toISOString(),
-          type:      "conversion_limit"
+          type:      "rlu_limit",
+          upgrade:   plan !== "pro"
         });
       }
 
-    } else if (!isConversion && plan !== "admin") {
+      // Deduct RLUs in order: monthly → rollover → topup
+      let remaining = rluCost;
+      const deductions = { monthly: 0, rollover: 0, topup: 0 };
 
-      // 4c. Character limit
-      const charLimit     = CHAR_LIMITS[plan] || 30000;
-      const programLength = codeLength || prompt.length;
-      if (programLength > charLimit) {
-        const kb = Math.round(programLength / 1000);
-        return res.status(413).json({
-          error:   `Program too large for your ${PLAN_NAMES[plan]} plan (~${kb}KB). ${PLAN_NAMES[plan]} supports up to ${Math.round(charLimit/1000)}KB.`,
-          hint:    ANALYSIS_UPGRADE_HINTS[plan],
-          upgrade: plan !== "pro",
-          charLimit,
-          programLength
-        });
+      if (remaining > 0 && availableMonthly > 0) {
+        deductions.monthly = Math.min(remaining, availableMonthly);
+        remaining -= deductions.monthly;
+      }
+      if (remaining > 0 && availableRollover > 0) {
+        deductions.rollover = Math.min(remaining, availableRollover);
+        remaining -= deductions.rollover;
+      }
+      if (remaining > 0 && availableTopup > 0) {
+        deductions.topup = Math.min(remaining, availableTopup);
+        remaining -= deductions.topup;
       }
 
-      // 4d. Analysis count limit
-      const analysisLimit = ANALYSIS_LIMITS[plan] || 3;
-      const { data: usageData } = await sb
-        .from("usage").select("count")
-        .eq("user_id", user.id).eq("month_key", monthKey).single();
-      const usageCount = usageData?.count || 0;
+      // Update credit balances
+      await sb.from("rlu_credits").update({
+        monthly_used:   credits.monthly_used  + deductions.monthly,
+        rollover_used:  credits.rollover_used + deductions.rollover,
+        topup_used:     credits.topup_used    + deductions.topup,
+        total_rlu_consumed: credits.total_rlu_consumed + rluCost,
+        total_analyses:     isConversion ? credits.total_analyses : credits.total_analyses + 1,
+        total_conversions:  isConversion ? credits.total_conversions + 1 : credits.total_conversions,
+        updated_at: now.toISOString()
+      }).eq("user_id", user.id);
 
-      if (usageCount >= analysisLimit) {
-        return res.status(429).json({
-          error:     `Monthly limit reached. You have used ${usageCount} of ${analysisLimit} analyses this period. Resets on ${resetLabel}.`,
-          hint:      ANALYSIS_UPGRADE_HINTS[plan],
-          upgrade:   plan !== "pro",
-          resetDate: periodEnd.toISOString(),
-          type:      "analysis_limit"
-        });
-      }
+      // Log transaction
+      await sb.from("rlu_transactions").insert({
+        user_id:      user.id,
+        action:       isConversion ? 'conversion' : 'analysis',
+        tab:          analysisType,
+        lines:        effectiveLines,
+        rlu_cost:     rluCost,
+        rlu_source:   deductions.monthly > 0 ? 'monthly' : deductions.rollover > 0 ? 'rollover' : 'topup',
+        balance_after: totalAvailable - rluCost,
+        program_name: prompt.slice(0,50)
+      });
     }
 
 
@@ -577,31 +634,21 @@ ${prompt}
     const result     = message.content.map(b => b.type === "text" ? b.text : "").join("");
     const stopReason = message.stop_reason;
 
-    // ── 6. INCREMENT USAGE ────────────────────────────────────────────
-    if (plan !== "admin") {
-      if (isFirstChunk) {
-        // One conversion credit per full conversion (not per chunk)
-        const { data: existing } = await sb
-          .from("conversions").select("count")
-          .eq("user_id", user.id).eq("month_key", monthKey).single();
-        await sb.from("conversions").upsert({
-          user_id:    user.id,
-          month_key:  monthKey,
-          count:      (existing?.count || 0) + 1,
-          updated_at: now.toISOString()
-        }, { onConflict: "user_id,month_key" });
+    // ── 6. USAGE ALREADY TRACKED in RLU deduction above ─────────────
 
-      } else if (!isConversion) {
-        // One analysis credit per API call
-        const { data: existing } = await sb
-          .from("usage").select("count")
-          .eq("user_id", user.id).eq("month_key", monthKey).single();
-        await sb.from("usage").upsert({
-          user_id:    user.id,
-          month_key:  monthKey,
-          count:      (existing?.count || 0) + 1,
-          updated_at: now.toISOString()
-        }, { onConflict: "user_id,month_key" });
+    // Fetch updated balance to return to client
+    let rluBalance = null;
+    if (plan !== "admin") {
+      const { data: updatedCredits } = await sb.from("rlu_credits").select("monthly_rlu,monthly_used,rollover_rlu,rollover_used,topup_rlu,topup_used").eq("user_id", user.id).single();
+      if (updatedCredits) {
+        rluBalance = {
+          monthly:  updatedCredits.monthly_rlu  - updatedCredits.monthly_used,
+          rollover: updatedCredits.rollover_rlu  - updatedCredits.rollover_used,
+          topup:    updatedCredits.topup_rlu     - updatedCredits.topup_used,
+          total:    (updatedCredits.monthly_rlu  - updatedCredits.monthly_used) +
+                    (updatedCredits.rollover_rlu  - updatedCredits.rollover_used) +
+                    (updatedCredits.topup_rlu     - updatedCredits.topup_used)
+        };
       }
     }
 
@@ -609,7 +656,9 @@ ${prompt}
       result,
       stopReason,
       periodEnd: periodEnd.toISOString(),
-      monthKey
+      monthKey,
+      rluCost,
+      rluBalance
     });
 
   } catch (err) {
