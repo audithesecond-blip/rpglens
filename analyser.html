@@ -670,14 +670,19 @@ async function runAnalysis(){
     }
   },1000);
   window._progressTimer=progressTimer;
-  const pa=document.getElementById('post-analysis-actions');if(pa)pa.style.display='none';['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
+  const pa=document.getElementById('post-analysis-actions');if(pa)pa.style.display='none';const ab=document.getElementById('analyse-btn');if(ab)ab.style.display='';['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
   const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
   const selectedTabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
   // Sequential individual calls — each tab completes independently within 40s
   const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
   async function runTab(tab){
-    const tabPrompt=PROMPTS[tab]?PROMPTS[tab](code):code;
+    // For very large programs, truncate to first 60K chars with a note
+    let codeForTab=code;
+    if(code.length>60000&&tab==='explain'){
+      codeForTab=code.slice(0,60000)+'\n\n[... program truncated at 60,000 characters for analysis. First portion shown above. Key structural patterns and business rules should be visible in the code above.]';
+    }
+    const tabPrompt=PROMPTS[tab]?PROMPTS[tab](codeForTab):codeForTab;
     const resp=await fetch('/api/analyse',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
@@ -711,6 +716,8 @@ async function runAnalysis(){
     // Show post-analysis actions
     const postActions=document.getElementById('post-analysis-actions');
     if(postActions)postActions.style.display='flex';
+    const analyseBtn=document.getElementById('analyse-btn');
+    if(analyseBtn)analyseBtn.style.display='none';
     if(supabaseSession){
       try{
         const uid=supabaseSession.user.id,hk=`rpglens_history_${uid}`;
