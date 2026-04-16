@@ -519,20 +519,20 @@ export default async function handler(req, res) {
     const TOKEN_LIMITS = {
       conversion: 16000,
       explain:    4000,
-      docs:       3000,
-      risk:       3000,
-      modern:     3000,
-      depend:     2500,
+      docs:       3500,
+      risk:       3500,
+      modern:     3500,
+      depend:     3000,
     };
     // Adaptive limits — very large programs get reduced output to stay within time budget
     const codeLen = codeLength || prompt.length;
     const isLargeProgram = codeLen > 50000; // >50K chars = ~2500+ lines
     const LARGE_LIMITS = {
-      explain: 3000,
-      docs:    2500,
-      risk:    2500,
-      modern:  2500,
-      depend:  2000,
+      explain: 3500,
+      docs:    3000,
+      risk:    3000,
+      modern:  3000,
+      depend:  2500,
     };
     const activeLimits = isLargeProgram ? LARGE_LIMITS : TOKEN_LIMITS;
     const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (activeLimits[analysisType] || 4000);
