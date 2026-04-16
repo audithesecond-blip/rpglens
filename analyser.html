@@ -566,7 +566,7 @@ async function callClaude(prompt,analysisType){
   if(!supabaseSession)throw new Error('NOT_SIGNED_IN');
   const code=getActiveCode();
   const controller=new AbortController();
-  const timeoutId=setTimeout(()=>controller.abort(),115000);
+  const timeoutId=setTimeout(()=>controller.abort(),55000);
   let resp;
   try{resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},body:JSON.stringify({prompt,analysisType,codeLength:code?code.length:prompt.length})});
   }finally{clearTimeout(timeoutId);}
@@ -631,12 +631,36 @@ async function runAnalysis(){
   ['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
   const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
+  // Use combined call — one API request, code sent once, all tabs returned together
+  const selectedTabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
   const tasks=[];
-  if(checks.explain)tasks.push(callClaude(PROMPTS.explain(code),'explain').then(r=>{state.results.explain=r;renderExplain(r);setTabDone('explain');}).catch(err=>setTabError('explain',err)));
-  if(checks.docs)tasks.push(callClaude(PROMPTS.docs(code),'docs').then(r=>{state.results.docs=r;renderDocs(r);setTabDone('docs');}).catch(err=>setTabError('docs',err)));
-  if(checks.risk)tasks.push(callClaude(PROMPTS.risk(code),'risk').then(r=>{state.results.risk=r;renderRisk(r);setTabDone('risk');}).catch(err=>setTabError('risk',err)));
-  if(checks.modern)tasks.push(callClaude(PROMPTS.modern(code),'modern').then(r=>{state.results.modern=r;renderModern(r);setTabDone('modern');}).catch(err=>setTabError('modern',err)));
-  if(checks.depend)tasks.push(callClaude(PROMPTS.depend(code),'depend').then(r=>{state.results.depend=r;renderDepend(r);setTabDone('depend');}).catch(err=>setTabError('depend',err)));
+  if(selectedTabs.length>0){
+    tasks.push((async()=>{
+      try{
+        const resp=await fetch('/api/analyse',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
+          body:JSON.stringify({prompt:code,analysisType:'combined',selectedTabs,codeLength:code.length})
+        });
+        const data=await resp.json();
+        if(!resp.ok)throw new Error(data.error||'Analysis failed');
+        if(data.combined&&data.sections){
+          const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
+          for(const [tab,result] of Object.entries(data.sections)){
+            if(result&&renders[tab]){
+              state.results[tab]=result;
+              renders[tab](result);
+              setTabDone(tab);
+            }
+          }
+          // Mark any selected tabs with no result as error
+          selectedTabs.forEach(tab=>{if(!data.sections[tab])setTabError(tab,new Error('No result returned'));});
+        }
+      }catch(err){
+        selectedTabs.forEach(tab=>setTabError(tab,err));
+      }
+    })());
+  }
   try{
     await Promise.allSettled(tasks);
   }finally{
