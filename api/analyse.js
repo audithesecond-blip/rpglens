@@ -493,7 +493,7 @@ export default async function handler(req, res) {
 
       const combinedMessage = await client.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 16000,
+        max_tokens: 12000,
         system: RISK_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: combinedPrompt }]
       });
