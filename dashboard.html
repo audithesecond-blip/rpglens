@@ -479,12 +479,17 @@ async function init() {
 
   // Show Pro features
   if(['pro','admin'].includes(plan)){
-    ['ibmi-connect-card','brd-tdd-card','tdd-code-card','dd-brd-tdd','dd-tdd-code','ibmi-topbar-btn'].forEach(id=>{
+    ['ibmi-connect-card','ibmi-topbar-btn'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.style.display='';
     });
   }
 
   updateUpgradeSection(plan);
+  if(['pro','admin'].includes(plan)){
+    ['brd-tdd-card','tdd-code-card','dd-brd-tdd','dd-tdd-code'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.display='';
+    });
+  }
 
   // ── RLU Transaction history ───────────────────────────────────────
   const { data:txns } = await sb.from('rlu_transactions')
