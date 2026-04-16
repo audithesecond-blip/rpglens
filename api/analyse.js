@@ -479,11 +479,11 @@ export default async function handler(req, res) {
       const selectedTabs = req.body.selectedTabs || ['explain','docs','risk','modern','depend'];
 
       const sectionInstructions = {
-        explain: '=== EXPLAIN ===\nPlain-English explanation: Program Overview, Purpose & Business Logic, Input & Output (every file), Key Logic Walkthrough (every subroutine individually named), Business Rules (enumerate every hardcoded value with meaning), Notable Patterns & Concerns.',
-        docs: '=== DOCS ===\nTechnical documentation: Program Metadata, Executive Summary, Input Files table, Output Files table, Copybooks, Data Structures & Key Fields (with OCCURS capacity), Subroutines table, Error Handling, Transaction & Lock Behaviour, Change History.',
-        risk: '=== RISK ===\nIBM i risk analysis (fail-fast vs silent corruption, WAITRCD, commitment control, PCI, lock management, activation groups): Risk Summary, Risk Findings (### SEVERITY — TITLE), Overall Assessment (EXCELLENT/GOOD/FAIR/POOR).',
-        modern: '=== MODERN ===\nModernisation roadmap: Overview, Phase 1 Quick Wins (What/How/Effort/Benefit), Phase 2 Structural, Phase 3 Modernisation, What to Keep, Total Effort.',
-        depend: '=== DEPEND ===\nDependencies: Program Summary, Files table, Called Programs, Data Areas, Subroutines table, Entry Parameters, Transaction & Lock Dependencies, Impact Summary, Mermaid diagram.'
+        explain: '=== EXPLAIN ===\nProvide a COMPREHENSIVE plain-English explanation. Program Overview (3-4 sentences). Purpose & Business Logic (what business problem does this solve). Input & Output (every file with access mode and key fields). Key Logic Walkthrough — cover EVERY subroutine individually with 3-5 sentences each, group by functional role, identify paired subroutines (Forward/Reverse, Create_xx/Create_xxR). Business Rules Identified — enumerate EVERY hardcoded value with its business meaning, use decision tables for multi-path logic (e.g. RTN+QTY combinations), flag ghost business rules where values are referenced but not processed. Notable Patterns & Concerns (commitment control gaps, lock issues, LDA dependency, OCCURS capacity, conditional compilation markers).',
+        docs: '=== DOCS ===\nGenerate COMPLETE structured technical documentation. Program Metadata (name, language, format, activation group model, lines, execution context). Executive Summary (3-4 sentences for manager/auditor). Input Files table (Name|Usage|Key Fields|Description). Output Files table (Name|Update Type|Description). Copybooks & Includes (list every /COPY and /INCLUDE member). Data Structures & Key Fields (every DS with OCCURS capacity and purpose, key standalone S-spec variables). Subroutines & Procedures table (Name|Purpose|Called From|Returns). Error Handling (MONITOR/ON-ERROR, *PSSR, INFSR, (E) extenders, ROLLBACK presence). Transaction & Lock Behaviour (COMMIT keyword on files, WAITRCD, UPDATE after EXFMT). Integration & API Readiness. Performance Characteristics. Change History Notes.',
+        risk: '=== RISK ===\nIBM i expert risk analysis using full knowledge: fail-fast vs silent corruption, WAITRCD framing, commitment control (journaling ≠ transactional protection), PCI/crypto patterns, lock management (deadlock, forgotten lock, cascade), activation group patterns, CL MONMSG patterns, OCCURS overflow, LDA dependency, SQL injection, hardcoded credentials, row-level triggers. Risk Summary. Risk Findings each as ### SEVERITY — TITLE with Location/Description/Impact/Recommendation. Overall Assessment (EXCELLENT/GOOD/FAIR/POOR) with Risk Classification Table.',
+        modern: '=== MODERN ===\nModernisation roadmap with calibrated IBM i effort estimates. Modernisation Overview (current state, patterns, readiness). Phase 1 Quick Wins — each item: What (specific field/subroutine from code)/How (concrete steps)/Effort (from calibration table)/Benefit. Phase 2 Structural Improvements. Phase 3 Modernisation (REST API exposure, full free-format, SQL). What to Keep. Estimated Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y hrs/days). NEVER confuse fixed-to-free conversion (hours) with full architectural refactor (days/weeks).',
+        depend: '=== DEPEND ===\nExtract ALL dependencies. Program Summary. Files & Database Objects table (Name|Type|Access|Key Fields|Purpose). Called Programs table (Program|Call Type|Parameters|Purpose). Data Areas (IN/OUT *LDA, DTAARA). Subroutines & Procedures table (Name|Type|Called By|Calls|Purpose). Entry Parameters (every *ENTRY PLIST/DCL-PARM). Transaction & Lock Dependencies. Copybook dependencies (/COPY, /INCLUDE). OCCURS capacity risks. Impact Analysis Summary (5 sentences including lock/transaction impact). Program Flow Diagram in Mermaid flowchart (max 25 nodes).'
       };
 
       const parts = selectedTabs.filter(t => sectionInstructions[t]).map(t => sectionInstructions[t]);
@@ -493,7 +493,8 @@ export default async function handler(req, res) {
 
       const combinedMessage = await client.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        max_tokens: 16000,
+        system: RISK_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: combinedPrompt }]
       });
 
