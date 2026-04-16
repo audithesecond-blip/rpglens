@@ -474,6 +474,78 @@ export default async function handler(req, res) {
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+    // ── SUMMARY PASS ─────────────────────────────────────────────────
+    // Fast structural extraction — feeds docs, dependencies, modernisation tabs
+    // Full code sent once, produces compact JSON summary (~2K tokens)
+    if (analysisType === 'summary') {
+      const summaryPrompt = `You are an IBM i expert. Analyse this RPG program and extract structural facts only. Respond with ONLY valid JSON — no markdown, no explanation, no code fences.
+
+Extract:
+{
+  "program_name": "name from source or filename",
+  "language": "RPG II/III/400/ILE/SQLRPGLE",
+  "format": "fixed/free/mixed",
+  "activation_group": "OPM/*CALLER/*NEW/named value",
+  "execution_context": "batch/interactive/service_program",
+  "estimated_lines": number,
+  "purpose": "one sentence describing what this program does",
+  "files": [{"name":"","type":"PF/LF/WORKSTN/PRINTER/SPECIAL","access":"input/output/update","key_fields":"","purpose":""}],
+  "called_programs": [{"name":"","call_type":"CALL/CALLP/CALLB","purpose":""}],
+  "data_areas": [{"name":"","direction":"IN/OUT/BOTH"}],
+  "copybooks": [{"name":"","purpose":""}],
+  "subroutines": [{"name":"","group":"core/detail/string/io/error","purpose":"","called_by":"","calls":"","is_paired":false,"pair_name":""}],
+  "key_variables": [{"name":"","type":"","purpose":""}],
+  "occurs_ds": [{"name":"","capacity":0,"purpose":""}],
+  "patterns": {
+    "has_commit_keyword": false,
+    "has_lda": false,
+    "has_pci_crypto": false,
+    "has_monitor_on_error": false,
+    "has_pssr": false,
+    "has_occurs": false,
+    "has_conditional_compilation": false,
+    "has_sql": false,
+    "has_workstn": false,
+    "update_after_exfmt": false,
+    "multi_file_update_no_commit": false,
+    "batch_loop_no_commit": false,
+    "hardcoded_values": ["list key hardcoded values found"],
+    "ghost_business_rules": ["values referenced but not processed"]
+  },
+  "transaction_boundary": "description of commit/rollback design",
+  "modification_count": 0,
+  "change_history_note": "summary of modification history if visible"
+}
+
+RPG Source Code:
+\`\`\`
+${prompt}
+\`\`\``;
+
+      const summaryMessage = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: summaryPrompt }]
+      });
+
+      const rawSummary = summaryMessage.content.map(b => b.type === 'text' ? b.text : '').join('');
+
+      // Clean and parse JSON
+      const cleaned = rawSummary.replace(/```json|```/g, '').trim();
+      let summary;
+      try {
+        summary = JSON.parse(cleaned);
+      } catch(e) {
+        // If JSON parse fails, return raw for debugging
+        return res.status(200).json({ result: rawSummary, summaryRaw: true });
+      }
+
+      return res.status(200).json({ result: JSON.stringify(summary), summary: true });
+    }
+    // ── END SUMMARY PASS ──────────────────────────────────────────────
+
+
+
 
 
 
