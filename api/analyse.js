@@ -481,7 +481,7 @@ export default async function handler(req, res) {
       depend:     4000,   // Dependency tables + diagram
     };
     // Adaptive limits — very large programs get reduced output to stay within time budget
-    const codeLen = code ? code.length : prompt.length;
+    const codeLen = codeLength || prompt.length;
     const isLargeProgram = codeLen > 50000; // >50K chars = ~2500+ lines
     const LARGE_LIMITS = {
       explain: 5000,
