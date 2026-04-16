@@ -2,9 +2,9 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api/analyse.js": { "maxDuration": 120 },
-    "api/brd-tdd.js": { "maxDuration": 120 },
-    "api/tdd-code.js": { "maxDuration": 120 }
+    "api/analyse.js":  { "maxDuration": 300 },
+    "api/brd-tdd.js":  { "maxDuration": 300 },
+    "api/tdd-code.js": { "maxDuration": 300 }
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
