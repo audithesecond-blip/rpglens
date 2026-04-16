@@ -481,11 +481,11 @@ export default async function handler(req, res) {
     // Token limits per analysis type — explain and docs need high limits for large programs
     const TOKEN_LIMITS = {
       conversion: 16000,
-      explain:    4000,
-      docs:       3500,
-      risk:       3500,
-      modern:     3500,
-      depend:     3000,
+      explain:    6000,
+      docs:       4500,
+      risk:       4000,
+      modern:     4000,
+      depend:     3500,
     };
     // Adaptive limits — very large programs get reduced output to stay within time budget
     const codeLen = codeLength || prompt.length;
