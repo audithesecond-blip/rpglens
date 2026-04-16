@@ -281,6 +281,10 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <label class="opt-check active" id="opt-depend"><input type="checkbox" checked onchange="toggleOpt(this,'opt-depend')"/><div class="opt-box"></div><span class="opt-label">Dependencies</span></label>
       </div>
       <div id="large-program-warn" style="display:none;padding:8px 12px;background:rgba(232,160,32,0.08);border:1px solid var(--amber-dim);font-size:11px;color:var(--amber);margin-bottom:8px;line-height:1.5">⚠ Large program detected — select only the tabs you need. Running all 5 tabs on programs over 2,000 lines may take 3-5 minutes.</div>
+<div id="post-analysis-actions" style="display:none;gap:10px;margin-top:8px;flex-wrap:wrap">
+  <a href="/analyser" class="btn-sm" style="background:var(--amber);border-color:var(--amber);color:var(--bg);font-weight:700">&#43; New Analysis</a>
+  <a href="/dashboard" class="btn-sm">&#8592; Dashboard</a>
+</div>
 <div id="analysis-progress" style="display:none;margin-top:8px">
   <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
     <div class="progress-fill" style="height:100%;width:0%;background:var(--amber);transition:width 1s ease;border-radius:2px"></div>
@@ -666,7 +670,7 @@ async function runAnalysis(){
     }
   },1000);
   window._progressTimer=progressTimer;
-  ['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
+  const pa=document.getElementById('post-analysis-actions');if(pa)pa.style.display='none';['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
   const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
   const selectedTabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
@@ -679,40 +683,9 @@ async function runAnalysis(){
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
       body:JSON.stringify({prompt:tabPrompt,analysisType:tab,codeLength:code.length})
     });
-    if(!resp.ok){
-      // Error responses are JSON
-      const data=await resp.json().catch(()=>({error:`Server error ${resp.status}`}));
-      throw new Error(data.error||`Server error ${resp.status}`);
-    }
-    // Stream text response — render as tokens arrive
-    const reader=resp.body.getReader();
-    const decoder=new TextDecoder();
-    let fullText='';
-    // Show streaming indicator in tab
-    const container=document.getElementById(`content-${tab}`);
-    const emptyEl=document.getElementById(`empty-${tab}`);
-    if(emptyEl)emptyEl.style.display='none';
-    // Create live streaming element
-    let streamEl=document.getElementById(`stream-${tab}`);
-    if(!streamEl){
-      streamEl=document.createElement('div');
-      streamEl.id=`stream-${tab}`;
-      streamEl.style.cssText='padding:12px 16px;font-size:12px;color:var(--text2);line-height:1.7;white-space:pre-wrap;font-family:var(--mono)';
-      container.appendChild(streamEl);
-    }
-    while(true){
-      const{done,value}=await reader.read();
-      if(done)break;
-      const chunk=decoder.decode(value,{stream:true});
-      fullText+=chunk;
-      // Show last 500 chars of streaming text as preview
-      streamEl.textContent=fullText.slice(-500)+'...';
-    }
-    // Remove streaming element and render properly
-    if(streamEl)streamEl.remove();
-    state.results[tab]=fullText;
-    if(renders[tab])renders[tab](fullText);
-    setTabDone(tab);
+    const data=await resp.json().catch(()=>({error:`Server error ${resp.status}`}));
+    if(!resp.ok)throw new Error(data.error||`Error ${resp.status}`);
+    if(data.result&&renders[tab]){state.results[tab]=data.result;renders[tab](data.result);setTabDone(tab);}
   }
   try{
     for(const tab of selectedTabs){
@@ -730,11 +703,14 @@ async function runAnalysis(){
     const progressEl=document.getElementById('analysis-progress');
     if(progressEl)progressEl.style.display='none';
     const b=document.getElementById('analyse-btn');
-    if(b){b.disabled=false;b.classList.remove('loading');b.querySelector('.btn-label').textContent='Re-analyse';}
+    if(b){b.disabled=false;b.classList.remove('loading');b.querySelector('.btn-label').textContent='Analyse Code';}
   }
   const hasResults=Object.values(state.results).some(r=>r!==null);
   if(hasResults){
     ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=false;});
+    // Show post-analysis actions
+    const postActions=document.getElementById('post-analysis-actions');
+    if(postActions)postActions.style.display='flex';
     if(supabaseSession){
       try{
         const uid=supabaseSession.user.id,hk=`rpglens_history_${uid}`;
