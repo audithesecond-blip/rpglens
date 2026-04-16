@@ -479,11 +479,11 @@ export default async function handler(req, res) {
       const selectedTabs = req.body.selectedTabs || ['explain','docs','risk','modern','depend'];
 
       const sectionInstructions = {
-        explain: '=== EXPLAIN ===\nProvide a detailed plain-English explanation covering: Program Overview (3-4 sentences), Purpose & Business Logic, Input & Output (every file with access mode), Key Logic Walkthrough (every subroutine individually named and described - no grouping multiple into one sentence), Business Rules Identified (enumerate every hardcoded value with its meaning, use decision tables for multi-path logic), Notable Patterns & Concerns.',
-        docs: '=== DOCS ===\nGenerate structured technical documentation covering: Program Metadata (name/language/format/activation group/lines/execution context), Executive Summary, Input Files (table: Name|Usage|Key Fields|Description), Output Files (table: Name|Update Type|Description), Copybooks & Includes, Data Structures & Key Fields (include OCCURS capacity and purpose for each DS), Subroutines & Procedures (table: Name|Purpose|Called From|Returns), Error Handling, Transaction & Lock Behaviour, Performance Characteristics, Change History Notes.',
-        risk: '=== RISK ===\nAnalyse for risks and code quality. Use IBM i expertise: fail-fast vs silent corruption distinction, WAITRCD framing, commitment control gaps, PCI patterns, activation group patterns, lock management. Cover: Risk Summary, Risk Findings (each as ### SEVERITY — TITLE), Overall Assessment with EXCELLENT/GOOD/FAIR/POOR rating.',
-        modern: '=== MODERN ===\nProduce a modernisation roadmap covering: Modernisation Overview (current state in 3 sentences), Quick Wins Phase 1 (each item: What/How/Effort/Benefit with calibrated estimates), Structural Improvements Phase 2, Modernisation Phase 3, What to Keep, Estimated Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y hrs/days).',
-        depend: '=== DEPEND ===\nExtract every dependency covering: Program Summary, Files & Database Objects (table), Called Programs (table), Data Areas, Subroutines & Procedures (table), Entry Parameters, Transaction & Lock Dependencies, Impact Analysis Summary, Program Flow Diagram in Mermaid (max 25 nodes).'
+        explain: '=== EXPLAIN ===\nPlain-English explanation: Program Overview, Purpose & Business Logic, Input & Output (every file), Key Logic Walkthrough (every subroutine individually named), Business Rules (enumerate every hardcoded value with meaning), Notable Patterns & Concerns.',
+        docs: '=== DOCS ===\nTechnical documentation: Program Metadata, Executive Summary, Input Files table, Output Files table, Copybooks, Data Structures & Key Fields (with OCCURS capacity), Subroutines table, Error Handling, Transaction & Lock Behaviour, Change History.',
+        risk: '=== RISK ===\nIBM i risk analysis (fail-fast vs silent corruption, WAITRCD, commitment control, PCI, lock management, activation groups): Risk Summary, Risk Findings (### SEVERITY — TITLE), Overall Assessment (EXCELLENT/GOOD/FAIR/POOR).',
+        modern: '=== MODERN ===\nModernisation roadmap: Overview, Phase 1 Quick Wins (What/How/Effort/Benefit), Phase 2 Structural, Phase 3 Modernisation, What to Keep, Total Effort.',
+        depend: '=== DEPEND ===\nDependencies: Program Summary, Files table, Called Programs, Data Areas, Subroutines table, Entry Parameters, Transaction & Lock Dependencies, Impact Summary, Mermaid diagram.'
       };
 
       const parts = selectedTabs.filter(t => sectionInstructions[t]).map(t => sectionInstructions[t]);
@@ -493,8 +493,7 @@ export default async function handler(req, res) {
 
       const combinedMessage = await client.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 12000,
-        system: RISK_SYSTEM_PROMPT,
+        max_tokens: 8000,
         messages: [{ role: 'user', content: combinedPrompt }]
       });
 
