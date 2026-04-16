@@ -631,38 +631,37 @@ async function runAnalysis(){
   ['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
   const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
-  // Use combined call — one API request, code sent once, all tabs returned together
   const selectedTabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
-  const tasks=[];
-  if(selectedTabs.length>0){
-    tasks.push((async()=>{
-      try{
-        const resp=await fetch('/api/analyse',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
-          body:JSON.stringify({prompt:code,analysisType:'combined',selectedTabs,codeLength:code.length})
-        });
-        const data=await resp.json();
-        if(!resp.ok)throw new Error(data.error||'Analysis failed');
-        if(data.combined&&data.sections){
-          const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
-          for(const [tab,result] of Object.entries(data.sections)){
-            if(result&&renders[tab]){
-              state.results[tab]=result;
-              renders[tab](result);
-              setTabDone(tab);
-            }
-          }
-          // Mark any selected tabs with no result as error
-          selectedTabs.forEach(tab=>{if(!data.sections[tab])setTabError(tab,new Error('No result returned'));});
-        }
-      }catch(err){
-        selectedTabs.forEach(tab=>setTabError(tab,err));
-      }
-    })());
-  }
   try{
-    await Promise.allSettled(tasks);
+    if(selectedTabs.length===0){return;}
+    const controller=new AbortController();
+    const timeoutId=setTimeout(()=>controller.abort(),115000);
+    let resp;
+    try{
+      resp=await fetch('/api/analyse',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
+        body:JSON.stringify({prompt:code,analysisType:'combined',selectedTabs,codeLength:code.length}),
+        signal:controller.signal
+      });
+    }finally{clearTimeout(timeoutId);}
+    const data=await resp.json();
+    if(!resp.ok){
+      if(resp.status===429){selectedTabs.forEach(tab=>setTabError(tab,new Error(data.error||'RATE_LIMITED')));return;}
+      if(resp.status===401){window.location.href='/login';return;}
+      selectedTabs.forEach(tab=>setTabError(tab,new Error(data.error||`Server error ${resp.status}`)));
+      return;
+    }
+    if(data.combined&&data.sections){
+      const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
+      for(const [tab,result] of Object.entries(data.sections)){
+        if(result&&renders[tab]){state.results[tab]=result;renders[tab](result);setTabDone(tab);}
+      }
+      selectedTabs.forEach(tab=>{if(!data.sections||!data.sections[tab])setTabError(tab,new Error('No result returned for this tab'));});
+    }
+  }catch(err){
+    if(err.name==='AbortError'){selectedTabs.forEach(tab=>setTabError(tab,new Error('Analysis timed out. Try a smaller program or fewer tabs.')));}
+    else{selectedTabs.forEach(tab=>setTabError(tab,err));}
   }finally{
     state.loading=false;
     const b=document.getElementById('analyse-btn');
