@@ -280,7 +280,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <label class="opt-check active" id="opt-modern"><input type="checkbox" checked onchange="toggleOpt(this,'opt-modern')"/><div class="opt-box"></div><span class="opt-label">Modernisation</span></label>
         <label class="opt-check active" id="opt-depend"><input type="checkbox" checked onchange="toggleOpt(this,'opt-depend')"/><div class="opt-box"></div><span class="opt-label">Dependencies</span></label>
       </div>
-      <button class="analyse-btn" id="analyse-btn" onclick="runAnalysis()" disabled>
+      <div id="analysis-progress" style="display:none;margin-top:8px">
+  <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+    <div class="progress-fill" style="height:100%;width:0%;background:var(--amber);transition:width 1s ease;border-radius:2px"></div>
+  </div>
+  <div style="font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:0.04em">Large programs may take 60-120 seconds — quality over speed</div>
+</div>
+<button class="analyse-btn" id="analyse-btn" onclick="runAnalysis()" disabled>
         <div class="spinner"></div><span class="btn-label">Analyse Code</span>
       </button>
       <div id="char-count-wrap" style="margin-top:8px">
@@ -628,6 +634,31 @@ async function runAnalysis(){
   if(!supabaseSession){window.location.href='/login';return;}
   state.loading=true;
   const btn=document.getElementById('analyse-btn');btn.disabled=true;btn.classList.add('loading');btn.querySelector('.btn-label').textContent='Analysing...';
+  // Progress timer
+  const startTime=Date.now();
+  const progressEl=document.getElementById('analysis-progress');
+  if(progressEl)progressEl.style.display='block';
+  const progressTimer=setInterval(()=>{
+    const elapsed=Math.floor((Date.now()-startTime)/1000);
+    const msgs=[
+      [0,'Reading program structure...'],
+      [8,'Analysing business logic...'],
+      [20,'Generating explanation...'],
+      [35,'Building documentation...'],
+      [50,'Running risk analysis...'],
+      [65,'Creating modernisation roadmap...'],
+      [80,'Mapping dependencies...'],
+      [95,'Finalising results...'],
+    ];
+    const current=msgs.filter(([t])=>elapsed>=t).pop()||msgs[0];
+    const label=`${current[1]} (${elapsed}s)`;
+    btn.querySelector('.btn-label').textContent=label;
+    if(progressEl){
+      const pct=Math.min(95,Math.round(elapsed/270*100));
+      progressEl.querySelector('.progress-fill').style.width=pct+'%';
+    }
+  },1000);
+  window._progressTimer=progressTimer;
   ['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
   const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
@@ -635,7 +666,7 @@ async function runAnalysis(){
   try{
     if(selectedTabs.length===0){return;}
     const controller=new AbortController();
-    const timeoutId=setTimeout(()=>controller.abort(),115000);
+    const timeoutId=setTimeout(()=>controller.abort(),270000);
     let resp;
     try{
       resp=await fetch('/api/analyse',{
@@ -653,17 +684,24 @@ async function runAnalysis(){
       return;
     }
     if(data.combined&&data.sections){
+      console.log('Combined sections received:',Object.keys(data.sections));
+      console.log('Section sizes:',Object.fromEntries(Object.entries(data.sections).map(([k,v])=>[k,v?.length||0])));
       const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
       for(const [tab,result] of Object.entries(data.sections)){
         if(result&&renders[tab]){state.results[tab]=result;renders[tab](result);setTabDone(tab);}
       }
       selectedTabs.forEach(tab=>{if(!data.sections||!data.sections[tab])setTabError(tab,new Error('No result returned for this tab'));});
+    } else {
+      console.log('Response data:', JSON.stringify(data).slice(0,500));
     }
   }catch(err){
     if(err.name==='AbortError'){selectedTabs.forEach(tab=>setTabError(tab,new Error('Analysis timed out. Try a smaller program or fewer tabs.')));}
     else{selectedTabs.forEach(tab=>setTabError(tab,err));}
   }finally{
     state.loading=false;
+    if(window._progressTimer){clearInterval(window._progressTimer);window._progressTimer=null;}
+    const progressEl=document.getElementById('analysis-progress');
+    if(progressEl)progressEl.style.display='none';
     const b=document.getElementById('analyse-btn');
     if(b){b.disabled=false;b.classList.remove('loading');b.querySelector('.btn-label').textContent='Re-analyse';}
   }
