@@ -1835,19 +1835,27 @@
 <div class="pricing-section" id="pricing">
   <div class="section-tag reveal">Pricing</div>
   <h2 class="section-title reveal">Pay less than one hour<br/>of developer time.</h2>
-  <p class="section-sub reveal">Launch pricing — locked in for early adopters. Billed in INR at checkout. No credit card required to start.</p>
+  <p class="section-sub reveal">Pay for what you use. Larger programs consume more RLUs — smaller ones cost less. No fixed analysis limits. No credit card required to start.</p>
+
+  <!-- RLU explanation tooltip -->
+  <div style="max-width:600px;margin:0 auto 32px;background:rgba(232,160,32,0.06);border:1px solid var(--amber-dim);padding:14px 20px;font-size:12px;color:var(--text2);line-height:1.7" class="reveal">
+    <strong style="color:var(--amber)">How RPGLens Units (RLUs) work:</strong> Every action consumes RLUs based on program size — not a fixed count.
+    Analysis = 1 RLU per 100 lines per tab. Conversion = 5 RLUs per 100 lines.
+    A 1,000-line program analysed across all 5 tabs = 50 RLUs. A 5,000-line program = 250 RLUs.
+    Unused RLUs roll over at 50% on renewal. Top-up packs available any time.
+  </div>
 
   <div class="pricing-grid reveal">
     <div class="price-card">
       <div class="price-plan">Free</div>
       <div class="price-amt">$0</div>
-      <div class="price-period">forever</div>
+      <div class="price-period">forever · no credit card</div>
       <div class="price-divider"></div>
       <ul class="price-features">
-        <li>3 analyses per month</li>
-        <li>1 conversion per month</li>
-        <li>Up to 500 lines per conversion</li>
-        <li>Plain English explanation</li>
+        <li><strong style="color:var(--amber)">50 RLUs per month</strong></li>
+        <li>~5 full analyses of a 1,000-line program</li>
+        <li>All 5 analysis tabs</li>
+        <li>Fixed→free conversion included</li>
         <li>Word &amp; PDF export</li>
       </ul>
       <button class="price-btn outline" onclick="location.href='/analyser'">Start for free</button>
@@ -1858,14 +1866,16 @@
       <div class="price-period">₹3,999 INR &nbsp;·&nbsp; billed monthly</div>
       <div class="price-divider"></div>
       <ul class="price-features">
-        <li>25 analyses per month</li>
-        <li>5 conversions per month</li>
-        <li>Up to 1,000 lines per conversion</li>
-        <li>All 5 analysis tabs incl. dependency map</li>
+        <li><strong style="color:var(--amber)">500 RLUs per month</strong></li>
+        <li>~50 full analyses of a 1,000-line program</li>
+        <li>~10 full analyses of a 5,000-line program</li>
+        <li>50% rollover on renewal</li>
+        <li>Top-up packs available</li>
+        <li>All 5 analysis tabs</li>
         <li>Word &amp; PDF export</li>
         <li>Email support</li>
       </ul>
-      <button class="price-btn fill" onclick="location.href='/analyser'">Start free trial</button>
+      <button class="price-btn fill" onclick="location.href='/signup'">Get started</button>
     </div>
     <div class="price-card">
       <div class="price-plan">Pro</div>
@@ -1873,16 +1883,17 @@
       <div class="price-period">₹12,999 INR &nbsp;·&nbsp; billed monthly</div>
       <div class="price-divider"></div>
       <ul class="price-features">
-        <li>150 analyses per month</li>
-        <li>20 conversions per month</li>
-        <li>Up to 2,000 lines per conversion</li>
-                <li><strong style="color:var(--amber)">&#9889; BRD → TDD generator</strong></li>
-        <li><strong style="color:var(--amber)">&#10021; TDD → Code generator</strong></li>
+        <li><strong style="color:var(--amber)">2,000 RLUs per month</strong></li>
+        <li>~200 full analyses of a 1,000-line program</li>
+        <li>~40 full analyses of a 5,000-line program</li>
+        <li>50% rollover on renewal</li>
+        <li>Top-up packs available</li>
+        <li><strong style="color:var(--amber)">&#9889; BRD → TDD <span style="font-size:9px;opacity:0.7">(coming soon)</span></strong></li>
+        <li><strong style="color:var(--amber)">&#10021; TDD → Code <span style="font-size:9px;opacity:0.7">(coming soon)</span></strong></li>
         <li><strong style="color:#2ec27e">&#9906; IBM i Live Connect</strong></li>
-        <li>Custom branding on docs</li>
         <li>Priority support</li>
       </ul>
-      <button class="price-btn outline">Start free trial</button>
+      <button class="price-btn outline" onclick="location.href='/signup'">Get started</button>
     </div>
     <div class="price-card">
       <div class="price-plan">Enterprise</div>
@@ -1890,15 +1901,16 @@
       <div class="price-period">custom pricing &nbsp;·&nbsp; contact us</div>
       <div class="price-divider"></div>
       <ul class="price-features">
-        <li>Unlimited analyses &amp; conversions</li>
+        <li>Unlimited RLUs</li>
+        <li>Analyse programs of any size</li>
         <li><strong style="color:var(--amber)">&#9889; BRD → TDD generator</strong></li>
         <li><strong style="color:var(--amber)">&#10021; TDD → Code generator</strong></li>
         <li><strong style="color:#2ec27e">&#9906; IBM i Live Connect</strong></li>
-        <li>Dedicated onboarding &amp; support</li>
+        <li>Dedicated onboarding</li>
         <li>Priority email support</li>
         <li>Feature requests prioritised</li>
       </ul>
-      <button class="price-btn outline">Contact us</button>
+      <button class="price-btn outline" onclick="location.href='mailto:audithesecond@gmail.com'">Contact us</button>
     </div>
   </div>
 </div>
