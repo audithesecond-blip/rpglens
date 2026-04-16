@@ -477,6 +477,159 @@ function onCodeInput(){
 function toggleOpt(cb,id){document.getElementById(id).classList.toggle('active',cb.checked);}
 function switchTab(tab){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.getElementById(`tab-${tab}`).classList.add('active');document.getElementById(`content-${tab}`).classList.add('active');state.activeTab=tab;}
 
+
+const SUMMARY_PROMPTS = {
+  docs: (summary) => {
+    const s = typeof summary === 'string' ? JSON.parse(summary) : summary;
+    return `You are an IBM i technical documentation specialist. Generate complete structured documentation based on this structural analysis of an RPG program. Use exact section headers as shown.
+
+Program Structure:
+${JSON.stringify(s, null, 2)}
+
+Generate documentation with these EXACT sections:
+
+## PROGRAM METADATA
+Name: ${s.program_name} | Language: ${s.language} | Format: ${s.format} | Activation Group: ${s.activation_group} | Execution Context: ${s.execution_context} | Lines: ~${s.estimated_lines}
+
+## EXECUTIVE SUMMARY
+${s.purpose}. Write 3-4 sentences expanding on this for a manager or auditor — what business process does this serve, how critical is it, and what are its main inputs and outputs.
+
+## INPUT FILES
+Table: File Name | Usage | Key Fields | Description
+${s.files.filter(f=>f.access==='input'||f.access==='input/update').map(f=>`${f.name} | ${f.access} | ${f.key_fields} | ${f.purpose}`).join('\n')}
+
+## OUTPUT FILES
+Table: File Name | Update Type | Description
+${s.files.filter(f=>f.access==='output'||f.access==='update').map(f=>`${f.name} | ${f.access} | ${f.purpose}`).join('\n')}
+
+## COPYBOOKS & INCLUDES
+${s.copybooks.length > 0 ? s.copybooks.map(cb=>`${cb.name} — ${cb.purpose}`).join('\n') : 'None identified in visible source.'}
+
+## DATA STRUCTURES & KEY FIELDS
+Table: Field/DS Name | Type | Capacity | Purpose
+${s.occurs_ds.map(ds=>`${ds.name} | DS OCCURS | ${ds.capacity} occurrences | ${ds.purpose} — NOTE: exceeding capacity causes RNX0100`).join('\n')}
+${s.key_variables.map(v=>`${v.name} | ${v.type} | — | ${v.purpose}`).join('\n')}
+
+## SUBROUTINES & PROCEDURES
+Table: Name | Group | Purpose | Called By | Calls
+${s.subroutines.map(sr=>`${sr.name}${sr.is_paired?` (paired with ${sr.pair_name})`:''} | ${sr.group} | ${sr.purpose} | ${sr.called_by||'Main'} | ${sr.calls||'—'}`).join('\n')}
+
+## ERROR HANDLING
+Describe based on these detected patterns: MONITOR/ON-ERROR: ${s.patterns.has_monitor_on_error}, *PSSR: ${s.patterns.has_pssr}. Expand with recommendations.
+
+## TRANSACTION & LOCK BEHAVIOUR
+COMMIT keyword on files: ${s.patterns.has_commit_keyword}. Update after EXFMT: ${s.patterns.update_after_exfmt}. Multi-file update without commit: ${s.patterns.multi_file_update_no_commit}. LDA dependency: ${s.patterns.has_lda}. ${s.transaction_boundary}
+
+## INTEGRATION & API READINESS
+SQL embedded: ${s.patterns.has_sql}. Describe API readiness and CCSID considerations.
+
+## PERFORMANCE CHARACTERISTICS
+Note file access patterns, OCCURS capacity risks, and any performance concerns based on the structural analysis.
+
+## CHANGE HISTORY NOTES
+${s.change_history_note || 'No modification history visible in source.'} Modification count: ${s.modification_count}.`;
+  },
+
+  depend: (summary) => {
+    const s = typeof summary === 'string' ? JSON.parse(summary) : summary;
+    return `You are an IBM i systems analyst. Generate a complete dependency map based on this structural analysis. Use exact section headers.
+
+Program Structure:
+${JSON.stringify(s, null, 2)}
+
+## PROGRAM SUMMARY
+${s.program_name} — ${s.language} ${s.format}-format, ~${s.estimated_lines} lines, ${s.execution_context}. ${s.purpose}
+
+## FILES & DATABASE OBJECTS
+Table: File Name | Type | Access | Key Fields | Purpose
+${s.files.map(f=>`${f.name} | ${f.type} | ${f.access} | ${f.key_fields} | ${f.purpose}`).join('\n')}
+
+## CALLED PROGRAMS
+${s.called_programs.length > 0 ? 'Table: Program | Call Type | Purpose\n' + s.called_programs.map(p=>`${p.name} | ${p.call_type} | ${p.purpose}`).join('\n') : 'No external program calls detected.'}
+
+## DATA AREAS
+${s.data_areas.length > 0 ? s.data_areas.map(d=>`${d.name} — ${d.direction}. Note: runtime behaviour depends on LDA content set by CL caller.`).join('\n') : 'No data area access detected.'}
+
+## COPYBOOKS & INCLUDES
+${s.copybooks.length > 0 ? s.copybooks.map(cb=>`${cb.name} — compile-time dependency. ${cb.purpose}`).join('\n') : 'None identified.'}
+
+## SUBROUTINES & PROCEDURES
+Table: Name | Group | Purpose | Called By | Calls
+${s.subroutines.map(sr=>`${sr.name} | ${sr.group} | ${sr.purpose} | ${sr.called_by||'Main'} | ${sr.calls||'—'}`).join('\n')}
+${s.subroutines.filter(sr=>sr.is_paired).length > 0 ? '\nPaired subroutines detected: ' + s.subroutines.filter(sr=>sr.is_paired).map(sr=>`${sr.name}/${sr.pair_name}`).join(', ') : ''}
+
+## ENTRY PARAMETERS
+Describe based on activation group ${s.activation_group} and execution context ${s.execution_context}.
+
+## TRANSACTION & LOCK DEPENDENCIES
+Files updated together (potential commit boundary): ${s.files.filter(f=>f.access==='update'||f.access==='output').map(f=>f.name).join(', ')||'None'}. Commit keyword present: ${s.patterns.has_commit_keyword}. Update after EXFMT: ${s.patterns.update_after_exfmt}. Batch loop without commit: ${s.patterns.batch_loop_no_commit}.
+
+## IMPACT ANALYSIS SUMMARY
+Write 5 sentences: what depends on this program, what breaks if it changes, lock and transaction impact of changes, risk level.
+
+## PROGRAM FLOW DIAGRAM
+Generate a Mermaid flowchart (max 25 nodes) based on the subroutine structure above.
+
+\`\`\`mermaid
+flowchart TD
+    A([Start]) --> Z([Stop])
+\`\`\``;
+  },
+
+  modern: (summary) => {
+    const s = typeof summary === 'string' ? JSON.parse(summary) : summary;
+    return `You are an IBM i modernisation architect. Generate a practical modernisation roadmap based on this structural analysis. Use IBM i calibrated effort estimates.
+
+Program Structure:
+${JSON.stringify(s, null, 2)}
+
+EFFORT CALIBRATION (with 20% buffer):
+- Add named constant (replace hardcoded literal): 45 min–1.5 hrs each
+- Rename numeric indicator: 45 min–1.5 hrs each
+- Convert subroutine to /FREE: 45 min–2 hrs
+- Convert full program (${s.estimated_lines} lines) to /FREE: ${s.estimated_lines < 200 ? '2–5 hrs' : s.estimated_lines < 500 ? '5–10 hrs' : s.estimated_lines < 1000 ? '10–20 hrs' : '20–40 hrs'}
+- Add COMMIT/ROLLBACK to multi-file transaction: 3–6 hrs
+- Add MONITOR/ON-ERROR per procedure: 1.5–3 hrs
+- Extract subroutine to service program: 2–4 hrs
+- Expose as IWS REST service: 1–2 days
+- Full ILE refactor with service programs: 3–8 days
+
+## MODERNISATION OVERVIEW
+${s.program_name} is a ${s.estimated_lines}-line ${s.language} ${s.format}-format program. Patterns detected: ${[
+  s.patterns.has_commit_keyword ? 'commitment control active ✓' : 'NO commitment control ✗',
+  s.patterns.has_monitor_on_error ? 'MONITOR/ON-ERROR present ✓' : 'no structured error handling ✗',
+  s.patterns.has_pssr ? '*PSSR defined ✓' : null,
+  s.patterns.has_lda ? 'LDA dependency' : null,
+  s.patterns.has_sql ? 'embedded SQL' : null,
+  s.patterns.has_workstn ? 'interactive (WORKSTN)' : 'batch program',
+].filter(Boolean).join(', ')}.
+
+## QUICK WINS (Phase 1 — Low effort, high value)
+For each hardcoded value: ${s.patterns.hardcoded_values.slice(0,5).join(', ')}.
+Generate specific items with What/How/Effort/Benefit format for:
+- Hardcoded values → named constants
+- Numeric indicators → named indicators  
+${!s.patterns.has_commit_keyword && s.patterns.multi_file_update_no_commit ? '- Add commitment control (HIGH PRIORITY — data integrity risk)' : ''}
+${s.patterns.update_after_exfmt ? '- Move user interaction outside commit boundary' : ''}
+${s.patterns.batch_loop_no_commit ? '- Add periodic COMMIT every 1,000 records' : ''}
+
+## STRUCTURAL IMPROVEMENTS (Phase 2 — Medium effort)
+Based on ${s.subroutines.length} subroutines across ${[...new Set(s.subroutines.map(sr=>sr.group))].join(', ')} groups.
+Generate specific items for service program extraction, error handling, lock management.
+
+## MODERNISATION (Phase 3 — Higher effort)
+REST API exposure, full free-format conversion, SQL access.
+
+## WHAT TO KEEP
+${s.patterns.has_commit_keyword ? 'Commitment control structure — well designed, preserve.' : ''}
+${s.patterns.has_monitor_on_error ? 'MONITOR/ON-ERROR error handling — modern pattern, preserve.' : ''}
+List other patterns worth keeping.
+
+## ESTIMATED TOTAL EFFORT
+Phase 1: X–Y hrs | Phase 2: X–Y hrs | Phase 3: X–Y days`;
+  }
+};
+
 const PROMPTS={
   explain:(code)=>`You are an expert IBM i / AS400 RPG developer and analyst with 20+ years of experience in production IBM i systems.\n\nAnalyse the following RPG source code thoroughly and provide a DETAILED plain-English explanation. Be specific — name actual field names, file names, subroutine names, and values from the code.\n\nCRITICAL ACCURACY RULES — apply before writing anything:\n1. ONLY STATE WHAT IS EXPLICITLY VISIBLE IN THE CODE. Never infer, assume, or extrapolate logic that cannot be directly traced to a line in the source. If a flag is SET somewhere but its origin is not visible, say "set by upstream logic not visible in this source" — do not invent where it came from.\n2. CRYPTOGRAPHY PRECISION: IBM i PCI programs DECRYPT data (convert encrypted/tokenised values to plaintext). They do NOT encrypt in the processing flow. Use "decryption" and "tokenisation" — never "encryption" when describing the processing of card data.\n3. DO NOT OVERSTATE COMPLIANCE ROLES: An index file used for tracking is not "full PCI compliance enforcement". A log file is not an audit system. Describe what the file actually does, not what compliance purpose you assume it serves.\n4. USE PRECISE BUSINESS LANGUAGE:\n   - Use "processing and classifying" not "validating" (unless the code explicitly validates against rules)\n   - Use "eligible transaction" not "clean transaction" when describing filter criteria\n   - Use "transaction type indicator" not "transaction status" unless status is explicitly named\n\nStructure your response using these exact headings:\n\n## PROGRAM OVERVIEW\n3-4 sentences covering: what this program does, what business process it serves, when it would typically run, and what system it likely belongs to.\n\n## PURPOSE & BUSINESS LOGIC\nExplain in detail the business problem this program solves. What triggers it? Who uses the output? What business rules does it enforce? Be specific to THIS program.\n\n## INPUT & OUTPUT\nList every file used with its access mode. List any entry parameters. Describe what data comes in and what goes out. Include key fields used for lookups.\n\n## KEY LOGIC WALKTHROUGH\nThis section must be COMPREHENSIVE. A 2,500-line program requires a proportionally detailed walkthrough — not a paragraph summary. Depth is mandatory.\n\nSTRUCTURE:\n1. Main processing loop — describe the primary read/process/write cycle in full\n2. For every major branch (IF/SELECT/WHEN) — describe each path with the actual condition and what it does\n3. For every subroutine — describe its purpose, inputs, outputs, and key logic in 3-5 sentences minimum\n4. For nested conditions — trace the complete decision tree, not just the top-level split\n\nSUBROUTINE GROUPING: Group subroutines by functional role. If paired subroutines exist (ForwardXxx/ReverseXxx, Create_xx/Create_xxR), identify the pairing as an intentional design pattern and explain why the pairing exists.\n\nFOR LARGE PROGRAMS: If the program has more than 20 subroutines, create a summary table first: Subroutine | Group | Purpose | Called From. Then provide detailed walkthrough for each group.\n\nNEVER: Summarise multiple subroutines in one sentence. Never say "various other subroutines handle X." Every named subroutine must be individually described.\n\n## BUSINESS RULES IDENTIFIED\nThis section must enumerate business rules exhaustively. A program with 30 hardcoded transaction type values must list all 30 — not "various transaction types."\n\nMANDATORY APPROACH:\n1. For every SELECT/WHEN/IF chain driven by a code or type field:\n   - List EVERY hardcoded value with its business meaning in a table: Value | Meaning | Processing Path\n   - Example: "00 = Regular sale → processes via ForwardTLOG", "01 = Return → processes via ReverseTLOG"\n   - If a value is referenced but has no processing path: "Ghost rule — value 07 referenced in comments but has no active processing branch"\n\n2. For every business decision based on field comparisons:\n   - State the exact field name, the comparison value, and the business outcome\n   - Example: "HVOID = " " (space) → active transaction / HVOID ≠ " " → voided transaction"\n\n3. For mode or status fields that control multi-path processing:\n   - Create a decision table showing all combinations:\n   - Example: "RTN≠Y AND QTY>0 → Mode 1 (Normal sale) / RTN≠Y AND QTY<0 → Mode 3 (Void sale)"\n\n4. For array or table lookups (e.g. tender code arrays):\n   - Describe the lookup mechanism and what it maps from/to\n\nNEVER: Group multiple business rules under "various codes" or "several conditions." Each rule is individually significant.\n\n## NOTABLE PATTERNS & CONCERNS\nFlag the following specifically if present:\n- Hardcoded literals, account numbers, library names, or dollar amounts\n- Multi-file UPDATE/WRITE/DELETE without COMMIT keyword on file declarations (commitment control gap)\n- UPDATE after EXFMT — lock held during user interaction (lock management concern)\n- Large batch READ loops with UPDATE but no periodic COMMIT (lock contention risk)\n- Dynamic SQL built by string concatenation (SQL injection risk)\n- Programs that appear to call external systems or APIs while holding file locks\n- Missing ROLLBACK in error handling blocks that span multiple file updates\n- WAITRCD not explicitly configured on files used in both batch and interactive contexts\n- Hardcoded credentials or connection strings\n- Complex logic, deep nesting, or subroutines with no clear single responsibility\n- Conditional compilation markers (/IF DEFINED, /16, /17 used as version markers) — note as embedded modification history, count how many are present\n- Paired subroutine names (ForwardXxx/ReverseXxx, CreateXxx/CreateXxxR) — note as intentional design pattern\n\nRPG Source Code:\n\`\`\`\n${code}\n\`\`\`\n\nIBM i EXPLAIN ACCURACY STANDARDS — apply before writing:\n1. ONLY STATE WHAT IS VISIBLE IN CODE. Never infer logic not traceable to a source line.\n2. ACTIVATION GROUP AWARENESS: DFTACTGRP(*YES) = OPM, *INLR releases everything. DFTACTGRP(*NO) ACTGRP(*CALLER) = service program mode, *INLR does NOT release resources.\n3. TRIGGER AWARENESS: Always note "Row-level triggers may exist on files accessed by this program — verify with DSPFD."\n4. LOGICAL FILE AWARENESS: If file names suggest LF (ends in L, or has LF suffix), note that select/omit criteria or join logic may filter records invisibly.\n5. COMMITMENT CONTROL AWARENESS: If COMMIT keyword appears on F-specs or STRCMTCTL is referenced, explicitly describe the transaction boundary.\n6. CL CALLER AWARENESS: RPG programs are often called by CL wrappers that set OVRDBF, STRCMTCTL, or SBMJOB parameters. If caller logic is not visible, note this explicitly.\n7. NULL FIELD AWARENESS: If ALWNULL fields are accessed, note whether %NULLIND is used.\n8. ERROR CODE PRECISION: Name specific CPF/MCH/RNX codes when describing error scenarios. Never say "an error occurs" — say "CPF5026 (record locked) is raised."\n9. CRYPTOGRAPHY PRECISION: IBM i PCI programs DECRYPT (convert encrypted/tokenised values to plaintext). Never say "encryption" when describing the processing flow.\n10. PERFORMANCE CONTEXT: Note CHAIN vs SETLL+READE usage, subfile patterns, ODP sharing if SHARE(*YES) is present.\n\nImportant: Be specific and detailed. Name actual fields, files, values and subroutines from the code. Never state assumed logic as fact. A superficial or inaccurate response is not acceptable.\n\nFor large programs (500+ lines): do NOT summarise or skip sections. Walk through every subroutine and every major conditional block. If a program has 2,500 lines, the KEY LOGIC WALKTHROUGH section should be proportionally detailed — at minimum covering every named subroutine, every file operation loop, and every significant IF/SELECT branch. Omitting logic because the program is long is not acceptable.`,
 
@@ -674,34 +827,72 @@ async function runAnalysis(){
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
   const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
   const selectedTabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
-  // Sequential individual calls — each tab completes independently within 40s
   const renders={explain:renderExplain,docs:renderDocs,risk:renderRisk,modern:renderModern,depend:renderDepend};
-  async function runTab(tab){
-    // For very large programs, truncate to first 60K chars with a note
-    let codeForTab=code;
-    if(code.length>60000&&tab==='explain'){
-      codeForTab=code.slice(0,60000)+'\n\n[... program truncated at 60,000 characters for analysis. First portion shown above. Key structural patterns and business rules should be visible in the code above.]';
-    }
-    const tabPrompt=PROMPTS[tab]?PROMPTS[tab](codeForTab):codeForTab;
+
+  // Hybrid architecture:
+  // Pass 1 — structural summary (full code once, ~10s)
+  // Pass 2a — explain + risk use full code (sequential, ~40s each)
+  // Pass 2b — docs + depend + modern use summary (parallel, ~20s each)
+
+  const SUMMARY_TABS=['docs','depend','modern'];
+  const FULLCODE_TABS=['explain','risk'];
+  const needsSummary=selectedTabs.some(t=>SUMMARY_TABS.includes(t));
+  const needsFullCode=selectedTabs.filter(t=>FULLCODE_TABS.includes(t));
+
+  async function callTab(tabPrompt,tab,analysisType){
     const resp=await fetch('/api/analyse',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
-      body:JSON.stringify({prompt:tabPrompt,analysisType:tab,codeLength:code.length})
+      body:JSON.stringify({prompt:tabPrompt,analysisType:analysisType||tab,codeLength:code.length})
     });
     const data=await resp.json().catch(()=>({error:`Server error ${resp.status}`}));
     if(!resp.ok)throw new Error(data.error||`Error ${resp.status}`);
-    if(data.result&&renders[tab]){state.results[tab]=data.result;renders[tab](data.result);setTabDone(tab);}
+    return data.result;
   }
+
   try{
-    for(const tab of selectedTabs){
+    let summary=null;
+
+    // Pass 1: Get structural summary if any summary tab selected
+    if(needsSummary){
       try{
-        await runTab(tab);
-        if(selectedTabs.indexOf(tab)<selectedTabs.length-1)await new Promise(r=>setTimeout(r,2000));
-      }catch(err){
-        setTabError(tab,err);
-        // Continue to next tab even if one fails
+        const sumResult=await callTab(code,'summary');
+        summary=JSON.parse(sumResult);
+      }catch(e){
+        console.warn('Summary pass failed, falling back to full code for all tabs:', e.message);
+        summary=null;
       }
     }
+
+    // Pass 2a: Full code tabs (sequential — explain then risk)
+    for(const tab of needsFullCode){
+      if(!selectedTabs.includes(tab))continue;
+      try{
+        const tabPrompt=PROMPTS[tab]?PROMPTS[tab](code):code;
+        const result=await callTab(tabPrompt,tab);
+        state.results[tab]=result;renders[tab](result);setTabDone(tab);
+        await new Promise(r=>setTimeout(r,1000));
+      }catch(err){setTabError(tab,err);}
+    }
+
+    // Pass 2b: Summary tabs (parallel — docs, depend, modern simultaneously)
+    const summaryTabsSelected=SUMMARY_TABS.filter(t=>selectedTabs.includes(t));
+    if(summaryTabsSelected.length>0){
+      await Promise.allSettled(summaryTabsSelected.map(async tab=>{
+        try{
+          let tabPrompt;
+          if(summary&&SUMMARY_PROMPTS[tab]){
+            tabPrompt=SUMMARY_PROMPTS[tab](summary);
+          }else{
+            // Fallback to full code if summary failed
+            tabPrompt=PROMPTS[tab]?PROMPTS[tab](code):code;
+          }
+          const result=await callTab(tabPrompt,tab);
+          state.results[tab]=result;renders[tab](result);setTabDone(tab);
+        }catch(err){setTabError(tab,err);}
+      }));
+    }
+
   }finally{
     state.loading=false;
     if(window._progressTimer){clearInterval(window._progressTimer);window._progressTimer=null;}
