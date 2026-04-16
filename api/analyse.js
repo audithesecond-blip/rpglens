@@ -469,26 +469,87 @@ export default async function handler(req, res) {
       }
     }
 
+
+    // ── COMBINED ANALYSIS ─────────────────────────────────────────────
+    // One API call, code sent once, all 5 tabs returned together
+    if (analysisType === 'combined') {
+      const selectedTabs = req.body.selectedTabs || ['explain','docs','risk','modern','depend'];
+      
+      const sectionPrompts = {
+        explain: `## EXPLAIN
+Provide a detailed plain-English explanation of this program. Cover: Program Overview, Purpose & Business Logic, Input & Output, Key Logic Walkthrough (every subroutine individually), Business Rules Identified (enumerate every hardcoded value), Notable Patterns & Concerns.`,
+        docs: `## DOCS
+Generate structured technical documentation. Cover: Program Metadata (name/language/format/activation group/lines/purpose), Executive Summary, Input Files (table: Name|Usage|Key Fields|Description), Output Files (table: Name|Update Type|Description), Copybooks & Includes, Data Structures & Key Fields (include OCCURS capacity and purpose), Subroutines & Procedures (table: Name|Purpose|Called From|Returns), Error Handling, Transaction & Lock Behaviour, Performance Characteristics, Change History Notes.`,
+        risk: `## RISK
+Analyse for risks and code quality. Cover: Risk Summary, Risk Findings (each as ### SEVERITY — TITLE with Location/Description/Impact/Recommendation), Overall Assessment with rating (EXCELLENT/GOOD/FAIR/POOR) and Risk Classification Table.`,
+        modern: `## MODERN
+Produce a modernisation roadmap. Cover: Modernisation Overview, Quick Wins Phase 1 (each item: What/How/Effort/Benefit), Structural Improvements Phase 2, Modernisation Phase 3, What to Keep, Estimated Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y hrs/days).`,
+        depend: `## DEPEND
+Extract every dependency. Cover: Program Summary, Files & Database Objects (table), Called Programs (table), Data Areas, Subroutines & Procedures (table), Entry Parameters, Transaction & Lock Dependencies, Impact Analysis Summary, Program Flow Diagram (Mermaid flowchart max 25 nodes).`
+      };
+      
+      const selectedPrompts = selectedTabs
+        .filter(t => sectionPrompts[t])
+        .map(t => sectionPrompts[t])
+        .join('
+
+');
+
+      const combinedPrompt = `You are a senior IBM i / AS400 expert with 25+ years of hands-on RPG experience. Analyse the following RPG source code and produce ALL requested sections. Use the exact section headers shown. Be specific — name actual field names, file names, subroutine names, and values from the code.
+
+${selectedPrompts}
+
+Produce each section completely. For large programs do NOT summarise — cover every subroutine individually. For business rules enumerate every hardcoded value. For risk use the IBM i semantic knowledge: fail-fast vs silent corruption, WAITRCD framing, commitment control gaps, PCI patterns, activation group patterns.
+
+RPG Source Code:
+\`\`\`
+${prompt}
+\`\`\``;
+
+      const combinedParams = {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 12000,
+        system: RISK_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: combinedPrompt }]
+      };
+
+      const combinedMessage = await client.messages.create(combinedParams);
+      const combinedResult = combinedMessage.content.map(b => b.type === 'text' ? b.text : '').join('');
+
+      // Parse sections from combined result
+      const sections = {};
+      const sectionMap = { EXPLAIN: 'explain', DOCS: 'docs', RISK: 'risk', MODERN: 'modern', DEPEND: 'depend' };
+      
+      for (const [marker, key] of Object.entries(sectionMap)) {
+        const regex = new RegExp(`## ${marker}\n([\s\S]*?)(?=## (?:EXPLAIN|DOCS|RISK|MODERN|DEPEND)|$)`, 'i');
+        const match = combinedResult.match(regex);
+        if (match) sections[key] = match[1].trim();
+      }
+
+      return res.status(200).json({ combined: true, sections });
+    }
+    // ── END COMBINED ──────────────────────────────────────────────────
+
     // ── 5. CALL CLAUDE API ────────────────────────────────────────────
     const client    = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     // Token limits per analysis type — explain and docs need high limits for large programs
     const TOKEN_LIMITS = {
       conversion: 16000,
-      explain:    8000,   // Large programs need full walkthrough
-      docs:       6000,   // Full file tables, DS tables, subroutine tables
-      risk:       4000,   // Structured findings
-      modern:     4000,   // Phased roadmap
-      depend:     4000,   // Dependency tables + diagram
+      explain:    4000,
+      docs:       3000,
+      risk:       3000,
+      modern:     3000,
+      depend:     2500,
     };
     // Adaptive limits — very large programs get reduced output to stay within time budget
     const codeLen = codeLength || prompt.length;
     const isLargeProgram = codeLen > 50000; // >50K chars = ~2500+ lines
     const LARGE_LIMITS = {
-      explain: 7000,
-      docs:    5000,
-      risk:    4000,
-      modern:  4000,
-      depend:  3500,
+      explain: 3000,
+      docs:    2500,
+      risk:    2500,
+      modern:  2500,
+      depend:  2000,
     };
     const activeLimits = isLargeProgram ? LARGE_LIMITS : TOKEN_LIMITS;
     const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (activeLimits[analysisType] || 4000);
