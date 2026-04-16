@@ -648,11 +648,9 @@ async function initSession() {
 }
 
 
-// ── PLAN LIMITS (mirrors proxy) ───────────────────────────────────────
-const CONV_LINE_LIMITS  = { free: 500, starter: 1000, team: 2000, admin: 999999 };
-const CONV_LIMITS       = { free: 1,   starter: 5,    team: 20,   admin: 999999 };
-const CONV_LINE_LABELS  = { free: 'Free (500 line limit)', starter: 'Starter (1,000 line limit)', team: 'Team (2,000 line limit)', admin: 'Admin (unlimited)' };
-const CONV_LIMIT_LABELS = { free: '1 conversion/period', starter: '5 conversions/period', team: '20 conversions/period', admin: 'Unlimited' };
+// ── RLU CONSTANTS ────────────────────────────────────────────────────
+const RLU_ALLOC = { free:50, starter:500, pro:2000, enterprise:999999, admin:999999 };
+let _rluBalance = { monthly:0, rollover:0, topup:0, total:0 };
 
 // ── INPUT ─────────────────────────────────────────────────────────────
 function onInput() {
@@ -673,19 +671,24 @@ function onInput() {
     document.getElementById('conv-limit-label').textContent = '';
     cc.style.color = '';
   } else {
+    const rluCost = Math.ceil(Math.max(lines,100) / 100) * 5;
+    const hasEnough = _rluBalance.total >= rluCost || plan === 'admin';
     cc.textContent = `${lines.toLocaleString()} lines  ·  ${len.toLocaleString()} chars`;
-    document.getElementById('conv-limit-label').textContent = `${pct}% of ${CONV_LINE_LABELS[plan]}`;
+    document.getElementById('conv-limit-label').textContent = `~${rluCost} RLUs for this conversion (${_rluBalance.total} available)`;
     document.getElementById('line-bar-wrap').style.display = 'block';
 
+    const pct2 = Math.min(100, Math.round(rluCost / Math.max(_rluBalance.total,1) * 100));
     const fill = document.getElementById('line-bar-fill');
-    fill.style.width      = pct + '%';
-    fill.style.background = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--green)';
+    fill.style.width      = pct2 + '%';
+    fill.style.background = !hasEnough ? 'var(--red)' : pct2 >= 80 ? 'var(--amber)' : 'var(--green)';
 
-    if (lines > limit) {
+    if (!hasEnough && plan !== 'admin') {
       btn.disabled = true;
       cc.style.color = 'var(--red)';
       document.getElementById('conv-limit-label').style.color = 'var(--red)';
+      document.getElementById('conv-limit-label').textContent = `Insufficient RLUs — need ${rluCost}, have ${_rluBalance.total}. Top up from dashboard.`;
     } else {
+      btn.disabled = len < 10;
       cc.style.color = '';
       document.getElementById('conv-limit-label').style.color = 'var(--text3)';
     }
@@ -695,28 +698,36 @@ function onInput() {
 async function loadConversionUsage() {
   if (!supabaseSession) return;
   try {
-    const plan  = supabaseSession.user?.user_metadata?.plan || 'free';
-    const limit = CONV_LIMITS[plan] || 1;
+    const plan   = supabaseSession.user?.user_metadata?.plan || 'free';
     const userId = supabaseSession.user.id;
+    const sb2    = getSb();
 
-    // Read from localStorage (written after each conversion)
-    const signupDate   = new Date(supabaseSession.user.created_at);
-    const daysSince    = Math.floor((new Date() - signupDate) / (1000 * 60 * 60 * 24));
-    const periodNumber = Math.floor(daysSince / 30);
-    const periodKey    = `period_${periodNumber}`;
-    const usageKey     = `rpglens_conv_${userId}_${periodKey}`;
-    const used         = parseInt(localStorage.getItem(usageKey) || '0');
-    const remaining    = Math.max(0, limit - used);
+    const { data:credits } = await sb2.from('rlu_credits')
+      .select('monthly_rlu,monthly_used,rollover_rlu,rollover_used,topup_rlu,topup_used,total_conversions')
+      .eq('user_id', userId).single();
 
-    const el = document.getElementById('conv-usage-label');
-    if (plan === 'admin') {
-      el.textContent = 'Admin — unlimited conversions';
-      el.style.color = 'var(--green)';
-    } else {
-      el.textContent = `${used} of ${limit} conversions used this period  ·  ${remaining} remaining`;
-      el.style.color = remaining === 0 ? 'var(--red)' : remaining <= 1 ? 'var(--amber)' : 'var(--text3)';
+    if (credits) {
+      const monthly  = Math.max(0, credits.monthly_rlu  - credits.monthly_used);
+      const rollover = Math.max(0, credits.rollover_rlu - credits.rollover_used);
+      const topup    = Math.max(0, credits.topup_rlu    - credits.topup_used);
+      const total    = monthly + rollover + topup;
+      _rluBalance    = { monthly, rollover, topup, total };
+
+      const el = document.getElementById('conv-usage-label');
+      if (plan === 'admin') {
+        el.textContent = 'Admin — unlimited RLUs';
+        el.style.color = 'var(--green)';
+      } else {
+        const parts = [];
+        if (monthly  > 0) parts.push(`${monthly} monthly`);
+        if (rollover > 0) parts.push(`${rollover} rollover`);
+        if (topup    > 0) parts.push(`${topup} top-up`);
+        el.textContent = `${total} RLUs available  ·  ${parts.join(' + ') || 'none'}  ·  ${credits.total_conversions || 0} total conversions`;
+        el.style.color = total === 0 ? 'var(--red)' : total < 50 ? 'var(--amber)' : 'var(--text3)';
+      }
     }
-  } catch(e) {}
+    onInput(); // Refresh estimate with new balance
+  } catch(e) { console.warn('RLU fetch failed:', e); }
 }
 
 function clearInput() {
