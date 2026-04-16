@@ -474,57 +474,8 @@ export default async function handler(req, res) {
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    // ── COMBINED ANALYSIS — STREAMING ───────────────────────────────
-    if (analysisType === 'combined') {
-      const selectedTabs = req.body.selectedTabs || ['explain','docs','risk','modern','depend'];
 
-      const sectionInstructions = {
-        explain: 'Provide a comprehensive plain-English explanation: Program Overview, Purpose & Business Logic, Input & Output (every file), Key Logic Walkthrough (every subroutine individually), Business Rules (enumerate every hardcoded value with decision tables), Notable Patterns & Concerns.',
-        docs: 'Generate complete technical documentation: Program Metadata, Executive Summary, Input Files table, Output Files table, Copybooks, Data Structures (OCCURS capacity and purpose), Subroutines table, Error Handling, Transaction & Lock Behaviour, Change History.',
-        risk: 'IBM i risk analysis (fail-fast vs silent corruption, WAITRCD, commitment control, PCI, lock management, activation groups): Risk Summary, Risk Findings (### SEVERITY — TITLE), Overall Assessment (EXCELLENT/GOOD/FAIR/POOR).',
-        modern: 'Modernisation roadmap: Overview, Phase 1 Quick Wins (What/How/Effort/Benefit with calibrated estimates), Phase 2 Structural, Phase 3 Modernisation, What to Keep, Total Effort (Phase 1: X-Y hrs | Phase 2: X-Y hrs | Phase 3: X-Y days).',
-        depend: 'Extract all dependencies: Program Summary, Files table, Called Programs, Data Areas, Subroutines table, Entry Parameters, Transaction & Lock Dependencies, Impact Summary, Mermaid diagram.'
-      };
 
-      const parts = selectedTabs.filter(t => sectionInstructions[t]).map(t => `=== ${t.toUpperCase()} ===\n${sectionInstructions[t]}`);
-      const combinedPrompt = 'Analyse this IBM i RPG program and produce all sections below. Be specific — name actual fields, files, subroutines, values. Cover every subroutine individually.\n\n' + parts.join('\n\n') + '\n\nRPG Source Code:\n```\n' + prompt + '\n```';
-
-      // Use streaming to avoid timeout
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-
-      const stream = await client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 12000,
-        system: RISK_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: combinedPrompt }]
-      });
-
-      let fullText = '';
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
-          fullText += chunk.delta.text;
-          res.write(`data: ${JSON.stringify({ chunk: chunk.delta.text })}\n\n`);
-        }
-      }
-
-      // Parse and send final sections
-      const sections = {};
-      const tabNames = ['EXPLAIN','DOCS','RISK','MODERN','DEPEND'];
-      const allPattern = tabNames.join('|');
-      for (const tab of selectedTabs) {
-        const marker = tab.toUpperCase();
-        const re = new RegExp('=== ' + marker + ' ===\n([\s\S]*?)(?==== (?:' + allPattern + ') ===|$)');
-        const match = fullText.match(re);
-        if (match) sections[tab] = match[1].trim();
-      }
-
-      res.write(`data: ${JSON.stringify({ done: true, sections })}\n\n`);
-      res.end();
-      return;
-    }
-    // ── END COMBINED ──────────────────────────────────────────────────
 
     // ── 5. CALL CLAUDE API ────────────────────────────────────────────
     // Token limits per analysis type — explain and docs need high limits for large programs
