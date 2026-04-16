@@ -480,7 +480,18 @@ export default async function handler(req, res) {
       modern:     4000,   // Phased roadmap
       depend:     4000,   // Dependency tables + diagram
     };
-    const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (TOKEN_LIMITS[analysisType] || 4000);
+    // Adaptive limits — very large programs get reduced output to stay within time budget
+    const codeLen = code ? code.length : prompt.length;
+    const isLargeProgram = codeLen > 50000; // >50K chars = ~2500+ lines
+    const LARGE_LIMITS = {
+      explain: 5000,
+      docs:    4000,
+      risk:    4000,
+      modern:  3000,
+      depend:  3000,
+    };
+    const activeLimits = isLargeProgram ? LARGE_LIMITS : TOKEN_LIMITS;
+    const maxTokens = isConversion ? TOKEN_LIMITS.conversion : (activeLimits[analysisType] || 4000);
 
     // Use system prompt for risk analysis to keep browser payload small
     const isRiskAnalysis = analysisType === "risk";
