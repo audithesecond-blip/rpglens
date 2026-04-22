@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
 <script src="/config.js"></script>
+<script src="/debt-score.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -177,6 +178,39 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+/* ── Modernisation Debt Score Badge ───────────────────────────────── */
+.debt-badge{--debt-accent:var(--amber);display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:10px 18px;background:var(--bg2);border-bottom:1px solid var(--border);border-left:3px solid var(--debt-accent);cursor:pointer;user-select:none;transition:background 0.15s;flex-shrink:0}
+.debt-badge[hidden]{display:none}
+.debt-badge:hover{background:var(--bg3)}
+.debt-badge.is-loading{opacity:0.6;pointer-events:none}
+.debt-ring{position:relative;width:52px;height:52px;border-radius:50%;background:conic-gradient(var(--debt-accent) calc(var(--debt-score,0)*1%),var(--border) 0);display:grid;place-items:center;flex-shrink:0}
+.debt-ring::after{content:'';position:absolute;inset:5px;background:var(--bg2);border-radius:50%}
+.debt-badge:hover .debt-ring::after{background:var(--bg3)}
+.debt-ring-val{position:relative;z-index:1;font-family:var(--display);font-weight:800;font-size:16px;color:var(--text);letter-spacing:-0.02em}
+.debt-text{min-width:0}
+.debt-title-row{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.debt-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:6px}
+.debt-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--debt-accent)}
+.debt-level{display:inline-block;padding:2px 8px;background:var(--debt-accent);color:var(--bg);font-family:var(--display);font-weight:700;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;border-radius:2px}
+.debt-headline{font-size:12px;color:var(--text2);line-height:1.45;margin:0}
+.debt-band{font-size:11px;color:var(--text3);line-height:1.4;margin:2px 0 0}
+.debt-chevron{width:16px;height:16px;color:var(--text3);transition:transform 0.2s;flex-shrink:0}
+.debt-badge.is-expanded .debt-chevron{transform:rotate(180deg)}
+.debt-breakdown{max-height:0;overflow:hidden;transition:max-height 0.25s ease;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.debt-breakdown.is-expanded{max-height:720px;border-bottom:1px solid var(--border)}
+.debt-breakdown-inner{padding:14px 18px 16px}
+.debt-subhead{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);margin:0 0 10px;display:flex;align-items:center;gap:6px}
+.debt-subhead::before{content:'';display:inline-block;width:3px;height:9px;background:var(--amber)}
+.debt-components{display:flex;flex-direction:column;gap:4px}
+.debt-comp{display:grid;grid-template-columns:160px 1fr auto;gap:10px;align-items:center;font-size:11.5px}
+.debt-comp-label{color:var(--text2);font-weight:500}
+.debt-comp-bar{position:relative;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.debt-comp-fill{position:absolute;inset:0;width:calc(var(--debt-ratio,0)*100%);background:var(--debt-accent);border-radius:2px;transition:width 0.4s ease}
+.debt-comp-score{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:38px;text-align:right;letter-spacing:0.04em}
+.debt-comp-note{grid-column:1/-1;font-size:10.5px;color:var(--text3);line-height:1.5;padding:0 0 6px;margin-top:-2px}
+.debt-footer{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:9.5px;color:var(--text3);line-height:1.5;letter-spacing:0.02em}
+.debt-footer em{font-style:italic;color:var(--text2)}
+@media (max-width:720px){.debt-comp{grid-template-columns:1fr auto}.debt-comp-bar{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -319,6 +353,26 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
   <div class="output-panel">
+    <!-- Modernisation Debt Score Badge — populated by renderDebtScore() after Pass 1 -->
+    <div class="debt-badge" id="debt-badge" hidden onclick="toggleDebtBadge()">
+      <div class="debt-ring" aria-hidden="true"><span class="debt-ring-val" id="debt-ring-val">--</span></div>
+      <div class="debt-text">
+        <div class="debt-title-row">
+          <span class="debt-title">Modernisation Debt</span>
+          <span class="debt-level" id="debt-level">--</span>
+        </div>
+        <p class="debt-headline" id="debt-headline">Computing...</p>
+        <p class="debt-band" id="debt-band"></p>
+      </div>
+      <svg class="debt-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 8 10 13 15 8"></polyline></svg>
+    </div>
+    <div class="debt-breakdown" id="debt-breakdown">
+      <div class="debt-breakdown-inner">
+        <p class="debt-subhead">Component breakdown</p>
+        <div class="debt-components" id="debt-components"></div>
+        <p class="debt-footer">Based on the Modernization Debt framework from the <em>IBM i Modernization Playbook</em> (Ch 2, Ch 6, Ch 33). LOW · MEDIUM · HIGH · CRITICAL map to the four-level debt scale used across the book.</p>
+      </div>
+    </div>
     <div class="tabs">
       <button class="tab active" id="tab-explain" onclick="switchTab('explain')"><div class="tab-dot"></div><span>Explanation</span></button>
       <button class="tab" id="tab-docs" onclick="switchTab('docs')"><div class="tab-dot"></div><span>Documentation</span></button>
@@ -913,6 +967,8 @@ async function runAnalysis(){
   },1000);
   window._progressTimer=progressTimer;
   const pa=document.getElementById('post-analysis-actions');if(pa)pa.style.display='none';const ab=document.getElementById('analyse-btn');if(ab)ab.style.display='';['explain','docs','risk','modern','depend'].forEach(tab=>{const t=document.getElementById(`tab-${tab}`);t.classList.remove('done','error');t.classList.add('loading');document.getElementById(`empty-${tab}`).style.display='flex';showSkeletons(`content-${tab}`);});
+  // Hide any previous debt score while this analysis runs
+  renderDebtScore(null);
   ['export-word','export-pdf','export-txt','export-copy'].forEach(id=>{document.getElementById(id).disabled=true;});
   const checks={explain:document.getElementById('opt-explain').querySelector('input').checked,docs:document.getElementById('opt-docs').querySelector('input').checked,risk:document.getElementById('opt-risk').querySelector('input').checked,modern:document.getElementById('opt-modern').querySelector('input').checked,depend:document.getElementById('opt-depend').querySelector('input').checked};
   const selectedTabs=Object.entries(checks).filter(([,v])=>v).map(([k])=>k);
@@ -952,6 +1008,15 @@ async function runAnalysis(){
       try{
         const sumResult=await callTab(code,'summary');
         summary=JSON.parse(sumResult);
+        // Compute + render debt score as soon as Pass 1 is parsed.
+        // Pure client-side, no API call, no RLU cost.
+        try{
+          if(window.RPGLensDebtScore&&summary){
+            const debtScore=window.RPGLensDebtScore.compute(summary);
+            renderDebtScore(debtScore);
+            state.debtScore=debtScore;
+          }
+        }catch(dsErr){console.warn('Debt score computation failed:',dsErr);}
       }catch(e){
         console.warn('Summary pass failed, falling back to full code for all tabs:', e.message);
         summary=null;
@@ -1029,6 +1094,46 @@ async function runAnalysis(){
     }
   }
 }
+
+// ── MODERNISATION DEBT SCORE BADGE ──────────────────────────────────
+// Computed client-side from Pass 1 summary JSON. No API call, no RLU cost.
+// Powered by window.RPGLensDebtScore (debt-score.js).
+const DEBT_LABELS_MAP={format:'Format',error_handling:'Error Handling',commitment_control:'Commitment Control',indicators:'Indicator Usage',hardcoded:'Hardcoded Values',size:'Program Size',modularity:'Modularity',occurs:'OCCURS Overflow Risk',lda:'LDA Dependency'};
+
+function renderDebtScore(debtScore){
+  const badge=document.getElementById('debt-badge');
+  const panel=document.getElementById('debt-breakdown');
+  if(!badge)return;
+  if(!debtScore||typeof debtScore.score!=='number'){badge.hidden=true;if(panel)panel.classList.remove('is-expanded');return;}
+  badge.style.setProperty('--debt-accent',debtScore.color);
+  badge.style.setProperty('--debt-score',debtScore.score);
+  document.getElementById('debt-ring-val').textContent=debtScore.score;
+  document.getElementById('debt-level').textContent=debtScore.level;
+  document.getElementById('debt-headline').textContent=debtScore.headline||'';
+  document.getElementById('debt-band').textContent=debtScore.band||'';
+  const container=document.getElementById('debt-components');
+  if(container){
+    container.innerHTML='';
+    const entries=Object.entries(debtScore.components||{}).map(([k,v])=>({key:k,label:DEBT_LABELS_MAP[k]||k,points:v.points,max:v.max,note:v.note,ratio:v.max?v.points/v.max:0})).sort((a,b)=>b.ratio-a.ratio);
+    entries.forEach(e=>{
+      const row=document.createElement('div');row.className='debt-comp';
+      row.innerHTML=`<span class="debt-comp-label">${escapeDebt(e.label)}</span><div class="debt-comp-bar"><div class="debt-comp-fill" style="--debt-ratio:${e.ratio.toFixed(3)}"></div></div><span class="debt-comp-score">${e.points} / ${e.max}</span><p class="debt-comp-note">${escapeDebt(e.note||'')}</p>`;
+      container.appendChild(row);
+    });
+  }
+  badge.hidden=false;
+  badge.classList.remove('is-loading');
+}
+
+function toggleDebtBadge(){
+  const badge=document.getElementById('debt-badge');
+  const panel=document.getElementById('debt-breakdown');
+  if(!badge||!panel)return;
+  badge.classList.toggle('is-expanded');
+  panel.classList.toggle('is-expanded');
+}
+
+function escapeDebt(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 function setTabDone(tab){const t=document.getElementById(`tab-${tab}`);t.classList.remove('loading');t.classList.add('done');clearSkeletons(`content-${tab}`);}
 function setTabError(tab,err){
