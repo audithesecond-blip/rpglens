@@ -201,16 +201,25 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .debt-breakdown-inner{padding:14px 18px 16px}
 .debt-subhead{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);margin:0 0 10px;display:flex;align-items:center;gap:6px}
 .debt-subhead::before{content:'';display:inline-block;width:3px;height:9px;background:var(--amber)}
-.debt-components{display:flex;flex-direction:column;gap:4px}
-.debt-comp{display:grid;grid-template-columns:160px 1fr auto;gap:10px;align-items:center;font-size:11.5px}
-.debt-comp-label{color:var(--text2);font-weight:500}
-.debt-comp-bar{position:relative;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.debt-comp-fill{position:absolute;inset:0;width:calc(var(--debt-ratio,0)*100%);background:var(--debt-accent);border-radius:2px;transition:width 0.4s ease}
-.debt-comp-score{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:38px;text-align:right;letter-spacing:0.04em}
-.debt-comp-note{grid-column:1/-1;font-size:10.5px;color:var(--text3);line-height:1.5;padding:0 0 6px;margin-top:-2px}
-.debt-footer{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:9.5px;color:var(--text3);line-height:1.5;letter-spacing:0.02em}
+.debt-components{display:flex;flex-direction:column;gap:2px}
+.debt-comp{display:grid;grid-template-columns:160px 1fr auto;gap:12px;align-items:center;font-size:11.5px;padding:7px 0;border-bottom:1px solid rgba(54,58,59,0.35)}
+.debt-comp:last-child{border-bottom:none}
+.debt-comp-label{color:var(--text);font-weight:500;letter-spacing:0.02em}
+.debt-comp-bar{position:relative;height:8px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.3)}
+.debt-comp-fill{position:absolute;inset:0;width:calc(var(--debt-ratio,0)*100%);background:var(--text3);border-radius:2px;transition:width 0.4s ease;min-width:2px}
+.debt-comp[data-sev="clean"] .debt-comp-fill{background:#2ec27e;box-shadow:0 0 6px rgba(46,194,126,0.35)}
+.debt-comp[data-sev="low"]   .debt-comp-fill{background:#c4d32a;box-shadow:0 0 6px rgba(196,211,42,0.25)}
+.debt-comp[data-sev="mid"]   .debt-comp-fill{background:#e8a020;box-shadow:0 0 6px rgba(232,160,32,0.3)}
+.debt-comp[data-sev="high"]  .debt-comp-fill{background:#d97438;box-shadow:0 0 6px rgba(217,116,56,0.35)}
+.debt-comp[data-sev="crit"]  .debt-comp-fill{background:#e85050;box-shadow:0 0 8px rgba(232,80,80,0.4)}
+.debt-comp-score{font-family:var(--display);font-weight:700;font-size:11px;color:var(--text2);min-width:48px;text-align:right;letter-spacing:0.04em}
+.debt-comp[data-sev="clean"] .debt-comp-score{color:#2ec27e}
+.debt-comp[data-sev="crit"]  .debt-comp-score{color:#e85050}
+.debt-comp[data-sev="high"]  .debt-comp-score{color:#d97438}
+.debt-comp-note{grid-column:1/-1;font-size:11px;color:var(--text2);line-height:1.55;padding:4px 0 2px;margin-top:2px}
+.debt-footer{margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);line-height:1.6;letter-spacing:0.02em}
 .debt-footer em{font-style:italic;color:var(--text2)}
-@media (max-width:720px){.debt-comp{grid-template-columns:1fr auto}.debt-comp-bar{grid-column:1/-1}}
+@media (max-width:720px){.debt-comp{grid-template-columns:1fr auto;gap:6px}.debt-comp-bar{grid-column:1/-1;height:6px}}
 </style>
 </head>
 <body>
@@ -1116,7 +1125,15 @@ function renderDebtScore(debtScore){
     container.innerHTML='';
     const entries=Object.entries(debtScore.components||{}).map(([k,v])=>({key:k,label:DEBT_LABELS_MAP[k]||k,points:v.points,max:v.max,note:v.note,ratio:v.max?v.points/v.max:0})).sort((a,b)=>b.ratio-a.ratio);
     entries.forEach(e=>{
-      const row=document.createElement('div');row.className='debt-comp';
+      // Severity band for this component — drives colour and emphasis
+      let sev='clean';
+      if(e.ratio>=0.75)      sev='crit';
+      else if(e.ratio>=0.50) sev='high';
+      else if(e.ratio>=0.25) sev='mid';
+      else if(e.ratio>0)     sev='low';
+      const row=document.createElement('div');
+      row.className='debt-comp';
+      row.setAttribute('data-sev',sev);
       row.innerHTML=`<span class="debt-comp-label">${escapeDebt(e.label)}</span><div class="debt-comp-bar"><div class="debt-comp-fill" style="--debt-ratio:${e.ratio.toFixed(3)}"></div></div><span class="debt-comp-score">${e.points} / ${e.max}</span><p class="debt-comp-note">${escapeDebt(e.note||'')}</p>`;
       container.appendChild(row);
     });
@@ -1152,7 +1169,22 @@ function setTabError(tab,err){
 const EXPORT_LABELS={explain:'EXPLANATION',docs:'DOCUMENTATION',risk:'RISK ANALYSIS',modern:'MODERNISATION PLAN',depend:'DEPENDENCY MAP'};
 function getProgramName(){return document.getElementById('program-name').textContent.trim()||'RPGLens_Report';}
 function getSafeFilename(){return getProgramName().replace(/[^a-zA-Z0-9_\-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')||'RPGLens_Report';}
-function getAllResultsText(){const parts=[];Object.entries(state.results).forEach(([key,val])=>{if(val)parts.push(`\n${'='.repeat(60)}\n${EXPORT_LABELS[key]}\n${'='.repeat(60)}\n\n${val}`);});return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${getProgramName()}\n${parts.join('\n\n')}`;}
+function getAllResultsText(){
+  const parts=[];
+  // Include debt score as the first section if available
+  if(state.debtScore&&typeof state.debtScore.score==='number'){
+    const ds=state.debtScore;
+    const compLines=Object.entries(ds.components||{}).map(([k,v])=>{
+      const label=DEBT_LABELS_MAP[k]||k;
+      return `  ${label.padEnd(22)} ${String(v.points+' / '+v.max).padEnd(10)} ${v.note||''}`;
+    }).join('\n');
+    parts.push(`\n${'='.repeat(60)}\nMODERNISATION DEBT SCORE\n${'='.repeat(60)}\n\nScore: ${ds.score} / 100   Level: ${ds.level}\n\n${ds.headline||''}\n${ds.band||''}\n\nComponent Breakdown:\n${compLines}\n\nBased on the Modernization Debt framework from the IBM i Modernization\nPlaybook (Ch 2, Ch 6, Ch 33).`);
+  }
+  Object.entries(state.results).forEach(([key,val])=>{
+    if(val)parts.push(`\n${'='.repeat(60)}\n${EXPORT_LABELS[key]}\n${'='.repeat(60)}\n\n${val}`);
+  });
+  return `RPGLens Analysis Report\nGenerated: ${new Date().toLocaleString()}\nProgram: ${getProgramName()}\n${parts.join('\n\n')}`;
+}
 function copyResults(){navigator.clipboard.writeText(getAllResultsText());const btn=document.getElementById('export-copy'),orig=btn.innerHTML;btn.innerHTML=btn.innerHTML.replace('Copy text','Copied!');setTimeout(()=>{btn.innerHTML=orig;},2000);}
 function exportText(){triggerDownload(new Blob([getAllResultsText()],{type:'text/plain;charset=utf-8'}),`RPGLens_${getSafeFilename()}_${dateStamp()}.txt`);}
 
@@ -1171,6 +1203,44 @@ async function exportWord(){
     children.push(new Paragraph({children:[new TextRun({text:`Program: ${progName}`,size:22,color:'5F5E5A'})]}));
     children.push(new Paragraph({children:[new TextRun({text:`Generated: ${generated}`,size:20,color:'9A9690'})]}));
     children.push(new Paragraph({children:[new TextRun('')]}));
+
+    // Modernisation Debt Score — rendered as the first section if available
+    if(state.debtScore&&typeof state.debtScore.score==='number'){
+      const ds=state.debtScore;
+      const printColors={LOW:'2E7D5A',MEDIUM:'B8750A',HIGH:'C2571E',CRITICAL:'A32D2D'};
+      const dc=printColors[ds.level]||'5F5E5A';
+      children.push(new Paragraph({heading:HeadingLevel.HEADING_1,border:{bottom:{style:BorderStyle.SINGLE,size:6,color:dc,space:4}},children:[new TextRun({text:'MODERNISATION DEBT SCORE',bold:true,size:30,color:'1A3C6E'})]}));
+      children.push(new Paragraph({children:[new TextRun('')]}));
+      children.push(new Paragraph({children:[
+        new TextRun({text:`${ds.score}`,bold:true,size:56,color:dc}),
+        new TextRun({text:' / 100       ',size:22,color:'9A9690'}),
+        new TextRun({text:ds.level,bold:true,size:22,color:dc})
+      ]}));
+      children.push(new Paragraph({children:[new TextRun('')]}));
+      children.push(new Paragraph({children:[new TextRun({text:ds.headline||'',size:22,color:'333333'})]}));
+      children.push(new Paragraph({children:[new TextRun({text:ds.band||'',size:20,italics:true,color:'666666'})]}));
+      children.push(new Paragraph({children:[new TextRun('')]}));
+      children.push(new Paragraph({heading:HeadingLevel.HEADING_3,children:[new TextRun({text:'Component breakdown',bold:true,size:22,color:'5F5E5A'})]}));
+      Object.entries(ds.components||{}).forEach(([k,v])=>{
+        const label=DEBT_LABELS_MAP[k]||k;
+        const ratio=v.max?v.points/v.max:0;
+        let sevColor='5F5E5A';
+        if(ratio>=0.75)      sevColor='A32D2D';
+        else if(ratio>=0.50) sevColor='C2571E';
+        else if(ratio>=0.25) sevColor='B8750A';
+        else if(ratio>0)     sevColor='8A9E1A';
+        else                 sevColor='2E7D5A';
+        children.push(new Paragraph({spacing:{before:60,after:0},children:[
+          new TextRun({text:label.padEnd(24),bold:true,size:20,color:'333333'}),
+          new TextRun({text:`  ${v.points} / ${v.max}`,bold:true,size:20,color:sevColor})
+        ]}));
+        children.push(new Paragraph({spacing:{before:0,after:40},children:[new TextRun({text:v.note||'',size:18,color:'666666'})]}));
+      });
+      children.push(new Paragraph({children:[new TextRun('')]}));
+      children.push(new Paragraph({children:[new TextRun({text:'Based on the Modernization Debt framework from the IBM i Modernization Playbook (Ch 2, Ch 6, Ch 33). LOW / MEDIUM / HIGH / CRITICAL map to the four-level debt scale.',size:16,italics:true,color:'888888'})]}));
+      children.push(new Paragraph({children:[new PageBreak()]}));
+    }
+
     ['explain','docs','risk','modern'].forEach((key,idx)=>{
       const val=state.results[key];if(!val)return;
       if(idx>0)children.push(new Paragraph({children:[new PageBreak()]}));
@@ -1221,6 +1291,41 @@ async function exportPDF(){
         mermaidSvgMap['depend']=svg;
       }catch(e){console.warn('Mermaid render failed:',e);}
     }
+  }
+
+  // Build Modernisation Debt Score block for the PDF (uses print-friendly palette)
+  let debtHtml='';
+  if(state.debtScore&&typeof state.debtScore.score==='number'){
+    const ds=state.debtScore;
+    // Map score colour to print palette
+    const printColors={LOW:'#2E7D5A',MEDIUM:'#B8750A',HIGH:'#C2571E',CRITICAL:'#A32D2D'};
+    const dc=printColors[ds.level]||'#5F5E5A';
+    const sevClass=(ratio)=>{
+      if(ratio>=0.75)return'sev-crit';
+      if(ratio>=0.50)return'sev-high';
+      if(ratio>=0.25)return'sev-mid';
+      if(ratio>0)    return'sev-low';
+      return'sev-clean';
+    };
+    const rows=Object.entries(ds.components||{}).map(([k,v])=>{
+      const label=DEBT_LABELS_MAP[k]||k;
+      const ratio=v.max?v.points/v.max:0;
+      const pct=Math.round(ratio*100);
+      return `<tr class="${sevClass(ratio)}"><td><strong>${label}</strong></td><td class="dc-bar"><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div></td><td class="dc-score">${v.points} / ${v.max}</td><td class="dc-note">${(v.note||'').replace(/</g,'&lt;')}</td></tr>`;
+    }).join('');
+    debtHtml=`<div class="debt-block" style="--dc:${dc}">
+<div class="debt-block-hdr">
+  <div><span class="debt-block-num">${ds.score}</span><span class="debt-block-of"> / 100</span></div>
+  <div class="debt-block-meta">
+    <div class="debt-block-title">Modernisation Debt Score</div>
+    <div><span class="debt-block-level">${ds.level}</span></div>
+    <div class="debt-block-head">${(ds.headline||'').replace(/</g,'&lt;')}</div>
+    <div class="debt-block-band">${(ds.band||'').replace(/</g,'&lt;')}</div>
+  </div>
+</div>
+<table><tr><th>Dimension</th><th>Debt</th><th>Score</th><th>Finding</th></tr>${rows}</table>
+<div class="foot">Based on the Modernization Debt framework from the <em>IBM i Modernization Playbook</em> (Ch 2, Ch 6, Ch 33). LOW / MEDIUM / HIGH / CRITICAL map to the book's four-level debt scale.</div>
+</div>`;
   }
 
   const sectionHtml=Object.entries(state.results).filter(([,v])=>v).map(([key,val])=>{
@@ -1304,6 +1409,32 @@ tr:nth-child(even) td{background:#f5f5f3}
 .diagram svg{max-width:100%;height:auto}
 .flow-text{margin:10px 0;padding:8px 12px;background:#f0f4ff;border-left:3px solid #2E75B6;font-size:9.5pt}
 .flow-text ul{margin:6px 0 0 16px}
+.debt-block{margin:0 0 18px;padding:14px 16px;background:#F9F7F2;border:1px solid #D9D5CC;border-left:4px solid var(--dc);page-break-inside:avoid}
+.debt-block-hdr{display:flex;align-items:baseline;gap:14px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #D9D5CC}
+.debt-block-num{font-size:28pt;font-weight:800;color:var(--dc);line-height:1;font-family:Arial,sans-serif}
+.debt-block-of{font-size:11pt;color:#777;margin-left:-8px}
+.debt-block-meta{flex:1}
+.debt-block-title{font-size:9pt;letter-spacing:0.12em;text-transform:uppercase;color:#777;margin-bottom:3px}
+.debt-block-level{display:inline-block;padding:2px 10px;background:var(--dc);color:#fff;font-weight:700;font-size:9pt;letter-spacing:0.08em;border-radius:2px;margin-right:8px}
+.debt-block-head{font-size:10pt;color:#333;margin-top:4px;line-height:1.4}
+.debt-block-band{font-size:9pt;color:#666;margin-top:3px;line-height:1.4;font-style:italic}
+.debt-block table{margin-top:4px;font-size:9pt}
+.debt-block th{background:#5F5E5A;color:#fff;font-size:8.5pt}
+.debt-block td{padding:4px 8px;vertical-align:top}
+.debt-block td.dc-bar{width:24%;padding:6px 8px}
+.debt-block .bar-track{position:relative;height:7px;background:#E5E1D8;border:1px solid #C9C4B7;border-radius:3px;overflow:hidden}
+.debt-block .bar-fill{position:absolute;inset:0;border-radius:2px;min-width:2px}
+.debt-block td.dc-score{width:10%;text-align:right;font-weight:700;font-family:Arial,sans-serif}
+.debt-block td.dc-note{font-size:8.5pt;color:#555;line-height:1.5}
+.debt-block .sev-clean .bar-fill{background:#2E7D5A}
+.debt-block .sev-low   .bar-fill{background:#8A9E1A}
+.debt-block .sev-mid   .bar-fill{background:#B8750A}
+.debt-block .sev-high  .bar-fill{background:#C2571E}
+.debt-block .sev-crit  .bar-fill{background:#A32D2D}
+.debt-block .sev-clean td.dc-score{color:#2E7D5A}
+.debt-block .sev-high  td.dc-score{color:#C2571E}
+.debt-block .sev-crit  td.dc-score{color:#A32D2D}
+.debt-block .foot{margin-top:10px;padding-top:8px;border-top:1px solid #D9D5CC;font-size:8pt;color:#888;line-height:1.5;font-style:italic}
 @media print{
   #hint{display:none!important}
   .sec{page-break-before:auto}
@@ -1324,6 +1455,7 @@ tr:nth-child(even) td{background:#f5f5f3}
     <div class="logo">RPG<span>Lens</span></div>
     <div class="meta"><strong>Program:</strong> ${docProgName} &nbsp;&nbsp; <strong>Generated:</strong> ${generated}</div>
   </div>
+  ${debtHtml}
   ${sectionHtml}
   <div class="footer">Generated by RPGLens &middot; rpglens.vercel.app</div>
 </div>
