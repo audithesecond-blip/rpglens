@@ -660,8 +660,6 @@ function onInput() {
   const btn    = document.getElementById('convert-btn');
   const cc     = document.getElementById('char-count');
   const plan   = supabaseSession?.user?.user_metadata?.plan || 'free';
-  const limit  = CONV_LINE_LIMITS[plan] || 500;
-  const pct    = Math.min(100, Math.round((lines / limit) * 100));
 
   console.log('[RPGLens] onInput:', {
     currentMode,
