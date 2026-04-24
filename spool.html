@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjMGUwZjBmIi8+CiAgPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjkiLz4KICA8cmVjdCB4PSIxNyIgeT0iMyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjMmEyZDJlIi8+CiAgPHJlY3QgeD0iMyIgeT0iMTciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSIgZmlsbD0iIzJhMmQyZSIvPgogIDxyZWN0IHg9IjE3IiB5PSIxNyIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiBmaWxsPSIjZThhMDIwIiBvcGFjaXR5PSIwLjQiLz4KICA8bGluZSB4MT0iMCIgeTE9IjE2IiB4Mj0iMzIiIHkyPSIxNiIgc3Ryb2tlPSIjZThhMDIwIiBzdHJva2Utd2lkdGg9IjAuNSIgb3BhY2l0eT0iMC40Ii8+CiAgPGxpbmUgeDE9IjE2IiB5MT0iMCIgeDI9IjE2IiB5Mj0iMzIiIHN0cm9rZT0iI2U4YTAyMCIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuNCIvPgo8L3N2Zz4="/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPGLens | Spool File Analyser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0e0f0f;--bg2:#141516;--bg3:#1a1c1d;--bg4:#1f2122;
+  --border:#2a2d2e;--border2:#363a3b;
+  --amber:#e8a020;--amber2:#f5c060;--amber-dim:#7a5010;
+  --green:#2ec27e;--green-dim:#0f4a2e;
+  --red:#e85050;--red-dim:#4a1515;
+  --blue:#5b9bd5;--text:#e8e4dc;--text2:#9a9690;--text3:#5a5855;
+  --mono:'DM Mono',monospace;--display:'Syne',sans-serif;--serif:'Instrument Serif',serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.6;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999}
+
+.topbar{display:flex;align-items:center;gap:0;height:52px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 20px;position:relative}
+.topbar-logo{display:flex;align-items:center;gap:9px;text-decoration:none;padding-right:20px;border-right:1px solid var(--border);margin-right:20px}
+.logo-mark svg{width:24px;height:24px}
+.logo-text{font-family:var(--display);font-weight:800;font-size:17px;color:var(--text);letter-spacing:-0.02em}
+.logo-text span{color:var(--amber)}
+.topbar-breadcrumb{font-size:11px;color:var(--text3);letter-spacing:0.08em;display:flex;align-items:center;gap:8px}
+.topbar-breadcrumb .sep{color:var(--border2)}
+.topbar-breadcrumb .current{color:var(--text2)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.api-status{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0.1em;color:var(--text3);padding:4px 10px;border:1px solid var(--border)}
+.api-status .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+.btn-sm{font-family:var(--display);font-size:11px;font-weight:700;padding:6px 16px;background:var(--amber);color:var(--bg);border:1px solid transparent;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block;white-space:nowrap;border-radius:2px}
+.btn-sm:hover{opacity:0.88}
+.btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
+
+.app-body{display:flex;flex:1;overflow:hidden}
+.input-panel{width:460px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--bg2)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.panel-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.panel-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--amber)}
+.panel-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{background:none;border:1px solid var(--border);color:var(--text3);font-size:11px;padding:4px 10px;cursor:pointer;font-family:var(--mono);letter-spacing:0.06em;transition:all 0.2s}
+.icon-btn:hover{border-color:var(--border2);color:var(--text2)}
+
+.type-selector{display:flex;flex-shrink:0;background:var(--bg3);border-bottom:1px solid var(--border)}
+.type-btn{flex:1;padding:10px 6px;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px}
+.type-btn:hover{color:var(--text2)}
+.type-btn.active{color:var(--amber);border-bottom-color:var(--amber);background:rgba(232,160,32,0.04)}
+.type-btn .type-icon{font-size:13px;line-height:1}
+
+.spool-input{flex:1;background:var(--bg2);border:none;outline:none;color:#b5c9a3;font-family:var(--mono);font-size:12px;line-height:1.65;padding:14px 16px;resize:none;overflow-y:auto;tab-size:4}
+.spool-input::placeholder{color:var(--text3);font-style:italic}
+
+.options-panel{flex-shrink:0;border-top:1px solid var(--border);background:var(--bg3);padding:14px 16px}
+.analyse-btn{width:100%;padding:13px;background:var(--amber);color:var(--bg);border:none;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:0.06em;cursor:pointer;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;text-transform:uppercase}
+.analyse-btn:hover:not(:disabled){background:var(--amber2);transform:translateY(-1px);box-shadow:0 6px 24px rgba(232,160,32,0.2)}
+.analyse-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.analyse-btn .spinner{width:14px;height:14px;border:2px solid rgba(14,15,15,0.3);border-top-color:var(--bg);border-radius:50%;animation:spin 0.7s linear infinite;display:none}
+.analyse-btn.loading .spinner{display:block}
+.analyse-btn.loading .btn-label{opacity:0.7}
+
+.meta-bar{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.meta-left{font-size:10px;color:var(--text3);letter-spacing:0.06em}
+.meta-right{font-size:10px;color:var(--text3);letter-spacing:0.06em}
+#rlu-bar{margin-bottom:10px}
+#rlu-bar .rlu-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+#rlu-bar .rlu-label{font-size:10px;color:var(--text3);letter-spacing:0.06em}
+#rlu-bar .rlu-value{font-size:9px;color:var(--text3);letter-spacing:0.06em;text-decoration:none}
+#rlu-bar .rlu-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+#rlu-bar .rlu-fill{height:100%;width:0%;background:var(--amber);border-radius:2px;transition:width 0.5s ease}
+#rlu-bar .rlu-foot{display:flex;justify-content:space-between;margin-top:3px}
+#rlu-bar .rlu-foot span{font-size:9px;color:var(--text3)}
+
+.trial-banner{padding:9px 12px;background:rgba(46,194,126,0.08);border:1px solid var(--green-dim);font-size:11px;color:var(--green);margin-bottom:10px;line-height:1.5;display:none}
+.trial-banner.visible{display:block}
+.paywall-banner{padding:9px 12px;background:rgba(232,160,32,0.08);border:1px solid var(--amber-dim);font-size:11px;color:var(--amber);margin-bottom:10px;line-height:1.5;display:none}
+.paywall-banner.visible{display:block}
+.paywall-banner a{color:var(--amber);text-decoration:underline;font-weight:600}
+
+.output-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.output-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;min-height:46px}
+.output-title{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.output-title::before{content:'';display:inline-block;width:3px;height:11px;background:var(--amber)}
+.output-actions{display:flex;align-items:center;gap:6px}
+.output-body{flex:1;overflow-y:auto;padding:22px 26px}
+
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text3);padding:60px;text-align:center}
+.empty-icon{width:64px;height:64px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;clip-path:polygon(16px 0%,100% 0%,calc(100% - 16px) 100%,0% 100%);color:var(--border2);margin-bottom:8px}
+.empty-title{font-family:var(--display);font-weight:700;font-size:16px;color:var(--text3);letter-spacing:-0.01em}
+.empty-sub{font-size:12px;color:var(--text3);max-width:340px;line-height:1.65}
+
+.verdict-block{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--red);padding:16px 20px;margin-bottom:18px}
+.verdict-label{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.verdict-label::before{content:'';display:inline-block;width:3px;height:10px;background:var(--red)}
+.verdict-text{font-size:14px;color:var(--text);line-height:1.55;font-family:var(--mono)}
+
+.result-section{background:var(--bg2);border:1px solid var(--border);margin-bottom:14px}
+.result-section-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.result-section-title{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:8px}
+.result-section-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--amber)}
+.result-body{padding:16px;font-size:13px;color:var(--text2);line-height:1.75}
+.result-body strong{color:var(--text)}
+.result-body code{color:#7ab8e8;background:var(--bg3);padding:1px 5px;font-size:11px;font-family:var(--mono)}
+.result-body ul{margin:6px 0 6px 18px}
+.result-body li{margin-bottom:4px}
+.result-body ol{margin:6px 0 6px 22px;counter-reset:fix-step}
+.result-body ol li{margin-bottom:8px;padding-left:4px}
+
+.msg-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.msg-table th{text-align:left;padding:8px 10px;background:var(--bg3);color:var(--text3);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:400}
+.msg-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.msg-table tr:last-child td{border-bottom:none}
+.msg-table tr:hover td{background:rgba(255,255,255,0.02)}
+.msg-code{color:var(--amber);font-weight:500;font-family:var(--mono)}
+.msg-type{font-size:10px;letter-spacing:0.08em;padding:2px 7px;display:inline-block}
+.msg-type.escape{background:var(--red-dim);color:var(--red)}
+.msg-type.diag{background:rgba(91,155,213,0.1);color:var(--blue)}
+.msg-type.info{background:rgba(154,150,144,0.08);color:var(--text2)}
+.msg-type.status,.msg-type.notify{background:rgba(232,160,32,0.08);color:var(--amber)}
+.msg-type.completion{background:rgba(46,194,126,0.08);color:var(--green)}
+
+.export-bar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--border);background:var(--bg3)}
+.export-label{font-size:11px;color:var(--text3);letter-spacing:0.08em;margin-right:4px}
+.export-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;background:transparent;border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all 0.2s}
+.export-btn:hover:not(:disabled){border-color:var(--amber-dim);color:var(--amber)}
+.export-btn:disabled{opacity:0.3;cursor:not-allowed}
+.export-sep{flex:1}
+.privacy-note{font-size:10px;color:var(--text3);letter-spacing:0.06em;display:flex;align-items:center;gap:6px}
+.privacy-note::before{content:'⊘';color:var(--green);font-size:11px}
+
+.skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px;height:14px;margin-bottom:8px}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn 0.3s ease both}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 32 32" fill="none">
+        <rect x="1" y="1" width="30" height="30" stroke="#2a2d2e" stroke-width="1"/>
+        <rect x="4" y="4" width="11" height="11" fill="#e8a020" opacity="0.9"/>
+        <rect x="17" y="4" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="4" y="17" width="11" height="11" fill="#2a2d2e"/>
+        <rect x="17" y="17" width="11" height="11" fill="#e8a020" opacity="0.4"/>
+        <line x1="1" y1="16" x2="31" y2="16" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+        <line x1="16" y1="1" x2="16" y2="31" stroke="#e8a020" stroke-width="0.5" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="logo-text">RPG<span>Lens</span></span>
+  </a>
+  <div class="topbar-breadcrumb">
+    <span>Spool Analyser</span>
+  </div>
+  <div class="topbar-right">
+    <div class="api-status" id="api-status-badge">
+      <div class="dot" id="api-dot" style="background:var(--border2)"></div>
+      <span id="api-status-text">CHECKING SESSION</span>
+    </div>
+    <div id="user-pill" style="display:none;align-items:center;gap:8px;padding:4px 12px;border:1px solid var(--border);font-size:11px;color:var(--text2)">
+      <div id="user-av" style="width:20px;height:20px;border-radius:50%;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:9px;color:var(--amber)">?</div>
+      <span id="user-name">...</span>
+    </div>
+    <a href="/analyser" class="btn-sm ghost">Analyser</a>
+    <a href="/converter" class="btn-sm ghost">Converter</a>
+    <a href="/dashboard" class="btn-sm">Dashboard</a>
+    <a href="/" class="btn-sm ghost">&#8592; Home</a>
+  </div>
+</div>
+
+<div class="app-body">
+  <div class="input-panel">
+    <div class="panel-header">
+      <div class="panel-title">Spool File Input</div>
+      <div class="panel-actions">
+        <button class="icon-btn" onclick="clearSpool()">Clear</button>
+        <button class="icon-btn" onclick="copySpool()">Copy</button>
+      </div>
+    </div>
+    <div class="type-selector">
+      <button class="type-btn active" id="type-auto" onclick="setType('auto')"><span class="type-icon">&#9673;</span> Auto</button>
+      <button class="type-btn" id="type-joblog" onclick="setType('joblog')"><span class="type-icon">&#9783;</span> Joblog</button>
+      <button class="type-btn" id="type-compile" onclick="setType('compile')"><span class="type-icon">&lt;/&gt;</span> Compile</button>
+      <button class="type-btn" id="type-dump" onclick="setType('dump')"><span class="type-icon">&#9888;</span> Dump</button>
+    </div>
+    <textarea class="spool-input" id="spool-input"
+      placeholder="// Paste spool file content here&#10;//&#10;// Joblog  (QPJOBLOG)    — runtime errors, CPF/MCH/RNX codes&#10;// Compile (listing)     — compile errors, RNFxxxx messages&#10;// Dump    (QPPGMDMP)    — abend with PSDS and call stack&#10;//&#10;// Tip: CPYSPLF SPLF(QPJOBLOG) TOFILE(MYLIB/MBRFILE) MBR(joblog1)&#10;//      then download the member as text and paste here"
+      spellcheck="false" autocomplete="off" oninput="onSpoolInput()"></textarea>
+    <div class="options-panel">
+      <div id="rlu-bar" style="display:none">
+        <div class="rlu-row">
+          <span class="rlu-label">RPGLENS UNITS</span>
+          <a href="/dashboard" class="rlu-value" id="rlu-balance-text">— RLUs remaining</a>
+        </div>
+        <div class="rlu-track"><div class="rlu-fill" id="rlu-balance-fill"></div></div>
+        <div class="rlu-foot"><span id="rlu-breakdown">monthly · rollover · top-up</span><span id="rlu-cost-estimate"></span></div>
+      </div>
+      <div class="trial-banner" id="trial-banner">
+        &#9992; Free trial active — one spool analysis included. Paid plans get ongoing access.
+      </div>
+      <div class="paywall-banner" id="paywall-banner">
+        &#128274; Spool Analyser is paid-only. <a href="/dashboard">Upgrade to Starter</a> for 500 RLUs/month.
+      </div>
+      <button class="analyse-btn" id="analyse-btn" onclick="runSpoolAnalysis()" disabled>
+        <div class="spinner"></div><span class="btn-label">Analyse Spool</span>
+      </button>
+      <div class="meta-bar">
+        <span class="meta-left" id="line-count">Paste spool content to begin</span>
+        <span class="meta-right" id="size-label"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="output-panel">
+    <div class="output-header">
+      <div class="output-title">Analysis</div>
+      <div class="output-actions">
+        <span id="analysis-meta" style="font-size:10px;color:var(--text3);letter-spacing:0.06em"></span>
+      </div>
+    </div>
+    <div class="output-body" id="output-body">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">&#9783;</div>
+        <div class="empty-title">No spool analysed yet</div>
+        <div class="empty-sub">Paste a joblog, compile listing, or program dump on the left. RPGLens will separate signal from noise and tell you what actually went wrong.</div>
+      </div>
+    </div>
+    <div class="export-bar">
+      <span class="export-label">Download:</span>
+      <button class="export-btn" id="export-txt" onclick="exportText()" disabled>Text (.txt)</button>
+      <button class="export-btn" id="export-copy" onclick="copyResult()" disabled>Copy</button>
+      <div class="export-sep"></div>
+      <div class="privacy-note">Spool content never stored</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state={result:null,spoolType:'auto',loading:false};
+let supabaseSession=null,userPlan='free',spoolTrialUsed=false;
+
+function setType(type){
+  state.spoolType=type;
+  ['auto','joblog','compile','dump'].forEach(t=>{
+    document.getElementById('type-'+t).classList.toggle('active',t===type);
+  });
+}
+
+function getSpoolContent(){return document.getElementById('spool-input').value.trim();}
+
+function onSpoolInput(){
+  const content=getSpoolContent();
+  const len=content.length;
+  const lines=content?content.split('\n').length:0;
+  const btn=document.getElementById('analyse-btn');
+  const lc=document.getElementById('line-count');
+  const sz=document.getElementById('size-label');
+
+  if(len===0){
+    lc.textContent='Paste spool content to begin';
+    sz.textContent='';
+  }else{
+    lc.textContent=`${lines.toLocaleString()} lines · ${(len/1000).toFixed(1)} KB`;
+    const rluCost=Math.ceil(Math.max(lines,100)/100);
+    sz.textContent=(userPlan==='admin'||(userPlan==='free'&&!spoolTrialUsed))?
+      (userPlan==='free'?'Free trial · no RLU cost':'Admin · no RLU cost'):
+      `~${rluCost} RLU${rluCost>1?'s':''}`;
+  }
+
+  // Gate the button based on plan + content
+  let canRun=len>=20&&!state.loading;
+  if(userPlan==='free'&&spoolTrialUsed)canRun=false;
+  if(!supabaseSession)canRun=false;
+  btn.disabled=!canRun;
+}
+
+function clearSpool(){document.getElementById('spool-input').value='';onSpoolInput();}
+function copySpool(){const c=getSpoolContent();if(c)navigator.clipboard.writeText(c);}
+
+// ── SESSION + RLU ────────────────────────────────────────────────
+async function initSession(){
+  if(!window.RPGLENS_CONFIG)return;
+  try{
+    const{createClient}=supabase;
+    const sb=createClient(window.RPGLENS_CONFIG.SUPABASE_URL,window.RPGLENS_CONFIG.SUPABASE_ANON);
+    const{data}=await sb.auth.getSession();
+    supabaseSession=data.session;
+    const dot=document.getElementById('api-dot'),txt=document.getElementById('api-status-text'),pill=document.getElementById('user-pill');
+    if(supabaseSession){
+      const user=supabaseSession.user;
+      const meta=user.user_metadata||{};
+      userPlan=meta.plan||'free';
+      spoolTrialUsed=meta.spool_trial_used===true;
+      const name=meta.full_name||meta.name||user.email.split('@')[0];
+      const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      dot.style.background='var(--green)';txt.textContent='SIGNED IN';pill.style.display='flex';
+      document.getElementById('user-av').textContent=initials;
+      document.getElementById('user-name').textContent=name.split(' ')[0];
+      updatePlanUI();
+      if(userPlan!=='free'&&userPlan!=='admin')fetchRluBalance();
+    }else{
+      dot.style.background='var(--amber)';txt.textContent='NOT SIGNED IN';
+      document.getElementById('paywall-banner').classList.add('visible');
+      document.getElementById('paywall-banner').innerHTML='&#128274; Please <a href="/login">sign in</a> to use the Spool Analyser.';
+    }
+  }catch(e){
+    document.getElementById('api-status-text').textContent='SESSION ERROR';
+  }
+}
+
+function updatePlanUI(){
+  const trial=document.getElementById('trial-banner');
+  const paywall=document.getElementById('paywall-banner');
+  const rluBar=document.getElementById('rlu-bar');
+  trial.classList.remove('visible');paywall.classList.remove('visible');
+  rluBar.style.display='none';
+
+  if(userPlan==='admin'){
+    // No banners, no RLU tracking
+    return;
+  }
+  if(userPlan==='free'){
+    if(spoolTrialUsed){
+      paywall.classList.add('visible');
+    }else{
+      trial.classList.add('visible');
+    }
+    return;
+  }
+  // Paid plans
+  rluBar.style.display='';
+}
+
+async function fetchRluBalance(){
+  if(!supabaseSession)return;
+  try{
+    const{createClient}=supabase;
+    const sb=createClient(window.RPGLENS_CONFIG.SUPABASE_URL,window.RPGLENS_CONFIG.SUPABASE_ANON);
+    const{data}=await sb.from('rlu_credits')
+      .select('monthly_rlu,monthly_used,rollover_rlu,rollover_used,topup_rlu,topup_used')
+      .eq('user_id',supabaseSession.user.id).single();
+    if(data){
+      updateRluBar({
+        monthly:data.monthly_rlu-data.monthly_used,
+        rollover:data.rollover_rlu-data.rollover_used,
+        topup:data.topup_rlu-data.topup_used,
+        total:(data.monthly_rlu-data.monthly_used)+(data.rollover_rlu-data.rollover_used)+(data.topup_rlu-data.topup_used)
+      });
+    }
+  }catch(e){console.warn('RLU fetch failed:',e);}
+}
+
+const RLU_PLAN_ALLOC={free:50,starter:500,pro:2000,enterprise:999999,admin:999999};
+function updateRluBar(bal){
+  if(!bal)return;
+  const alloc=RLU_PLAN_ALLOC[userPlan]||50;
+  const pct=Math.min(100,Math.round(bal.total/alloc*100));
+  document.getElementById('rlu-balance-text').textContent=`${bal.total.toLocaleString()} RLUs`;
+  const fill=document.getElementById('rlu-balance-fill');
+  fill.style.width=pct+'%';
+  fill.style.background=pct<20?'var(--red)':pct<40?'#e8a020':'var(--amber)';
+  const parts=[];
+  if(bal.monthly>0)parts.push(`${bal.monthly} monthly`);
+  if(bal.rollover>0)parts.push(`${bal.rollover} rollover`);
+  if(bal.topup>0)parts.push(`${bal.topup} top-up`);
+  document.getElementById('rlu-breakdown').textContent=parts.join(' · ')||'No RLUs remaining';
+}
+
+// ── RUN ANALYSIS ─────────────────────────────────────────────────
+async function runSpoolAnalysis(){
+  const content=getSpoolContent();
+  if(!content||state.loading)return;
+  if(!supabaseSession){window.location.href='/login';return;}
+
+  state.loading=true;
+  const btn=document.getElementById('analyse-btn');
+  btn.disabled=true;btn.classList.add('loading');
+  btn.querySelector('.btn-label').textContent='Analysing...';
+
+  // Clear previous
+  const body=document.getElementById('output-body');
+  body.innerHTML='';
+  body.appendChild(buildSkeletons());
+
+  const lines=content.split('\n').length;
+
+  try{
+    const resp=await fetch('/api/spool',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
+      body:JSON.stringify({spoolContent:content,spoolType:state.spoolType,lineCount:lines})
+    });
+    const data=await resp.json();
+    if(!resp.ok){
+      renderError(data);
+      return;
+    }
+    state.result=data.result;
+    if(data.rluBalance)updateRluBar(data.rluBalance);
+    if(data.trialUsed){spoolTrialUsed=true;updatePlanUI();}
+    renderResult(data.result,data);
+    document.getElementById('export-txt').disabled=false;
+    document.getElementById('export-copy').disabled=false;
+  }catch(err){
+    renderError({error:err.message||'Network error'});
+  }finally{
+    state.loading=false;
+    btn.classList.remove('loading');
+    btn.querySelector('.btn-label').textContent='Analyse Spool';
+    onSpoolInput();
+  }
+}
+
+function buildSkeletons(){
+  const wrap=document.createElement('div');
+  wrap.innerHTML=[90,70,85,60,80,75,55].map(w=>`<div class="skeleton" style="width:${w}%;margin-bottom:10px"></div>`).join('');
+  return wrap;
+}
+
+function renderError(data){
+  const body=document.getElementById('output-body');
+  body.innerHTML='';
+  const err=document.createElement('div');
+  err.className='result-section fade-in';
+  let title='Analysis failed';
+  let color='var(--red)';
+  if(data.type==='spool_trial_exhausted'){
+    title='Free trial exhausted';color='var(--amber)';
+  }else if(data.type==='rlu_limit'){
+    title='Insufficient RLUs';color='var(--amber)';
+  }else if(data.type==='too_large'){
+    title='Spool too large';color='var(--amber)';
+  }
+  err.innerHTML=`<div class="result-section-header"><div class="result-section-title" style="color:${color}">${title}</div></div><div class="result-body" style="color:var(--text2)">${escapeHtml(data.error||'An unknown error occurred.')}</div>`;
+  body.appendChild(err);
+}
+
+function renderResult(text,meta){
+  const body=document.getElementById('output-body');
+  body.innerHTML='';
+  const sections=parseMarkdownSections(text);
+
+  // VERDICT — special treatment, appears as a red-bordered hero block
+  const verdict=sections.find(s=>/verdict/i.test(s.heading));
+  if(verdict){
+    const v=document.createElement('div');
+    v.className='verdict-block fade-in';
+    v.innerHTML=`<div class="verdict-label">Verdict</div><div class="verdict-text">${formatInline(verdict.body)}</div>`;
+    body.appendChild(v);
+  }
+
+  // Remaining sections in their declared order
+  sections.forEach(sec=>{
+    if(/verdict/i.test(sec.heading))return;
+    const isTable=sec.body.includes('|')&&/\|.+\|.+\|/.test(sec.body);
+    const isMsgTable=isTable&&/message\s*id|timeline/i.test(sec.heading);
+    const el=document.createElement('div');
+    el.className='result-section fade-in';
+    let bodyHtml;
+    if(isMsgTable)bodyHtml=renderMsgTable(sec.body);
+    else if(isTable)bodyHtml=renderGenericTable(sec.body);
+    else bodyHtml=formatBody(sec.body);
+    el.innerHTML=`<div class="result-section-header"><div class="result-section-title">${escapeHtml(sec.heading)}</div></div><div class="result-body">${bodyHtml}</div>`;
+    body.appendChild(el);
+  });
+
+  // Meta in the header
+  const m=[];
+  if(meta.spoolType&&meta.spoolType!=='auto')m.push(meta.spoolType.toUpperCase());
+  if(meta.lineCount)m.push(meta.lineCount.toLocaleString()+' lines');
+  if(meta.rluCost>0)m.push(meta.rluCost+' RLUs');
+  else if(meta.trialUsed)m.push('free trial');
+  document.getElementById('analysis-meta').textContent=m.join(' · ');
+}
+
+function parseMarkdownSections(text){
+  const sections=[];
+  const parts=text.split(/^##\s+/m).filter(s=>s.trim());
+  parts.forEach(part=>{
+    const nl=part.indexOf('\n');
+    if(nl===-1)return;
+    const heading=part.slice(0,nl).trim();
+    const body=part.slice(nl+1).trim();
+    if(heading&&body)sections.push({heading,body});
+  });
+  return sections.length===0?[{heading:'Analysis',body:text}]:sections;
+}
+
+function formatInline(text){
+  return escapeHtml(text)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\n/g,'<br/>');
+}
+
+function formatBody(text){
+  // Handle numbered lists before other formatting
+  const hasNumbered=/^\d+\.\s/m.test(text);
+  let html=escapeHtml(text)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
+  if(hasNumbered){
+    html=html.replace(/(^|\n)(\d+\.\s+[^\n]+(?:\n(?!\d+\.|##)[^\n]+)*)/g,(_,pre,item)=>{
+      const content=item.replace(/^\d+\.\s+/,'').replace(/\n/g,' ');
+      return pre+'<li>'+content+'</li>';
+    });
+    html=html.replace(/(?:<li>.*<\/li>\s*)+/g,m=>'<ol>'+m+'</ol>');
+  }else{
+    html=html.replace(/^[-\u2022]\s+(.+)$/gm,'<li>$1</li>').replace(/(?:<li>.*<\/li>\s*)+/g,m=>'<ul>'+m+'</ul>');
+  }
+  return html.replace(/\n{2,}/g,'<br/><br/>').replace(/\n/g,'<br/>');
+}
+
+function renderMsgTable(text){
+  const rows=text.trim().split('\n').filter(l=>l.trim()&&!l.match(/^[\s|:-]+$/));
+  if(rows.length<2)return formatBody(text);
+  let html='<table class="msg-table">';
+  rows.forEach((row,i)=>{
+    const cells=row.split('|').map(c=>c.trim()).filter((_,j,a)=>j>0&&j<a.length-1);
+    if(i===0){
+      html+='<tr>'+cells.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr>';
+    }else{
+      html+='<tr>';
+      cells.forEach((c,j)=>{
+        if(/message\s*id|code/i.test(rows[0].split('|')[j+1]||'')){
+          html+=`<td class="msg-code">${escapeHtml(c)}</td>`;
+        }else if(/type|severity/i.test(rows[0].split('|')[j+1]||'')){
+          const cls=classifyMsgType(c);
+          html+=`<td><span class="msg-type ${cls}">${escapeHtml(c.replace(/^\*/,''))}</span></td>`;
+        }else{
+          html+=`<td>${escapeHtml(c)}</td>`;
+        }
+      });
+      html+='</tr>';
+    }
+  });
+  return html+'</table>';
+}
+
+function classifyMsgType(t){
+  const u=t.toLowerCase();
+  if(u.includes('escape'))return'escape';
+  if(u.includes('diag'))return'diag';
+  if(u.includes('completion'))return'completion';
+  if(u.includes('status')||u.includes('notify'))return'status';
+  return'info';
+}
+
+function renderGenericTable(text){
+  const rows=text.trim().split('\n').filter(l=>l.trim()&&!l.match(/^[\s|:-]+$/));
+  if(rows.length<2)return formatBody(text);
+  let html='<table class="msg-table">';
+  rows.forEach((row,i)=>{
+    const cells=row.split('|').map(c=>c.trim()).filter((_,j,a)=>j>0&&j<a.length-1);
+    const tag=i===0?'th':'td';
+    html+='<tr>'+cells.map(c=>`<${tag}>${escapeHtml(c)}</${tag}>`).join('')+'</tr>';
+  });
+  return html+'</table>';
+}
+
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ── EXPORTS ──────────────────────────────────────────────────────
+function dateStamp(){const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;}
+function getSafeName(){
+  if(!state.result)return'RPGLens_Spool';
+  const m=state.result.match(/##\s+VERDICT\s*\n([^\n]+)/i);
+  if(m){const prog=m[1].match(/(?:program\s+|of\s+)([A-Z0-9_]+)/i);if(prog)return'Spool_'+prog[1];}
+  return'Spool_Analysis';
+}
+function getFullText(){
+  if(!state.result)return'';
+  return `RPGLens Spool File Analysis\nGenerated: ${new Date().toLocaleString()}\n\n${state.result}`;
+}
+function exportText(){
+  const b=new Blob([getFullText()],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`RPGLens_${getSafeName()}_${dateStamp()}.txt`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+function copyResult(){
+  navigator.clipboard.writeText(getFullText());
+  const btn=document.getElementById('export-copy');const orig=btn.innerHTML;
+  btn.innerHTML='Copied!';
+  setTimeout(()=>{btn.innerHTML=orig;},1500);
+}
+
+onSpoolInput();
+initSession();
+</script>
+</body>
+</html>

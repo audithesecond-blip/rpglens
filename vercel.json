@@ -4,12 +4,14 @@
   "functions": {
     "api/analyse.js":  { "maxDuration": 300 },
     "api/brd-tdd.js":  { "maxDuration": 300 },
-    "api/tdd-code.js": { "maxDuration": 300 }
+    "api/tdd-code.js": { "maxDuration": 300 },
+    "api/spool.js":    { "maxDuration": 300 }
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/analyser",  "dest": "/analyser.html" },
     { "src": "/converter", "dest": "/converter.html" },
+    { "src": "/spool",     "dest": "/spool.html" },
     { "src": "/login",     "dest": "/login.html" },
     { "src": "/signup",    "dest": "/signup.html" },
     { "src": "/dashboard", "dest": "/dashboard.html" },
