@@ -1599,6 +1599,10 @@ const urlParams=new URLSearchParams(window.location.search);
 const restoreId=urlParams.get('restore');
 if(restoreId)setTimeout(()=>restoreFromHistory(restoreId),800);
 
+// Tools dropdown (shared pattern across pages)
+function toggleToolsDropdown(){document.getElementById('tools-dropdown').classList.toggle('open');}
+document.addEventListener('click',function(e){const dd=document.getElementById('tools-dropdown');if(dd&&!dd.contains(e.target))dd.classList.remove('open');});
+
 // Auto-load source from IBM i Connect
 if(urlParams.get('from_ibmi')==='1'){
   try{

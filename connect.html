@@ -36,6 +36,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-sm:hover{opacity:0.88}
 .btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
 .btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
+.dropdown{position:relative;display:inline-block}
+.dropdown-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);min-width:200px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+.dropdown.open .dropdown-menu{display:block}
+.dropdown-item{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:12px;color:var(--text2);text-decoration:none;transition:background 0.15s;cursor:pointer;white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono)}
+.dropdown-item:last-child{border-bottom:none}
+.dropdown-item:hover{background:var(--bg3);color:var(--text)}
+.dropdown-item-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0}
 .status-pill{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0.1em;color:var(--text3);padding:4px 10px;border:1px solid var(--border)}
 .status-dot{width:6px;height:6px;border-radius:50%;background:var(--border2)}
 
@@ -182,7 +189,17 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="status-dot" id="conn-dot"></div>
       <span id="conn-label">NOT CONNECTED</span>
     </div>
-    <a href="/analyser" class="btn-sm">+ Analyser</a>
+    <div class="dropdown" id="tools-dropdown">
+      <button class="btn-sm" onclick="toggleToolsDropdown()" style="display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border2);color:var(--text2)">
+        &#9881; Tools <span style="font-size:9px;opacity:0.7">&#9660;</span>
+      </button>
+      <div class="dropdown-menu">
+        <a href="/analyser"  class="dropdown-item"><span class="dropdown-item-icon">&#9113;</span> Analyser</a>
+        <a href="/converter" class="dropdown-item"><span class="dropdown-item-icon">&#8644;</span> Converter</a>
+        <a href="/spool"     class="dropdown-item"><span class="dropdown-item-icon">&#9783;</span> Spool Analyser</a>
+        <a href="/connect"   class="dropdown-item" style="color:var(--amber);background:rgba(232,160,32,0.06)"><span class="dropdown-item-icon">&#9906;</span> IBM i Connect</a>
+      </div>
+    </div>
     <a href="/dashboard" class="btn-sm">Dashboard</a>
     <a href="/" class="btn-sm ghost">&#8592; Home</a>
   </div>
@@ -866,6 +883,9 @@ node rpglens-agent.js --mode tunnel \\
 }
 
 init();
+
+function toggleToolsDropdown(){document.getElementById('tools-dropdown').classList.toggle('open');}
+document.addEventListener('click',function(e){const dd=document.getElementById('tools-dropdown');if(dd&&!dd.contains(e.target))dd.classList.remove('open');});
 </script>
 </body>
 </html>
