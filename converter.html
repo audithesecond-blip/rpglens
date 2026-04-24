@@ -663,6 +663,14 @@ function onInput() {
   const limit  = CONV_LINE_LIMITS[plan] || 500;
   const pct    = Math.min(100, Math.round((lines / limit) * 100));
 
+  console.log('[RPGLens] onInput:', {
+    currentMode,
+    codeLen: len,
+    uploadedCodeLen: uploadedCode ? uploadedCode.length : 0,
+    plan,
+    willDisable: len < 10
+  });
+
   // Enable the button as soon as we have code. Server gates for RLUs
   // and returns a clear error if insufficient — better UX than a
   // silently disabled button.
@@ -1094,6 +1102,7 @@ function handleFileSelect(e) {
 }
 
 async function processFile(file) {
+  console.log('[RPGLens] processFile START:', file.name, file.size, 'bytes');
   const overlay   = document.getElementById('processing-overlay');
   const subLabel  = document.getElementById('proc-sub-label');
   const ext       = file.name.split('.').pop().toLowerCase();
@@ -1124,12 +1133,25 @@ async function processFile(file) {
     }
 
     text = text.trim();
+    console.log('[RPGLens] extracted text length:', text ? text.length : 0);
     if (!text || text.length < 5) throw new Error('No readable text found in file');
 
     uploadedCode = text;
+    console.log('[RPGLens] uploadedCode set, calling showFileLoaded');
     showFileLoaded(file, text, ext);
+    console.log('[RPGLens] showFileLoaded returned');
+
+    // DEFENSIVE: force-enable the convert button directly. If onInput
+    // has any issue that prevents it from running correctly, this
+    // guarantees the user can click Convert.
+    const btn = document.getElementById('convert-btn');
+    if (btn && text.length >= 10) {
+      btn.disabled = false;
+      console.log('[RPGLens] convert button force-enabled, disabled=', btn.disabled);
+    }
 
   } catch (err) {
+    console.error('[RPGLens] processFile error:', err);
     overlay.classList.remove('visible');
     showFileError(err.message || 'Failed to read file');
   } finally {
