@@ -40,6 +40,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-sm:hover{opacity:0.88}
 .btn-sm.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
 .btn-sm.ghost:hover{border-color:var(--amber-dim);color:var(--amber)}
+.dropdown{position:relative;display:inline-block}
+.dropdown-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);min-width:200px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+.dropdown.open .dropdown-menu{display:block}
+.dropdown-item{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:12px;color:var(--text2);text-decoration:none;transition:background 0.15s;cursor:pointer;white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono)}
+.dropdown-item:last-child{border-bottom:none}
+.dropdown-item:hover{background:var(--bg3);color:var(--text)}
+.dropdown-item-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0}
 .app-body{display:flex;flex:1;overflow:hidden}
 .input-panel{width:420px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--bg2)}
 .panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
@@ -252,7 +259,18 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <span id="user-name">...</span>
     </div>
     <a href="/connect" class="btn-sm" id="ibmi-btn" style="display:none;background:#0f4a2e;border-color:#0f4a2e;color:var(--green)">&#9906; IBM i</a>
-    <a href="/converter" class="btn-sm" style="background:var(--green);border-color:var(--green)">&#8644; Converter</a>
+    <div class="dropdown" id="tools-dropdown">
+      <button class="btn-sm" onclick="toggleToolsDropdown()" style="display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border2);color:var(--text2)">
+        &#9881; Tools <span style="font-size:9px;opacity:0.7">&#9660;</span>
+      </button>
+      <div class="dropdown-menu">
+        <a href="/analyser"  class="dropdown-item" style="color:var(--amber);background:rgba(232,160,32,0.06)"><span class="dropdown-item-icon">&#9113;</span> Analyser</a>
+        <a href="/converter" class="dropdown-item"><span class="dropdown-item-icon">&#8644;</span> Converter</a>
+        <a href="/spool"     class="dropdown-item"><span class="dropdown-item-icon">&#9783;</span> Spool Analyser</a>
+        <a href="/brd-tdd"   class="dropdown-item" id="dd-brd-tdd" style="display:none"><span class="dropdown-item-icon">&#9889;</span> BRD &rarr; TDD</a>
+        <a href="/tdd-code"  class="dropdown-item" id="dd-tdd-code" style="display:none"><span class="dropdown-item-icon">&#10021;</span> TDD &rarr; Code</a>
+      </div>
+    </div>
     <a href="/dashboard" class="btn-sm">Dashboard</a>
     <a href="/" class="btn-sm ghost">&#8592; Home</a>
   </div>
@@ -879,7 +897,10 @@ async function initSession(){
       const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
       dot.style.background='var(--green)';txt.textContent='SIGNED IN';pill.style.display='flex';
       document.getElementById('user-av').textContent=initials;document.getElementById('user-name').textContent=name.split(' ')[0];
-      if(['pro','admin'].includes(user.user_metadata?.plan||'free')){const b=document.getElementById('ibmi-btn');if(b)b.style.display='inline-block';}
+      if(['pro','admin'].includes(user.user_metadata?.plan||'free')){
+        const b=document.getElementById('ibmi-btn');if(b)b.style.display='inline-block';
+        ['dd-brd-tdd','dd-tdd-code'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='flex';});
+      }
     }else{dot.style.background='var(--amber)';txt.textContent='NOT SIGNED IN';}
   }catch(e){document.getElementById('api-status-text').textContent='SESSION ERROR';}
 }
@@ -1099,6 +1120,27 @@ async function runAnalysis(){
         const sd=new Date(supabaseSession.user.created_at),pn=Math.floor(Math.floor((new Date()-sd)/(1000*60*60*24))/30);
         const uk=`rpglens_usage_${uid}_period_${pn}`;localStorage.setItem(uk,String(parseInt(localStorage.getItem(uk)||'0')+1));
         const tk=`rpglens_total_${uid}`;localStorage.setItem(tk,String(parseInt(localStorage.getItem(tk)||'0')+1));
+
+        // Cross-device persistence to Supabase. Fire-and-forget.
+        const codeLen=getActiveCode().length;
+        const lineCount=Math.max(codeLen>0?getActiveCode().split('\n').length:0,100);
+        const rluCost=Math.ceil(lineCount/100)*tabs.length;
+        const debtLevel=state.debtScore?state.debtScore.level:null;
+        const debtScoreNum=state.debtScore?state.debtScore.score:null;
+        fetch('/api/activity',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
+          body:JSON.stringify({
+            op:'log',
+            action:'analysis',
+            program:progName,
+            lines:lineCount,
+            rluCost,
+            source:currentMode==='upload'?'upload':'paste',
+            metadata:{tabs,debtLevel,debtScore:debtScoreNum},
+            resultRef:id
+          })
+        }).catch(e=>console.warn('activity log failed (non-fatal):',e));
       }catch(e){console.warn('History save failed:',e);}
     }
   }

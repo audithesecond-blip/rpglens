@@ -663,6 +663,9 @@ function onInput() {
   const limit  = CONV_LINE_LIMITS[plan] || 500;
   const pct    = Math.min(100, Math.round((lines / limit) * 100));
 
+  // Enable the button as soon as we have code. Server gates for RLUs
+  // and returns a clear error if insufficient — better UX than a
+  // silently disabled button.
   btn.disabled = len < 10;
 
   if (len === 0) {
@@ -673,25 +676,18 @@ function onInput() {
   } else {
     const rluCost = Math.ceil(Math.max(lines,100) / 100) * 5;
     const hasEnough = _rluBalance.total >= rluCost || plan === 'admin';
-    cc.textContent = `${lines.toLocaleString()} lines  ·  ${len.toLocaleString()} chars`;
-    document.getElementById('conv-limit-label').textContent = `~${rluCost} RLUs for this conversion (${_rluBalance.total} available)`;
+    cc.textContent = `${lines.toLocaleString()} lines  ·  ${len.toLocaleString()} chars  ·  ready to convert`;
+    cc.style.color = 'var(--green)';
+    document.getElementById('conv-limit-label').textContent = hasEnough
+      ? `~${rluCost} RLUs for this conversion (${_rluBalance.total} available)`
+      : `~${rluCost} RLUs needed — you have ${_rluBalance.total}. Top up from dashboard to enable.`;
+    document.getElementById('conv-limit-label').style.color = hasEnough ? 'var(--text3)' : 'var(--amber)';
     document.getElementById('line-bar-wrap').style.display = 'block';
 
     const pct2 = Math.min(100, Math.round(rluCost / Math.max(_rluBalance.total,1) * 100));
     const fill = document.getElementById('line-bar-fill');
     fill.style.width      = pct2 + '%';
-    fill.style.background = !hasEnough ? 'var(--red)' : pct2 >= 80 ? 'var(--amber)' : 'var(--green)';
-
-    if (!hasEnough && plan !== 'admin') {
-      btn.disabled = true;
-      cc.style.color = 'var(--red)';
-      document.getElementById('conv-limit-label').style.color = 'var(--red)';
-      document.getElementById('conv-limit-label').textContent = `Insufficient RLUs — need ${rluCost}, have ${_rluBalance.total}. Top up from dashboard.`;
-    } else {
-      btn.disabled = len < 10;
-      cc.style.color = '';
-      document.getElementById('conv-limit-label').style.color = 'var(--text3)';
-    }
+    fill.style.background = !hasEnough ? 'var(--amber)' : pct2 >= 80 ? 'var(--amber)' : 'var(--green)';
   }
 }
 
@@ -1050,16 +1046,22 @@ function switchMode(mode) {
   if (mode === 'paste') {
     pasteArea.style.display = '';
     uploadZone.classList.remove('visible');
+    uploadZone.style.display = 'none';
     fileLoaded.classList.remove('visible');
+    fileLoaded.style.display = 'none';
     onInput();
   } else {
     pasteArea.style.display = 'none';
     if (uploadedCode) {
       uploadZone.classList.remove('visible');
+      uploadZone.style.display = 'none';
       fileLoaded.classList.add('visible');
+      fileLoaded.style.display = 'flex';
     } else {
       uploadZone.classList.add('visible');
+      uploadZone.style.display = '';
       fileLoaded.classList.remove('visible');
+      fileLoaded.style.display = 'none';
     }
     onInput();
   }
@@ -1305,6 +1307,10 @@ function showFileLoaded(file, text, ext) {
   const sizeEl     = document.getElementById('file-size-display');
   const previewEl  = document.getElementById('file-preview');
 
+  // Clear any stale error message from a prior failed upload
+  const staleErr = document.getElementById('file-error-msg');
+  if (staleErr) staleErr.remove();
+
   const typeMap = {
     txt: 'TXT', text: 'TXT', rpgle: 'RPG', rpg: 'RPG',
     clle: 'CL', cl: 'CL', sqlrpgle: 'SQL', docx: 'DOC', pdf: 'PDF'
@@ -1321,8 +1327,13 @@ function showFileLoaded(file, text, ext) {
 
   previewEl.textContent = text;
 
+  // Force the correct state: upload zone hidden, file-loaded visible.
+  // Belt and braces — both classList and inline style — defends against
+  // any CSS specificity edge cases on legacy browsers.
   uploadZone.classList.remove('visible');
+  uploadZone.style.display = 'none';
   fileLoaded.classList.add('visible');
+  fileLoaded.style.display = 'flex';
 
   onInput();
 }
@@ -1345,8 +1356,12 @@ function showFileError(msg) {
 function clearUpload() {
   uploadedCode = null;
   document.getElementById('file-preview').textContent = '';
-  document.getElementById('file-loaded').classList.remove('visible');
-  document.getElementById('upload-zone').classList.add('visible');
+  const fileLoaded = document.getElementById('file-loaded');
+  const uploadZone = document.getElementById('upload-zone');
+  fileLoaded.classList.remove('visible');
+  fileLoaded.style.display = 'none';
+  uploadZone.classList.add('visible');
+  uploadZone.style.display = '';
   const errMsg = document.getElementById('file-error-msg');
   if (errMsg) errMsg.remove();
   onInput();
@@ -1368,36 +1383,54 @@ function saveConversionUsage() {
     const periodNumber = Math.floor(daysSince / 30);
     const periodKey    = `period_${periodNumber}`;
 
-    // Increment usage counter
+    // Increment usage counter (still local — it's just a UX counter)
     const usageKey = `rpglens_conv_${userId}_${periodKey}`;
     const used     = parseInt(localStorage.getItem(usageKey) || '0') + 1;
     localStorage.setItem(usageKey, String(used));
 
-    // Save conversion history
+    // Local cache of the converted result (for instant restore on same device)
     const histKey = `rpglens_conv_history_${userId}`;
     const history = JSON.parse(localStorage.getItem(histKey) || '[]');
     const id      = `conv_${userId}_${Date.now()}`;
-
-    // Save the converted result separately
     localStorage.setItem(id, JSON.stringify({
       convertedCode,
       originalLines: originalCode.split('\n').filter(l => l.trim()).length,
       convLines:     convertedCode.split('\n').filter(l => l.trim()).length
     }));
 
-    // Get program name from breadcrumb or filename
-    const progName = document.getElementById('file-name-display')?.textContent?.replace(/\.[^.]+$/, '').replace(/\s*\(\d+\)\s*$/, '').trim().toUpperCase() || 'Unnamed program';
+    const progName = document.getElementById('file-name-display')?.textContent
+      ?.replace(/\.[^.]+$/, '').replace(/\s*\(\d+\)\s*$/, '').trim().toUpperCase() || 'Unnamed program';
+    const originalLines = originalCode.split('\n').filter(l => l.trim()).length;
+    const convLines     = convertedCode.split('\n').filter(l => l.trim()).length;
 
     history.unshift({
-      id,
-      name: progName || 'Unnamed program',
+      id, name: progName || 'Unnamed program',
       date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      lines: convertedCode.split('\n').filter(l => l.trim()).length
+      lines: convLines
     });
-
-    // Keep last 10, clean up old result keys
     history.slice(10).forEach(h => { if (h.id) localStorage.removeItem(h.id); });
     localStorage.setItem(histKey, JSON.stringify(history.slice(0, 10)));
+
+    // Cross-device persistence to Supabase. Fire-and-forget — a DB
+    // failure should never break the conversion flow.
+    const rluCost = Math.ceil(Math.max(originalLines, 100) / 100) * 5;
+    fetch('/api/activity', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${supabaseSession.access_token}`
+      },
+      body: JSON.stringify({
+        op:        'log',
+        action:    'conversion',
+        program:   progName,
+        lines:     originalLines,
+        rluCost,
+        source:    currentMode === 'upload' ? 'upload' : 'paste',
+        metadata:  { convLines },
+        resultRef: id
+      })
+    }).catch(e => console.warn('activity log failed (non-fatal):', e));
 
     loadConversionUsage();
   } catch(e) { console.warn('saveConversionUsage failed:', e); }

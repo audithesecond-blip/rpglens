@@ -130,6 +130,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="dropdown-menu">
         <a href="/analyser" class="dropdown-item"><span class="dropdown-item-icon">+</span> New analysis</a>
         <a href="/converter" class="dropdown-item"><span class="dropdown-item-icon">&#8644;</span> New conversion</a>
+        <a href="/spool" class="dropdown-item"><span class="dropdown-item-icon">&#9783;</span> Spool analyser</a>
         <a href="/brd-tdd" class="dropdown-item" id="dd-brd-tdd" style="display:none"><span class="dropdown-item-icon">&#9889;</span> BRD → TDD</a>
         <a href="/tdd-code" class="dropdown-item" id="dd-tdd-code" style="display:none"><span class="dropdown-item-icon">&#10021;</span> TDD → Code</a>
       </div>
@@ -330,10 +331,21 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="section-header">
     <div class="section-title">Recent conversions</div>
   </div>
-  <div id="conv-history-container" class="fade-in">
+  <div id="conv-history-container" class="fade-in" style="margin-bottom:24px">
     <div class="history-empty">
       <div class="history-empty-title">No conversions yet</div>
       <div class="history-empty-sub">Convert a fixed-format program to see your history here.<br/><a href="/converter" style="color:var(--amber)">Go to converter →</a></div>
+    </div>
+  </div>
+
+  <!-- RECENT SPOOL ANALYSES -->
+  <div class="section-header">
+    <div class="section-title">Recent spool analyses</div>
+  </div>
+  <div id="spool-history-container" class="fade-in">
+    <div class="history-empty">
+      <div class="history-empty-title">No spool analyses yet</div>
+      <div class="history-empty-sub">Upload a joblog, compile listing, or program dump to see results here.<br/><a href="/spool" style="color:var(--amber)">Go to spool analyser →</a></div>
     </div>
   </div>
 </div>
@@ -526,9 +538,83 @@ async function init() {
     </div>`;
   }
 
-  // ── Local storage history ─────────────────────────────────────────
+  // ── Remote history (Supabase) first, localStorage as fallback ────
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    if (token) {
+      const resp = await fetch('/api/activity', {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ op: 'list', limit: 30 })
+      });
+      if (resp.ok) {
+        const { activities } = await resp.json();
+        const analyses    = activities.filter(a => a.action === 'analysis');
+        const conversions = activities.filter(a => a.action === 'conversion');
+        const spools      = activities.filter(a => a.action === 'spool');
+        renderHistory(analyses.map(remoteToLegacy));
+        renderConvHistory(conversions.map(remoteToLegacy));
+        renderSpoolHistory(spools.map(remoteToLegacy));
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('Remote history load failed, falling back to local:', e);
+  }
+
+  // Fallback: localStorage-only (legacy devices / offline)
   renderHistory(JSON.parse(localStorage.getItem(`rpglens_history_${user.id}`)||'[]'));
   renderConvHistory(JSON.parse(localStorage.getItem(`rpglens_conv_history_${user.id}`)||'[]'));
+}
+
+// Map a row from user_activity into the shape renderHistory/renderConvHistory expect
+function remoteToLegacy(row) {
+  const d = new Date(row.created_at);
+  const formattedDate = d.toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  const meta = row.metadata || {};
+  return {
+    id:    row.result_ref || null,
+    name:  row.program || 'Unnamed program',
+    date:  formattedDate,
+    ext:   row.source === 'upload' ? 'RPG' : 'paste',
+    tabs:  Array.isArray(meta.tabs) ? meta.tabs : undefined,
+    lines: row.lines,
+    rluCost:  row.rlu_cost,
+    debtLevel: meta.debtLevel,
+    debtScore: meta.debtScore,
+    spoolType: meta.spoolType
+  };
+}
+
+function renderSpoolHistory(history){
+  const container=document.getElementById('spool-history-container');
+  if(!container)return;
+  if(!history.length){
+    container.innerHTML='<div class="history-empty"><div class="history-empty-title">No spool analyses yet</div><div class="history-empty-sub">Upload a joblog, compile listing, or program dump to see results here.</div></div>';
+    return;
+  }
+  const list=document.createElement('div'); list.className='history-list';
+  history.slice(0,8).forEach(item=>{
+    const el=document.createElement('a');
+    el.href='/spool';
+    el.className='history-item';
+    const type=(item.spoolType||'SPOOL').toUpperCase().slice(0,4);
+    el.innerHTML=`<div class="history-icon" style="background:rgba(91,155,213,0.12);color:var(--blue)">${type}</div>
+      <div class="history-meta">
+        <div class="history-name">${item.name||'Spool analysis'}</div>
+        <div class="history-date">${item.date||'Recently'}</div>
+      </div>
+      <div class="history-tags">
+        <span class="htag" style="background:rgba(91,155,213,0.1);border-color:rgba(91,155,213,0.3);color:var(--blue)">${item.lines?item.lines+' lines':'Analysed'}</span>
+      </div>`;
+    list.appendChild(el);
+  });
+  container.innerHTML=''; container.appendChild(list);
 }
 
 function renderHistory(history){

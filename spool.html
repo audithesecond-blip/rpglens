@@ -416,6 +416,26 @@ async function runSpoolAnalysis(){
     renderResult(data.result,data);
     document.getElementById('export-txt').disabled=false;
     document.getElementById('export-copy').disabled=false;
+
+    // Cross-device history — fire-and-forget
+    try{
+      const verdictMatch=(data.result||'').match(/##\s+VERDICT\s*\n([^\n]+)/i);
+      const programMatch=verdictMatch?verdictMatch[1].match(/(?:program\s+|of\s+)([A-Z0-9_]+)/i):null;
+      const progName=programMatch?programMatch[1]:(data.spoolType?data.spoolType.toUpperCase()+' spool':'Spool analysis');
+      fetch('/api/activity',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabaseSession.access_token}`},
+        body:JSON.stringify({
+          op:'log',
+          action:'spool',
+          program:progName,
+          lines:data.lineCount||lines,
+          rluCost:data.rluCost||0,
+          source:'paste',
+          metadata:{spoolType:data.spoolType,trialUsed:!!data.trialUsed}
+        })
+      }).catch(e=>console.warn('activity log failed (non-fatal):',e));
+    }catch(logErr){console.warn('activity log skipped:',logErr);}
   }catch(err){
     renderError({error:err.message||'Network error'});
   }finally{

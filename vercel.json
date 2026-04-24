@@ -5,7 +5,8 @@
     "api/analyse.js":  { "maxDuration": 300 },
     "api/brd-tdd.js":  { "maxDuration": 300 },
     "api/tdd-code.js": { "maxDuration": 300 },
-    "api/spool.js":    { "maxDuration": 300 }
+    "api/spool.js":    { "maxDuration": 300 },
+    "api/activity.js": { "maxDuration": 30 }
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
