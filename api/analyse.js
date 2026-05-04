@@ -424,6 +424,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Request too large. Maximum 300,000 characters." });
     }
 
+    // Per-plan size gate — applies to analysis tabs and conversions only.
+    // Summary pass is internal (free) so it inherits the largest limit
+    // available to the user's plan. Skip the check for admin.
+    if (plan !== "admin") {
+      const planCharLimit = CHAR_LIMITS[plan] || CHAR_LIMITS.free;
+      const planNameLabel = PLAN_NAMES[plan] || "Free";
+      if (prompt.length > planCharLimit) {
+        const kb           = Math.round(prompt.length / 1000);
+        const limitKb      = Math.round(planCharLimit / 1000);
+        const upgradeHint  = ANALYSIS_UPGRADE_HINTS[plan] || "";
+        return res.status(413).json({
+          error: `Program too large for the ${planNameLabel} plan. Your code is ${kb.toLocaleString()} KB but the ${planNameLabel} plan limit is ${limitKb.toLocaleString()} KB.`,
+          hint:  upgradeHint,
+          type:  "size_limit",
+          plan,
+          codeKb:  kb,
+          limitKb,
+          upgrade: plan !== "pro"
+        });
+      }
+    }
+
     // ── 4. ENFORCE RLU LIMITS ────────────────────────────────────────────
     const effectiveLines = Math.max(lineCount || 100, 100);
     const rluType        = isConversion ? 'conversion' : (analysisType === 'summary' ? 'summary' : 'analysis');
