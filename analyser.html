@@ -544,25 +544,44 @@ function getActiveCode(){return currentMode==='upload'?uploadedCode||'':document
 function onCodeInput(){
   const code=getActiveCode(),len=code?code.length:0;
   const btn=document.getElementById('analyse-btn'),cc=document.getElementById('char-count');
-  const LIMITS={free:30000,starter:100000,team:300000,admin:999999};
-  const LABELS={free:'Free (30KB limit)',starter:'Starter (100KB limit)',team:'Team (300KB limit)',admin:'Admin (unlimited)'};
+  const LIMITS={free:30000,starter:100000,pro:300000,admin:999999};
+  const LABELS={free:'Free',starter:'Starter',pro:'Pro',admin:'Admin'};
+  const LIMIT_KB={free:30,starter:100,pro:300};
   const plan=supabaseSession?.user?.user_metadata?.plan||'free',charLimit=LIMITS[plan]||30000;
   btn.disabled=len<10||state.loading;
-  if(len===0){cc.textContent='Paste code above to begin — select only the tabs you need for large programs';document.getElementById('limit-bar-wrap').style.display='none';document.getElementById('plan-limit-label').textContent='';}
-  else{
+  if(len===0){
+    cc.textContent='Paste code above to begin — select only the tabs you need for large programs';
+    cc.style.color='';
+    document.getElementById('limit-bar-wrap').style.display='none';
+    document.getElementById('plan-limit-label').textContent='';
+  } else {
     const kb=(len/1000).toFixed(1),pct=Math.min(100,Math.round((len/charLimit)*100));
-    cc.textContent=`${len.toLocaleString()} chars (${kb} KB)`;
-    document.getElementById('plan-limit-label').textContent=`${pct}% of ${LABELS[plan]}`;
     document.getElementById('limit-bar-wrap').style.display='block';
-    const fill=document.getElementById('limit-bar-fill');fill.style.width=pct+'%';fill.style.background=pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
-    if(len>charLimit){btn.disabled=true;cc.style.color='var(--red)';document.getElementById('plan-limit-label').style.color='var(--red)';}
+    const fill=document.getElementById('limit-bar-fill');
+    fill.style.width=pct+'%';
+    fill.style.background=pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
+
+    if(len>charLimit && plan!=='admin'){
+      // Over plan limit — disable button, show clear upgrade message
+      btn.disabled=true;
+      cc.textContent=`${kb} KB — exceeds ${LABELS[plan]} plan limit (${LIMIT_KB[plan]} KB max)`;
+      cc.style.color='var(--red)';
+      const nextPlan = plan==='free' ? 'Starter (100 KB)' : plan==='starter' ? 'Pro (300 KB)' : 'Enterprise';
+      document.getElementById('plan-limit-label').innerHTML=
+        `<a href="/dashboard" style="color:var(--amber);text-decoration:underline">Upgrade to ${nextPlan}</a> to analyse this program`;
+      document.getElementById('plan-limit-label').style.color='var(--amber)';
+    } else {
+      cc.textContent=`${len.toLocaleString()} chars (${kb} KB)`;
+      cc.style.color='';
+      document.getElementById('plan-limit-label').textContent=`${pct}% of ${LABELS[plan]} plan (${LIMIT_KB[plan]||'unlimited'} KB)`;
+      document.getElementById('plan-limit-label').style.color='var(--text3)';
+    }
+
     // Warn on large programs to select fewer tabs
     const largeProgramWarn=document.getElementById('large-program-warn');
     if(largeProgramWarn){
-      if(len>80000){largeProgramWarn.style.display='block';}
-      else{largeProgramWarn.style.display='none';}
+      largeProgramWarn.style.display = len>80000 ? 'block' : 'none';
     }
-    else{cc.style.color='';document.getElementById('plan-limit-label').style.color='var(--text3)';}
   }
   if(currentMode==='paste'){const nm=code.match(/(?:\/\/\s*Program[:\s]+|H\s+)([A-Z0-9]+)/i);if(nm)document.getElementById('program-name').textContent=nm[1];else if(len>0)document.getElementById('program-name').textContent='Unnamed program';else document.getElementById('program-name').textContent='New analysis';}
   else if(currentMode==='upload'&&!uploadedCode)document.getElementById('program-name').textContent='New analysis';
