@@ -1508,6 +1508,53 @@
   </div>
 </div>
 
+<!-- SPOOL NARRATIVE — full-width "2am production call" hero block -->
+<div style="max-width:1200px;margin:0 auto;padding:24px 48px 0">
+  <div class="terminal-wrap" style="margin-top:0">
+    <div class="terminal" style="border-color:rgba(232,80,80,0.25)">
+      <div class="terminal-bar" style="background:#1a1010;border-bottom:1px solid rgba(232,80,80,0.2)">
+        <div class="terminal-dots"><span class="t-dot t-red"></span><span class="t-dot t-amber"></span><span class="t-dot t-green"></span></div>
+        <span class="terminal-title" style="color:#e85050">SPOOL ANALYSER &nbsp;—&nbsp; THE 2 A.M. PRODUCTION CALL</span>
+      </div>
+      <div class="terminal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <!-- LEFT: spool input -->
+        <div class="t-pane" style="border-right:1px solid var(--border)">
+          <div class="t-label" style="color:#e85050;border-color:rgba(232,80,80,0.2)">&#9783; Joblog from QPJOBLOG &mdash; 412 lines, you have 4 minutes</div>
+<pre style="font-family:var(--mono);font-size:11px;line-height:1.7;white-space:pre-wrap;color:var(--text2)"><span class="t-kw" style="color:#888">CPF1124</span>  Information   Job 123456/YBAUDI/SAR248RUN started
+<span class="t-kw" style="color:#888">CPF9898</span>  Information   Library list set: APPLIB QTEMP QGPL
+<span class="t-kw" style="color:#888">CPF9897</span>  Information   Calling SAR248 with parms <span class="t-str">'001' 'N'</span>
+<span class="t-kw" style="color:#888">CPF9801</span>  Diagnostic    Object ORDDPF in *LIBL not found
+<span class="t-kw" style="color:#888">CPF1241</span>  Completion    File ORDDPF opened for output
+<span style="color:#e85050;font-weight:700">CPF5026</span>  <span style="color:#e85050;font-weight:700">Escape</span>        Lock conflict on member ORDHPF
+<span style="color:#e85050;font-weight:700">CPF9999</span>  <span style="color:#e85050;font-weight:700">Escape</span>        Function check at SAR248 stmt 0847
+<span class="t-kw" style="color:#888">CPF1240</span>  Information   Job ended abnormally; end code 30
+<span style="color:var(--text3);font-style:italic">    ... 397 more lines of noise ...</span></pre>
+        </div>
+        <!-- RIGHT: spool verdict -->
+        <div class="t-pane t-output" style="background:rgba(232,80,80,0.03)">
+          <div class="t-label" style="color:#5b9bd5;border-color:rgba(91,155,213,0.2)">&#9889; RPGLens &mdash; verdict in 8 seconds</div>
+          <div class="output-block" style="background:rgba(232,80,80,0.06);border-left:3px solid #e85050;padding:10px 12px;margin-bottom:10px">
+            <div class="output-key" style="color:#e85050;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px">Verdict</div>
+            <div class="output-val" style="color:var(--text);font-size:11.5px;line-height:1.5">SAR248 terminated with <code style="background:var(--bg3);padding:1px 4px;color:#e85050">CPF5026</code> at statement <code style="background:var(--bg3);padding:1px 4px">0847</code> updating <code style="background:var(--bg3);padding:1px 4px">ORDHPF</code>. Lock held by job <code style="background:var(--bg3);padding:1px 4px">098765/JDOE/QPADEV0001</code> since 02:11:12.</div>
+          </div>
+          <div class="output-block" style="margin-top:8px">
+            <div class="output-key" style="color:var(--amber);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px">Recommended fix &mdash; immediate</div>
+            <pre style="font-family:var(--mono);font-size:10.5px;line-height:1.7;white-space:pre-wrap;color:var(--text2);margin:0">1. <span style="color:var(--amber)">WRKOBJLCK OBJ(APPLIB/ORDHPF) OBJTYPE(*FILE)</span>
+   confirm holder
+2. End the idle interactive session, then
+   <span style="color:var(--amber)">SBMJOB CMD(CALL CLSAR248)</span>
+3. Long-term: STRCMTCTL + MONITOR<span class="cursor"></span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--text3);line-height:1.6">
+      Stop reading 400-page joblogs. Get the verdict, root cause, and IBM i commands to fix it &mdash; in seconds.
+      &nbsp;<a href="/spool" style="color:var(--amber);text-decoration:none;border-bottom:1px solid var(--amber-dim);font-weight:600">Try the Spool Analyser &rarr;</a>
+    </div>
+  </div>
+</div>
+
 <!-- TICKER -->
 <div class="ticker-wrap">
   <div class="ticker">
