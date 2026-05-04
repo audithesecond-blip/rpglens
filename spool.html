@@ -549,6 +549,7 @@ function formatBody(text){
 function renderMsgTable(text){
   const rows=text.trim().split('\n').filter(l=>l.trim()&&!l.match(/^[\s|:-]+$/));
   if(rows.length<2)return formatBody(text);
+  const headerCells=rows[0].split('|').map(c=>c.trim()).filter((_,j,a)=>j>0&&j<a.length-1);
   let html='<table class="msg-table">';
   rows.forEach((row,i)=>{
     const cells=row.split('|').map(c=>c.trim()).filter((_,j,a)=>j>0&&j<a.length-1);
@@ -557,11 +558,28 @@ function renderMsgTable(text){
     }else{
       html+='<tr>';
       cells.forEach((c,j)=>{
-        if(/message\s*id|code/i.test(rows[0].split('|')[j+1]||'')){
+        const header=(headerCells[j]||'').toLowerCase();
+        if(/message\s*id|code/.test(header)){
           html+=`<td class="msg-code">${escapeHtml(c)}</td>`;
-        }else if(/type|severity/i.test(rows[0].split('|')[j+1]||'')){
+        }else if(header==='type'){
+          // True message type column — apply coloured pill
           const cls=classifyMsgType(c);
-          html+=`<td><span class="msg-type ${cls}">${escapeHtml(c.replace(/^\*/,''))}</span></td>`;
+          html+=cls?`<td><span class="msg-type ${cls}">${escapeHtml(c.replace(/^\*/,''))}</span></td>`
+                  :`<td>${escapeHtml(c)}</td>`;
+        }else if(header==='severity'){
+          // Numeric severity (compile listings) — colour by number
+          const sevNum=parseInt(c,10);
+          let sevClass='info';
+          if(!isNaN(sevNum)){
+            if(sevNum>=30)      sevClass='escape';
+            else if(sevNum>=20) sevClass='status';
+            else                sevClass='info';
+          }else{
+            // Word-based severity — fall through to classifier
+            const cls=classifyMsgType(c);
+            sevClass=cls||'info';
+          }
+          html+=`<td><span class="msg-type ${sevClass}">${escapeHtml(c.replace(/^\*/,''))}</span></td>`;
         }else{
           html+=`<td>${escapeHtml(c)}</td>`;
         }
@@ -574,11 +592,16 @@ function renderMsgTable(text){
 
 function classifyMsgType(t){
   const u=t.toLowerCase();
+  // Strict matches only — return null if no IBM i message type word found
   if(u.includes('escape'))return'escape';
   if(u.includes('diag'))return'diag';
   if(u.includes('completion'))return'completion';
-  if(u.includes('status')||u.includes('notify'))return'status';
-  return'info';
+  if(u.includes('notify'))return'status';
+  // 'status' must be a standalone word, not a substring (avoids "ORDSTATUS"
+  // false-matching as a status pill)
+  if(/\b\*?status\b/.test(u))return'status';
+  if(u.includes('info'))return'info';
+  return null;
 }
 
 function renderGenericTable(text){
